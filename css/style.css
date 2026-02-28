@@ -764,8 +764,8 @@ footer {
   nav.nav-open .nav-links { display: flex; }
 
   .nav-links a {
-    padding: 1.1rem 0.75rem;
-    font-size: 1rem;
+    padding: 1.5rem 0.75rem;
+    font-size: 1.05rem;
     border-radius: 4px;
     border-bottom: 1px solid rgba(255,255,255,0.12);
   }
