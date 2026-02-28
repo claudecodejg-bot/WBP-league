@@ -49,6 +49,24 @@
   document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('standings')
 
+  const container = document.getElementById('standings-container')
+
+  // Sort state
+  let _sortCol = 'seasonAvg'
+  let _sortDir = 'desc'
+  let _memberStats = []
+  let _guestStats = []
+
+  const COLS = [
+    { key: null,            label: '#'           },
+    { key: 'name',          label: 'Player'      },
+    { key: 'matchesPlayed', label: 'Played'      },
+    { key: 'wins',          label: 'Won'         },
+    { key: 'losses',        label: 'Lost'        },
+    { key: 'seasonAvg',     label: 'Season Avg'  },
+    { key: 'lastPlayed',    label: 'Last Played' },
+  ]
+
   function calcStreak(memberId, matches) {
     const played = matches
       .filter(m => m.team1_player1 === memberId || m.team1_player2 === memberId ||
@@ -79,35 +97,51 @@
     return `${days} days ago`
   }
 
+  function sortData(arr) {
+    return [...arr].sort((a, b) => {
+      let aVal = a[_sortCol], bVal = b[_sortCol]
+      if (_sortCol === 'name' || _sortCol === 'lastPlayed') {
+        aVal = aVal || ''
+        bVal = bVal || ''
+        return _sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
+      }
+      aVal = aVal ?? -Infinity
+      bVal = bVal ?? -Infinity
+      return _sortDir === 'asc' ? aVal - bVal : bVal - aVal
+    })
+  }
+
   function buildTable(stats, { podium = false } = {}) {
-    let html = `
-      <table class="standings-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Player</th>
-            <th>Played</th>
-            <th>Won</th>
-            <th>Lost</th>
-            <th>Season Avg</th>
-            <th>Last Played</th>
-          </tr>
-        </thead>
-        <tbody>
-    `
+    const isDefault = _sortCol === 'seasonAvg' && _sortDir === 'desc'
+
+    const headerCells = COLS.map(col => {
+      if (!col.key) return '<th>#</th>'
+      const active = col.key === _sortCol
+      const arrow = active ? (_sortDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅'
+      return `<th data-sort="${col.key}" class="sortable-th${active ? ' sort-active' : ''}">${col.label}${arrow}</th>`
+    }).join('')
+
+    let html = `<table class="standings-table"><thead><tr>${headerCells}</tr></thead><tbody>`
+
     stats.forEach((s, i) => {
       const rank = i + 1
       let rankDisplay
       let rowClass = ''
-      if (rank === 1) { rankDisplay = `<span class="rank-badge rank-1">1</span>`; if (podium) rowClass = 'podium-1' }
-      else if (rank === 2) { rankDisplay = `<span class="rank-badge rank-2">2</span>`; if (podium) rowClass = 'podium-2' }
-      else if (rank === 3) { rankDisplay = `<span class="rank-badge rank-3">3</span>`; if (podium) rowClass = 'podium-3' }
-      else rankDisplay = rank
+
+      if (isDefault && podium) {
+        if (rank === 1) { rankDisplay = `<span class="rank-badge rank-1">1</span>`; rowClass = 'podium-1' }
+        else if (rank === 2) { rankDisplay = `<span class="rank-badge rank-2">2</span>`; rowClass = 'podium-2' }
+        else if (rank === 3) { rankDisplay = `<span class="rank-badge rank-3">3</span>`; rowClass = 'podium-3' }
+        else rankDisplay = rank
+      } else {
+        rankDisplay = rank
+      }
 
       const streak = s.streak
-      const streakBadge = streak && streak.type === 'W' && streak.count >= 2
+      const streakBadge = isDefault && streak && streak.type === 'W' && streak.count >= 2
         ? `<span class="streak-badge streak-win">🔥 ${streak.count}W</span>`
         : ''
+
       html += `
         <tr class="${rowClass}">
           <td class="rank">${rankDisplay}</td>
@@ -117,14 +151,35 @@
           <td>${s.losses}</td>
           <td class="avg-score">${fmt(s.seasonAvg)}</td>
           <td class="last-played">${daysSince(s.lastPlayed)}</td>
-        </tr>
-      `
+        </tr>`
     })
     html += '</tbody></table>'
     return html
   }
 
-  function sortStats(stats) {
+  function renderTables() {
+    const isDefault = _sortCol === 'seasonAvg' && _sortDir === 'desc'
+    let html = '<h2 class="section-title">Members</h2>' + buildTable(sortData(_memberStats), { podium: isDefault })
+    if (_guestStats.length > 0) {
+      html += '<h2 class="section-title" style="margin-top:2rem;">Guests</h2>' + buildTable(sortData(_guestStats))
+    }
+    container.innerHTML = html
+
+    container.querySelectorAll('th[data-sort]').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.sort
+        if (_sortCol === col) {
+          _sortDir = _sortDir === 'asc' ? 'desc' : 'asc'
+        } else {
+          _sortCol = col
+          _sortDir = col === 'name' ? 'asc' : 'desc'
+        }
+        renderTables()
+      })
+    })
+  }
+
+  function defaultSort(stats) {
     return stats.sort((a, b) => {
       const avgA = a.seasonAvg ?? -Infinity
       const avgB = b.seasonAvg ?? -Infinity
@@ -134,9 +189,6 @@
   }
 
   async function loadStandings() {
-    const container = document.getElementById('standings-container')
-
-    // Fetch members, guests, and matches in parallel
     const [membersRes, guestsRes, matchesRes] = await Promise.all([
       supabase.from('members').select('id, full_name').eq('is_guest', false).order('full_name'),
       supabase.from('members').select('id, full_name').eq('is_guest', true).order('full_name'),
@@ -150,7 +202,6 @@
 
     const matches = matchesRes.data
 
-    // Update subtitle
     document.getElementById('standings-subtitle').textContent =
       `${matches.length} match${matches.length !== 1 ? 'es' : ''} played this season.`
 
@@ -162,34 +213,26 @@
       return played.length ? played.reduce((a, b) => a > b ? a : b) : null
     }
 
-    // Compute and sort member stats
-    const memberStats = sortStats(membersRes.data.map(m => ({
+    _memberStats = defaultSort(membersRes.data.map(m => ({
       ...computeMemberStats(m.id, matches),
       name: m.full_name,
       lastPlayed: lastPlayedDate(m.id),
       streak: calcStreak(m.id, matches)
     })))
 
-    // Compute and sort guest stats (only show guests who played)
-    const guestStats = sortStats(guestsRes.data.filter(m => m.full_name !== 'Forfeit').map(m => ({
+    _guestStats = defaultSort(guestsRes.data.filter(m => m.full_name !== 'Forfeit').map(m => ({
       ...computeMemberStats(m.id, matches),
       name: m.full_name,
       lastPlayed: lastPlayedDate(m.id),
       streak: calcStreak(m.id, matches)
     })).filter(s => s.matchesPlayed > 0))
 
-    if (memberStats.length === 0) {
+    if (_memberStats.length === 0) {
       container.innerHTML = '<p style="color:var(--gray-600);text-align:center;padding:2rem;">No data yet.</p>'
       return
     }
 
-    let html = '<h2 class="section-title">Members</h2>' + buildTable(memberStats, { podium: true })
-
-    if (guestStats.length > 0) {
-      html += '<h2 class="section-title" style="margin-top:2rem;">Guests</h2>' + buildTable(guestStats)
-    }
-
-    container.innerHTML = html
+    renderTables()
   }
 
   loadStandings()
