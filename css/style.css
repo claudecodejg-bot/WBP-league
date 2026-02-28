@@ -78,7 +78,7 @@ nav {
 }
 
 .nav-brand {
-  font-size: 3.45rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--white);
   letter-spacing: 0.3px;
@@ -716,7 +716,7 @@ footer {
 /* ----- Responsive ----- */
 @media (max-width: 640px) {
   nav { padding: 0 1rem; }
-  .nav-brand { font-size: 3rem; }
+  .nav-brand { font-size: 1.5rem; }
   .nav-links a { padding: 0.35rem 0.6rem; font-size: 0.82rem; }
 
   main { padding: 1.25rem 0.85rem; }
