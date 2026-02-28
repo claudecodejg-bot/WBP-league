@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Results — Paddle Tennis League</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><img src="wbp-logo.png" alt="WBP" ><span>WBP</span> League</div>
+  <ul class="nav-links">
+    <li><a href="standings.html" data-page="standings">Standings</a></li>
+    <li><a href="results.html"   data-page="results">Results</a></li>
+    <li><a href="player.html"    data-page="player">Players</a></li>
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+  </ul>
+  <button id="nav-auth-btn">Sign In</button>
+</nav>
+
+<main>
+  <h1 class="page-title">Match Results</h1>
+  <p class="page-subtitle">All matches, grouped by week — most recent first.</p>
+
+  <div id="results-container">
+    <div class="loading-state">
+      <div class="spinner"></div> Loading results…
+    </div>
+  </div>
+</main>
+
+<footer>WBP League &copy; <span id="footer-year"></span></footer>
+
+<script type="module">
+  import { initNav } from './js/auth.js'
+  import { loadResults } from './js/results.js'
+
+  document.getElementById('footer-year').textContent = new Date().getFullYear()
+  initNav('results')
+  loadResults()
+</script>
+</body>
+</html>

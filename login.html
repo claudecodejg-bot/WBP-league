@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — Paddle Tennis League</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><img src="wbp-logo.png" alt="WBP" ><span>WBP</span> League</div>
+  <ul class="nav-links">
+    <li><a href="standings.html" data-page="standings">Standings</a></li>
+    <li><a href="results.html"   data-page="results">Results</a></li>
+  </ul>
+  <button id="nav-auth-btn" class="hidden"></button>
+</nav>
+
+<main>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-logo">
+        <h1>🎾 WBP League</h1>
+        <p>Sign in to submit your availability</p>
+      </div>
+
+      <div id="login-alert" class="alert alert-error hidden"></div>
+
+      <form id="login-form">
+        <div class="form-group">
+          <label for="email">Email address</label>
+          <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="login-btn">Sign In</button>
+      </form>
+
+      <p style="margin-top:1rem;font-size:0.82rem;color:var(--gray-600);text-align:center;">
+        Don't have an account? Contact your league admin.
+      </p>
+    </div>
+  </div>
+</main>
+
+<footer>WBP League &copy; <span id="footer-year"></span></footer>
+
+<script type="module">
+  import { supabase } from './js/supabase-client.js'
+  import { getSession } from './js/auth.js'
+
+  document.getElementById('footer-year').textContent = new Date().getFullYear()
+
+  // If already logged in, redirect
+  getSession().then(session => {
+    if (session) window.location.href = '/availability.html'
+  })
+
+  const form    = document.getElementById('login-form')
+  const alertEl = document.getElementById('login-alert')
+  const btn     = document.getElementById('login-btn')
+
+  function showError(msg) {
+    alertEl.textContent = msg
+    alertEl.classList.remove('hidden')
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    alertEl.classList.add('hidden')
+    btn.disabled = true
+    btn.textContent = 'Signing in…'
+
+    const email    = document.getElementById('email').value.trim()
+    const password = document.getElementById('password').value
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (error) {
+      showError('Incorrect email or password. Please try again.')
+      btn.disabled = false
+      btn.textContent = 'Sign In'
+      return
+    }
+
+    window.location.href = '/availability.html'
+  })
+</script>
+</body>
+</html>

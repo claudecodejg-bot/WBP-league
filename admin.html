@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Paddle Tennis League</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><img src="wbp-logo.png" alt="WBP" ><span>WBP</span> League</div>
+  <ul class="nav-links">
+    <li><a href="standings.html"    data-page="standings">Standings</a></li>
+    <li><a href="results.html"      data-page="results">Results</a></li>
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+    <li><a href="admin.html"        data-page="admin">Admin</a></li>
+  </ul>
+  <button id="nav-auth-btn">Sign In</button>
+</nav>
+
+<main>
+  <h1 class="page-title">Admin Panel</h1>
+  <p class="page-subtitle">Enter match results and review member availability.</p>
+
+  <!-- Member availability overview -->
+  <div class="card">
+    <div class="card-title">Member Availability — Upcoming Weeks</div>
+    <div id="admin-avail-container">
+      <div class="loading-state"><div class="spinner"></div> Loading…</div>
+    </div>
+  </div>
+
+  <!-- Enter new match result -->
+  <div class="card">
+    <div class="card-title">Enter Match Result</div>
+    <div id="match-form-container">
+      <div class="loading-state"><div class="spinner"></div> Loading…</div>
+    </div>
+  </div>
+
+  <!-- Recent matches -->
+  <div class="card">
+    <div class="card-title">Recent Matches (last 10)</div>
+    <div id="recent-matches-container">
+      <div class="loading-state"><div class="spinner"></div> Loading…</div>
+    </div>
+  </div>
+
+</main>
+
+<footer>WBP League &copy; <span id="footer-year"></span></footer>
+
+<script type="module">
+  import { requireAdmin, initNav } from './js/auth.js'
+  import { initAdmin } from './js/admin.js'
+
+  document.getElementById('footer-year').textContent = new Date().getFullYear()
+
+  async function init() {
+    const member = await requireAdmin()
+    if (!member) return  // redirected
+
+    initNav('admin')
+    initAdmin()
+  }
+
+  init()
+</script>
+</body>
+</html>

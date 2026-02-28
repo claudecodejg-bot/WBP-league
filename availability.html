@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Availability — Paddle Tennis League</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><img src="wbp-logo.png" alt="WBP" ><span>WBP</span> League</div>
+  <ul class="nav-links">
+    <li><a href="standings.html"    data-page="standings">Standings</a></li>
+    <li><a href="results.html"      data-page="results">Results</a></li>
+    <li><a href="player.html"       data-page="player">Players</a></li>
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+  </ul>
+  <button id="nav-auth-btn">Sign In</button>
+</nav>
+
+<main>
+  <h1 class="page-title">My Availability</h1>
+  <p class="page-subtitle" id="avail-subtitle">Mark whether you can play in upcoming weeks.</p>
+
+  <div id="availability-container">
+    <div class="loading-state">
+      <div class="spinner"></div> Loading…
+    </div>
+  </div>
+</main>
+
+<footer>WBP League &copy; <span id="footer-year"></span></footer>
+
+<script type="module">
+  import { requireLogin, initNav, getCurrentMember } from './js/auth.js'
+  import { loadAvailability } from './js/availability.js'
+
+  document.getElementById('footer-year').textContent = new Date().getFullYear()
+
+  async function init() {
+    const session = await requireLogin()
+    if (!session) return
+
+    initNav('availability')
+
+    const member = await getCurrentMember()
+    if (!member) {
+      document.getElementById('availability-container').innerHTML =
+        '<div class="alert alert-error">Could not load your member profile. Contact your admin.</div>'
+      return
+    }
+
+    document.getElementById('avail-subtitle').textContent =
+      `Hi ${member.full_name.split(' ')[0]}! Mark whether you can play in upcoming weeks.`
+
+    await loadAvailability(member.id, member.is_admin)
+  }
+
+  init()
+</script>
+</body>
+</html>

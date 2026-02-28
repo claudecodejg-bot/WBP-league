@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Standings — Paddle Tennis League</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><img src="wbp-logo.png" alt="WBP" ><span>WBP</span> League</div>
+  <ul class="nav-links">
+    <li><a href="standings.html" data-page="standings">Standings</a></li>
+    <li><a href="results.html"   data-page="results">Results</a></li>
+    <li><a href="player.html"    data-page="player">Players</a></li>
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+  </ul>
+  <button id="nav-auth-btn">Sign In</button>
+</nav>
+
+<main>
+  <h1 class="page-title">Season Standings</h1>
+  <p class="page-subtitle" id="standings-subtitle">Season average score, ranked highest to lowest.</p>
+
+  <div class="card">
+    <div id="standings-container">
+      <div class="loading-state">
+        <div class="spinner"></div> Loading standings…
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="font-size:0.82rem; color:var(--gray-600); padding:1rem 1.5rem;">
+    <strong>How scoring works:</strong>
+    Each match is best of 3 sets. Your per-match score = average of your set scores,
+    plus a <strong>+2 bonus</strong> if you won. Season average uses a formula that
+    slightly adjusts for your best and worst scores over the season.
+  </div>
+</main>
+
+<footer>WBP League &copy; <span id="footer-year"></span></footer>
+
+<script type="module">
+  import { initNav } from './js/auth.js'
+  import { supabase } from './js/supabase-client.js'
+  import { computeMemberStats, isWinner, fmt } from './js/scoring.js'
+
+  document.getElementById('footer-year').textContent = new Date().getFullYear()
+  initNav('standings')
+
+  function calcStreak(memberId, matches) {
+    const played = matches
+      .filter(m => m.team1_player1 === memberId || m.team1_player2 === memberId ||
+                   m.team2_player1 === memberId || m.team2_player2 === memberId)
+      .sort((a, b) => a.played_on.localeCompare(b.played_on))
+    if (played.length === 0) return null
+    const results = played.map(m => {
+      const onTeam1 = m.team1_player1 === memberId || m.team1_player2 === memberId
+      return (onTeam1
+        ? isWinner(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
+        : isWinner(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
+      ) ? 'W' : 'L'
+    })
+    const last = results[results.length - 1]
+    let count = 0
+    for (let i = results.length - 1; i >= 0; i--) {
+      if (results[i] === last) count++
+      else break
+    }
+    return { type: last, count }
+  }
+
+  function daysSince(dateStr) {
+    if (!dateStr) return '—'
+    const days = Math.floor((Date.now() - new Date(dateStr + 'T00:00:00').getTime()) / 86400000)
+    if (days === 0) return 'Today'
+    if (days === 1) return '1 day ago'
+    return `${days} days ago`
+  }
+
+  function buildTable(stats, { podium = false } = {}) {
+    let html = `
+      <table class="standings-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Played</th>
+            <th>Won</th>
+            <th>Lost</th>
+            <th>Season Avg</th>
+            <th>Last Played</th>
+          </tr>
+        </thead>
+        <tbody>
+    `
+    stats.forEach((s, i) => {
+      const rank = i + 1
+      let rankDisplay
+      let rowClass = ''
+      if (rank === 1) { rankDisplay = `<span class="rank-badge rank-1">1</span>`; if (podium) rowClass = 'podium-1' }
+      else if (rank === 2) { rankDisplay = `<span class="rank-badge rank-2">2</span>`; if (podium) rowClass = 'podium-2' }
+      else if (rank === 3) { rankDisplay = `<span class="rank-badge rank-3">3</span>`; if (podium) rowClass = 'podium-3' }
+      else rankDisplay = rank
+
+      const streak = s.streak
+      const streakBadge = streak && streak.type === 'W' && streak.count >= 2
+        ? `<span class="streak-badge streak-win">🔥 ${streak.count}W</span>`
+        : ''
+      html += `
+        <tr class="${rowClass}">
+          <td class="rank">${rankDisplay}</td>
+          <td class="player-name">${s.name} ${streakBadge}</td>
+          <td>${s.matchesPlayed}</td>
+          <td>${s.wins}</td>
+          <td>${s.losses}</td>
+          <td class="avg-score">${fmt(s.seasonAvg)}</td>
+          <td class="last-played">${daysSince(s.lastPlayed)}</td>
+        </tr>
+      `
+    })
+    html += '</tbody></table>'
+    return html
+  }
+
+  function sortStats(stats) {
+    return stats.sort((a, b) => {
+      const avgA = a.seasonAvg ?? -Infinity
+      const avgB = b.seasonAvg ?? -Infinity
+      if (avgB !== avgA) return avgB - avgA
+      return b.wins - a.wins
+    })
+  }
+
+  async function loadStandings() {
+    const container = document.getElementById('standings-container')
+
+    // Fetch members, guests, and matches in parallel
+    const [membersRes, guestsRes, matchesRes] = await Promise.all([
+      supabase.from('members').select('id, full_name').eq('is_guest', false).order('full_name'),
+      supabase.from('members').select('id, full_name').eq('is_guest', true).order('full_name'),
+      supabase.from('matches').select('*')
+    ])
+
+    if (membersRes.error || guestsRes.error || matchesRes.error) {
+      container.innerHTML = '<div class="alert alert-error">Failed to load standings. Please try again.</div>'
+      return
+    }
+
+    const matches = matchesRes.data
+
+    // Update subtitle
+    document.getElementById('standings-subtitle').textContent =
+      `${matches.length} match${matches.length !== 1 ? 'es' : ''} played this season.`
+
+    function lastPlayedDate(memberId) {
+      const played = matches
+        .filter(m => m.team1_player1 === memberId || m.team1_player2 === memberId ||
+                     m.team2_player1 === memberId || m.team2_player2 === memberId)
+        .map(m => m.played_on)
+      return played.length ? played.reduce((a, b) => a > b ? a : b) : null
+    }
+
+    // Compute and sort member stats
+    const memberStats = sortStats(membersRes.data.map(m => ({
+      ...computeMemberStats(m.id, matches),
+      name: m.full_name,
+      lastPlayed: lastPlayedDate(m.id),
+      streak: calcStreak(m.id, matches)
+    })))
+
+    // Compute and sort guest stats (only show guests who played)
+    const guestStats = sortStats(guestsRes.data.filter(m => m.full_name !== 'Forfeit').map(m => ({
+      ...computeMemberStats(m.id, matches),
+      name: m.full_name,
+      lastPlayed: lastPlayedDate(m.id),
+      streak: calcStreak(m.id, matches)
+    })).filter(s => s.matchesPlayed > 0))
+
+    if (memberStats.length === 0) {
+      container.innerHTML = '<p style="color:var(--gray-600);text-align:center;padding:2rem;">No data yet.</p>'
+      return
+    }
+
+    let html = '<h2 class="section-title">Members</h2>' + buildTable(memberStats, { podium: true })
+
+    if (guestStats.length > 0) {
+      html += '<h2 class="section-title" style="margin-top:2rem;">Guests</h2>' + buildTable(guestStats)
+    }
+
+    container.innerHTML = html
+  }
+
+  loadStandings()
+</script>
+</body>
+</html>

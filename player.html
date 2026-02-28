@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player Stats — Paddle Tennis League</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><img src="wbp-logo.png" alt="WBP" ><span>WBP</span> League</div>
+  <ul class="nav-links">
+    <li><a href="standings.html" data-page="standings">Standings</a></li>
+    <li><a href="results.html"   data-page="results">Results</a></li>
+    <li><a href="player.html"    data-page="player">Players</a></li>
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+  </ul>
+  <button id="nav-auth-btn">Sign In</button>
+</nav>
+
+<main>
+  <h1 class="page-title">Player Stats</h1>
+  <p class="page-subtitle">Select a player to see their season summary and match history.</p>
+
+  <div class="card">
+    <div class="form-group" style="margin-bottom:0;">
+      <label for="player-select">Select Player</label>
+      <select id="player-select">
+        <option value="">— Choose a player —</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="player-container"></div>
+</main>
+
+<footer>WBP League &copy; <span id="footer-year"></span></footer>
+
+<script type="module">
+  import { initNav } from './js/auth.js'
+  import { supabase } from './js/supabase-client.js'
+  import { computeMemberStats, isWinner, matchScore, seasonAverage, fmt } from './js/scoring.js'
+
+  document.getElementById('footer-year').textContent = new Date().getFullYear()
+  initNav('player')
+
+  let allMembers = []
+  let allMatches = []
+
+  async function init() {
+    const [membersRes, matchesRes] = await Promise.all([
+      supabase.from('members').select('id, full_name, is_guest').order('full_name'),
+      supabase.from('matches').select('*').order('played_on', { ascending: false })
+    ])
+
+    if (membersRes.error || matchesRes.error) {
+      document.getElementById('player-container').innerHTML =
+        '<div class="alert alert-error">Failed to load data. Please try again.</div>'
+      return
+    }
+
+    allMembers = membersRes.data
+    allMatches = matchesRes.data
+
+    const select = document.getElementById('player-select')
+
+    // Members first, then guests who played
+    const members = allMembers.filter(m => !m.is_guest)
+    const guests  = allMembers.filter(m => m.is_guest && allMatches.some(
+      mx => mx.team1_player1 === m.id || mx.team1_player2 === m.id ||
+            mx.team2_player1 === m.id || mx.team2_player2 === m.id
+    ))
+
+    if (members.length > 0) {
+      const grp = document.createElement('optgroup')
+      grp.label = 'Members'
+      members.forEach(m => {
+        const opt = document.createElement('option')
+        opt.value = m.id
+        opt.textContent = m.full_name
+        grp.appendChild(opt)
+      })
+      select.appendChild(grp)
+    }
+
+    if (guests.length > 0) {
+      const grp = document.createElement('optgroup')
+      grp.label = 'Guests'
+      guests.forEach(m => {
+        const opt = document.createElement('option')
+        opt.value = m.id
+        opt.textContent = m.full_name
+        grp.appendChild(opt)
+      })
+      select.appendChild(grp)
+    }
+
+    select.addEventListener('change', () => {
+      if (select.value) showPlayer(select.value)
+      else document.getElementById('player-container').innerHTML = ''
+    })
+  }
+
+  function calcStreak(playerMatches, memberId) {
+    const sorted = [...playerMatches].sort((a, b) => a.played_on.localeCompare(b.played_on))
+    if (sorted.length === 0) return null
+    const results = sorted.map(m => {
+      const onTeam1 = m.team1_player1 === memberId || m.team1_player2 === memberId
+      const won = onTeam1
+        ? isWinner(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
+        : isWinner(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
+      return won ? 'W' : 'L'
+    })
+    const last = results[results.length - 1]
+    let count = 0
+    for (let i = results.length - 1; i >= 0; i--) {
+      if (results[i] === last) count++
+      else break
+    }
+    return { type: last, count }
+  }
+
+  function buildSparkline(pts, label) {
+    if (pts.length < 2) return ''
+    const rawMin = Math.min(...pts), rawMax = Math.max(...pts)
+    const yMin = Math.floor(rawMin / 2) * 2
+    const yMax = Math.ceil(rawMax / 2) * 2
+    const range = yMax - yMin || 2
+
+    const W = 700, H = 100, padL = 38, padR = 12, padT = 12, padB = 12
+    const plotW = W - padL - padR
+    const plotH = H - padT - padB
+
+    const gridValues = []
+    for (let v = yMin; v <= yMax; v += 2) gridValues.push(v)
+    const gridLines = gridValues.map(v => {
+      const y = (padT + (1 - (v - yMin) / range) * plotH).toFixed(1)
+      return `
+        <line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#e9ecef" stroke-width="1"/>
+        <text x="${padL - 5}" y="${y}" text-anchor="end" font-size="10" fill="#6c757d" dominant-baseline="middle">${v}</text>`
+    }).join('')
+
+    const coords = pts.map((s, i) => ({
+      x: (padL + (i / (pts.length - 1)) * plotW).toFixed(1),
+      y: (padT + (1 - (s - yMin) / range) * plotH).toFixed(1)
+    }))
+
+    const polyline = coords.map(c => `${c.x},${c.y}`).join(' ')
+    const circles  = coords.map(c => `<circle cx="${c.x}" cy="${c.y}" r="4" fill="var(--accent)" stroke="white" stroke-width="1.5"/>`).join('')
+
+    return `
+      <div class="sparkline-wrap">
+        <div class="sparkline-label">${label}</div>
+        <svg width="100%" viewBox="0 0 ${W} ${H}" class="sparkline-svg" preserveAspectRatio="none">
+          ${gridLines}
+          <polyline points="${polyline}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          ${circles}
+        </svg>
+      </div>`
+  }
+
+  function showPlayer(memberId) {
+    const container = document.getElementById('player-container')
+    const memberMap = Object.fromEntries(allMembers.map(m => [m.id, m.full_name]))
+    const member = allMembers.find(m => m.id === memberId)
+    const stats = computeMemberStats(memberId, allMatches)
+
+    const playerMatches = allMatches.filter(m =>
+      m.team1_player1 === memberId || m.team1_player2 === memberId ||
+      m.team2_player1 === memberId || m.team2_player2 === memberId
+    )
+
+    const streak = calcStreak(playerMatches, memberId)
+    const streakBadge = streak && streak.type === 'W' && streak.count >= 2
+      ? `<span class="streak-badge streak-win">🔥 ${streak.count}W</span>`
+      : ''
+
+    // Stats summary card
+    let html = `
+      <div class="card">
+        <div class="player-stats-grid">
+          <div class="stat-box">
+            <div class="stat-value">${stats.matchesPlayed}</div>
+            <div class="stat-label">Played</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${stats.wins}</div>
+            <div class="stat-label">Won</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value">${stats.losses}</div>
+            <div class="stat-label">Lost</div>
+          </div>
+          <div class="stat-box stat-box-highlight">
+            <div class="stat-value">${fmt(stats.seasonAvg)}</div>
+            <div class="stat-label">Season Avg</div>
+          </div>
+        </div>
+        ${streakBadge ? `<div class="streak-row">Current streak: ${streakBadge}</div>` : ''}
+        ${(() => {
+          const chronological = [...stats.matchScores].reverse()
+          const avgPts = chronological.map((_, i) => seasonAverage(chronological.slice(0, i + 1)))
+          return buildSparkline(avgPts, 'Season Average') + buildSparkline(chronological, 'Match Scores')
+        })()}
+      </div>
+    `
+
+    // Match history
+    if (playerMatches.length === 0) {
+      html += '<p style="color:var(--gray-600);text-align:center;padding:2rem;">No matches found.</p>'
+      container.innerHTML = html
+      return
+    }
+
+    // Group by week
+    const weeks = {}
+    for (const m of playerMatches) {
+      if (!weeks[m.week_label]) weeks[m.week_label] = []
+      weeks[m.week_label].push(m)
+    }
+
+    html += '<div class="card"><div class="card-title">Match History</div>'
+
+    for (const [weekLabel, weekMatches] of Object.entries(weeks)) {
+      html += `<div class="week-section"><div class="week-label">${weekLabel}</div>`
+
+      for (const m of weekMatches) {
+        const onTeam1 = m.team1_player1 === memberId || m.team1_player2 === memberId
+
+        const myPartnerId   = onTeam1
+          ? (m.team1_player1 === memberId ? m.team1_player2 : m.team1_player1)
+          : (m.team2_player1 === memberId ? m.team2_player2 : m.team2_player1)
+        const opp1Id = onTeam1 ? m.team2_player1 : m.team1_player1
+        const opp2Id = onTeam1 ? m.team2_player2 : m.team1_player2
+
+        const partner   = memberMap[myPartnerId] ?? '—'
+        const opponents = [memberMap[opp1Id], memberMap[opp2Id]].filter(Boolean).join(' & ')
+
+        const won = onTeam1
+          ? isWinner(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
+          : isWinner(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
+
+        const score = onTeam1
+          ? matchScore(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
+          : matchScore(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
+
+        // Set scores from player's team perspective
+        const [ms1, ms2, ms3, os1, os2, os3] = onTeam1
+          ? [m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3]
+          : [m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3]
+
+        const sets = []
+        if (ms1 !== null && os1 !== null) sets.push(`${ms1}–${os1}`)
+        if (ms2 !== null && os2 !== null) sets.push(`${ms2}–${os2}`)
+        if (ms3 !== null && os3 !== null) sets.push(`${ms3}–${os3}`)
+        const setStr = sets.join(', ')
+
+        html += `
+          <div class="player-match-row ${won ? 'pmr-won' : 'pmr-lost'}">
+            <div class="pmr-result ${won ? 'result-win' : 'result-loss'}">${won ? 'W' : 'L'}</div>
+            <div class="pmr-detail">
+              <div class="pmr-teams">with <strong>${partner}</strong> vs <strong>${opponents}</strong></div>
+              <div class="pmr-sets">${setStr}</div>
+            </div>
+            <div class="pmr-score">${fmt(score)}</div>
+          </div>
+        `
+      }
+
+      html += '</div>'
+    }
+
+    html += '</div>'
+    container.innerHTML = html
+  }
+
+  init()
+</script>
+</body>
+</html>
