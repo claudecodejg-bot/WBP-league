@@ -45,7 +45,7 @@ body::before {
   aspect-ratio: 1;
   background: url('../wbp-logo.png') no-repeat center center;
   background-size: contain;
-  opacity: 0.05;
+  opacity: 0.15;
   pointer-events: none;
   z-index: 0;
 }
