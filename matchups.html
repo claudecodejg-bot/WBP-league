@@ -68,7 +68,7 @@
     const select = document.getElementById('player-select')
 
     const members = allMembers.filter(m => !m.is_guest)
-    const guests  = allMembers.filter(m => m.is_guest && allMatches.some(
+    const guests  = allMembers.filter(m => m.is_guest && m.full_name !== 'Forfeit' && allMatches.some(
       mx => mx.team1_player1 === m.id || mx.team1_player2 === m.id ||
             mx.team2_player1 === m.id || mx.team2_player2 === m.id
     ))
@@ -145,7 +145,8 @@
 
   function buildRecordTable(rec, memberMap) {
     const rows = Object.entries(rec)
-      .map(([id, r]) => ({ name: memberMap[id] ?? 'Unknown', wins: r.wins, losses: r.losses, played: r.wins + r.losses }))
+      .filter(([id]) => memberMap[id])
+      .map(([id, r]) => ({ name: memberMap[id], wins: r.wins, losses: r.losses, played: r.wins + r.losses }))
       .sort((a, b) => b.played - a.played || b.wins - a.wins)
 
     if (rows.length === 0) return '<p style="color:var(--gray-600);padding:0.5rem 0;">No data.</p>'
@@ -172,7 +173,9 @@
 
   function showMatchups(memberId) {
     const container = document.getElementById('matchups-container')
-    const memberMap = Object.fromEntries(allMembers.map(m => [m.id, m.full_name]))
+    const memberMap = Object.fromEntries(
+      allMembers.filter(m => m.full_name !== 'Forfeit').map(m => [m.id, m.full_name])
+    )
 
     const playerMatches = allMatches.filter(m =>
       m.team1_player1 === memberId || m.team1_player2 === memberId ||
