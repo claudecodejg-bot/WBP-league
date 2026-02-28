@@ -120,9 +120,9 @@
         : [m.team1_player1, m.team1_player2]
       for (const id of opps) {
         if (!id) continue
-        if (!rec[id]) rec[id] = { wins: 0, losses: 0, scoreSum: 0 }
-        won ? rec[id].wins++ : rec[id].losses++
-        rec[id].scoreSum += score
+        if (!rec[id]) rec[id] = { wins: 0, losses: 0, winScoreSum: 0, lossScoreSum: 0 }
+        if (won) { rec[id].wins++; rec[id].winScoreSum += score }
+        else     { rec[id].losses++; rec[id].lossScoreSum += score }
       }
     }
     return rec
@@ -144,9 +144,9 @@
       const score = onTeam1
         ? matchScore(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
         : matchScore(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
-      if (!rec[partnerId]) rec[partnerId] = { wins: 0, losses: 0, scoreSum: 0 }
-      won ? rec[partnerId].wins++ : rec[partnerId].losses++
-      rec[partnerId].scoreSum += score
+      if (!rec[partnerId]) rec[partnerId] = { wins: 0, losses: 0, winScoreSum: 0, lossScoreSum: 0 }
+      if (won) { rec[partnerId].wins++; rec[partnerId].winScoreSum += score }
+      else     { rec[partnerId].losses++; rec[partnerId].lossScoreSum += score }
     }
     return rec
   }
@@ -154,26 +154,28 @@
   function buildRecordTable(rec, memberMap) {
     const rows = Object.entries(rec)
       .filter(([id]) => memberMap[id])
-      .map(([id, r]) => ({ name: memberMap[id], wins: r.wins, losses: r.losses, played: r.wins + r.losses, scoreSum: r.scoreSum }))
+      .map(([id, r]) => ({ name: memberMap[id], wins: r.wins, losses: r.losses, played: r.wins + r.losses, winScoreSum: r.winScoreSum, lossScoreSum: r.lossScoreSum }))
       .sort((a, b) => b.played - a.played || b.wins - a.wins)
 
     if (rows.length === 0) return '<p style="color:var(--gray-600);padding:0.5rem 0;">No data.</p>'
 
     let html = `<table class="standings-table">
       <thead><tr>
-        <th>Player</th><th>W</th><th>L</th><th>Played</th><th>Win %</th><th>Avg Score</th>
+        <th>Player</th><th>W</th><th>L</th><th>Played</th><th>Win %</th><th>Avg (W)</th><th>Avg (L)</th>
       </tr></thead><tbody>`
 
     for (const r of rows) {
-      const pct = r.played > 0 ? Math.round(r.wins / r.played * 100) + '%' : '—'
-      const avg = r.played > 0 ? fmt(r.scoreSum / r.played) : '—'
+      const pct     = r.played > 0  ? Math.round(r.wins / r.played * 100) + '%' : '—'
+      const avgWin  = r.wins > 0    ? fmt(r.winScoreSum  / r.wins)               : '—'
+      const avgLoss = r.losses > 0  ? fmt(r.lossScoreSum / r.losses)             : '—'
       html += `<tr>
         <td class="player-name">${r.name}</td>
         <td>${r.wins}</td>
         <td>${r.losses}</td>
         <td>${r.played}</td>
         <td>${pct}</td>
-        <td class="avg-score">${avg}</td>
+        <td class="avg-score">${avgWin}</td>
+        <td class="avg-score">${avgLoss}</td>
       </tr>`
     }
 
