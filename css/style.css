@@ -764,10 +764,10 @@ footer {
   nav.nav-open .nav-links { display: flex; }
 
   .nav-links a {
-    padding: 0.7rem 0.4rem;
-    font-size: 0.95rem;
+    padding: 1.1rem 0.75rem;
+    font-size: 1rem;
     border-radius: 4px;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
   }
 
   .nav-links li:last-child a { border-bottom: none; }
