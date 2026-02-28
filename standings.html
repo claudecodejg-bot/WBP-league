@@ -92,9 +92,10 @@
   function daysSince(dateStr) {
     if (!dateStr) return '—'
     const days = Math.floor((Date.now() - new Date(dateStr + 'T00:00:00').getTime()) / 86400000)
-    if (days === 0) return 'Today'
-    if (days === 1) return '1 day ago'
-    return `${days} days ago`
+    const week = Math.floor(days / 7) + 1
+    if (week === 1) return 'This Week'
+    if (week === 2) return 'Last Week'
+    return `${week} Weeks ago`
   }
 
   function sortData(arr) {
