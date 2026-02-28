@@ -20,44 +20,14 @@
 </nav>
 
 <main>
-  <h1 class="page-title">My Availability</h1>
-  <p class="page-subtitle" id="avail-subtitle">Mark whether you can play in upcoming weeks.</p>
-
-  <div id="availability-container">
-    <div class="loading-state">
-      <div class="spinner"></div> Loading…
-    </div>
-  </div>
+  <h1 class="page-title">Availability</h1>
+  <p class="page-subtitle">Under Construction</p>
 </main>
 
 <footer>WBP League &copy; <span id="footer-year"></span></footer>
 
-<script type="module">
-  import { requireLogin, initNav, getCurrentMember } from './js/auth.js'
-  import { loadAvailability } from './js/availability.js'
-
+<script>
   document.getElementById('footer-year').textContent = new Date().getFullYear()
-
-  async function init() {
-    const session = await requireLogin()
-    if (!session) return
-
-    initNav('availability')
-
-    const member = await getCurrentMember()
-    if (!member) {
-      document.getElementById('availability-container').innerHTML =
-        '<div class="alert alert-error">Could not load your member profile. Contact your admin.</div>'
-      return
-    }
-
-    document.getElementById('avail-subtitle').textContent =
-      `Hi ${member.full_name.split(' ')[0]}! Mark whether you can play in upcoming weeks.`
-
-    await loadAvailability(member.id, member.is_admin)
-  }
-
-  init()
 </script>
 </body>
 </html>
