@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suggestions — Paddle Tennis League</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><img src="wbp-logo.png" alt="WBP"><span>WBP</span> League</div>
+  <ul class="nav-links">
+    <li><a href="standings.html"    data-page="standings">Standings</a></li>
+    <li><a href="results.html"      data-page="results">Results</a></li>
+    <li><a href="player.html"       data-page="player">Players</a></li>
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+    <li><a href="suggestions.html"  data-page="suggestions">Suggestions</a></li>
+  </ul>
+  <button id="nav-auth-btn">Sign In</button>
+</nav>
+
+<main>
+  <h1 class="page-title">Suggestions</h1>
+  <p class="page-subtitle">Have an idea or feedback? Send it to the league admin.</p>
+
+  <div id="thanks-msg" class="alert alert-success hidden">
+    Thanks for your suggestion! We'll take a look.
+  </div>
+
+  <div class="card">
+    <form action="https://formspree.io/f/xnjbyjaq" method="POST">
+      <input type="hidden" name="_next" value="suggestions.html?thanks=1">
+
+      <div class="form-group">
+        <label for="name">Your name <span style="font-weight:400;color:var(--gray-600)">(optional)</span></label>
+        <input type="text" id="name" name="name" placeholder="e.g. Jane Smith" autocomplete="name">
+      </div>
+
+      <div class="form-group">
+        <label for="suggestion">Suggestion</label>
+        <textarea id="suggestion" name="suggestion" rows="5"
+          placeholder="Share your idea, feedback, or anything you'd like to see changed…"
+          required style="resize:vertical;"></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full">Send Suggestion</button>
+    </form>
+  </div>
+
+  <h2 class="section-title" style="margin-top:2rem;">What's New</h2>
+
+  <div class="card">
+    <ul style="list-style:none;padding:0;margin:0;">
+
+      <li style="padding:0.75rem 0;border-bottom:1px solid var(--gray-200);">
+        <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray-600);margin-bottom:0.3rem;">Feb 2026</div>
+        <ul style="padding-left:1.25rem;margin:0;color:var(--gray-800);font-size:0.9rem;line-height:1.8;">
+          <li>Suggestions page added with What's New section</li>
+          <li>Standings table is now sortable — click any column header</li>
+          <li>Last Played column now shows weeks instead of days</li>
+          <li>Nav links now have outlines for better readability on mobile</li>
+          <li>Background logo watermark made more visible</li>
+        </ul>
+      </li>
+
+      <li style="padding:0.75rem 0;">
+        <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray-600);margin-bottom:0.3rem;">Jan 2026</div>
+        <ul style="padding-left:1.25rem;margin:0;color:var(--gray-800);font-size:0.9rem;line-height:1.8;">
+          <li>Site launched with Standings, Results, Players, and Availability pages</li>
+        </ul>
+      </li>
+
+    </ul>
+  </div>
+</main>
+
+<footer>WBP League &copy; <span id="footer-year"></span></footer>
+
+<script type="module">
+  import { initNav } from './js/auth.js'
+
+  document.getElementById('footer-year').textContent = new Date().getFullYear()
+  initNav('suggestions')
+
+  if (new URLSearchParams(window.location.search).get('thanks') === '1') {
+    document.getElementById('thanks-msg').classList.remove('hidden')
+    window.history.replaceState({}, '', 'suggestions.html')
+  }
+</script>
+</body>
+</html>
