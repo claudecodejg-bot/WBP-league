@@ -166,7 +166,7 @@
       html += `
         <tr class="${rowClass}">
           <td class="rank">${rankDisplay}</td>
-          <td class="player-name">${s.name} ${streakBadge}</td>
+          <td class="player-name"><a href="player.html?id=${s.id}" class="player-link">${s.name}</a> ${streakBadge}</td>
           <td>${s.matchesPlayed}</td>
           <td>${s.wins}</td>
           <td>${s.losses}</td>
@@ -235,6 +235,7 @@
     }
 
     _memberStats = defaultSort(membersRes.data.map(m => ({
+      id: m.id,
       ...computeMemberStats(m.id, matches),
       name: m.full_name,
       lastPlayed: lastPlayedDate(m.id),
@@ -242,6 +243,7 @@
     })))
 
     _guestStats = defaultSort(guestsRes.data.filter(m => m.full_name !== 'Forfeit').map(m => ({
+      id: m.id,
       ...computeMemberStats(m.id, matches),
       name: m.full_name,
       lastPlayed: lastPlayedDate(m.id),

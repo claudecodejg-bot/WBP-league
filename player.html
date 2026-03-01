@@ -120,6 +120,13 @@
       if (select.value) showPlayer(select.value)
       else document.getElementById('player-container').innerHTML = ''
     })
+
+    // Auto-select player from URL param e.g. player.html?id=UUID
+    const preselect = new URLSearchParams(window.location.search).get('id')
+    if (preselect) {
+      select.value = preselect
+      if (select.value) showPlayer(preselect)
+    }
   }
 
   function calcStreak(playerMatches, memberId) {
@@ -180,6 +187,23 @@
       </div>`
   }
 
+  function animateCounters() {
+    document.querySelectorAll('#player-container .stat-value[data-target]').forEach(el => {
+      const target = parseFloat(el.dataset.target)
+      const isDecimal = el.dataset.decimal === 'true'
+      const duration = 700
+      const start = performance.now()
+      function step(now) {
+        const progress = Math.min((now - start) / duration, 1)
+        const eased = 1 - Math.pow(1 - progress, 3)
+        const value = target * eased
+        el.textContent = isDecimal ? value.toFixed(2) : Math.round(value)
+        if (progress < 1) requestAnimationFrame(step)
+      }
+      requestAnimationFrame(step)
+    })
+  }
+
   function showPlayer(memberId) {
     const container = document.getElementById('player-container')
     const memberMap = Object.fromEntries(allMembers.map(m => [m.id, m.full_name]))
@@ -201,19 +225,19 @@
       <div class="card">
         <div class="player-stats-grid">
           <div class="stat-box">
-            <div class="stat-value">${stats.matchesPlayed}</div>
+            <div class="stat-value" data-target="${stats.matchesPlayed}">0</div>
             <div class="stat-label">Played</div>
           </div>
           <div class="stat-box">
-            <div class="stat-value">${stats.wins}</div>
+            <div class="stat-value" data-target="${stats.wins}">0</div>
             <div class="stat-label">Won</div>
           </div>
           <div class="stat-box">
-            <div class="stat-value">${stats.losses}</div>
+            <div class="stat-value" data-target="${stats.losses}">0</div>
             <div class="stat-label">Lost</div>
           </div>
           <div class="stat-box stat-box-highlight">
-            <div class="stat-value">${fmt(stats.seasonAvg)}</div>
+            <div class="stat-value" data-target="${stats.seasonAvg}" data-decimal="true">0.00</div>
             <div class="stat-label">Season Avg</div>
           </div>
         </div>
@@ -230,6 +254,7 @@
     if (playerMatches.length === 0) {
       html += '<p style="color:var(--gray-600);text-align:center;padding:2rem;">No matches found.</p>'
       container.innerHTML = html
+      animateCounters()
       return
     }
 
@@ -293,6 +318,7 @@
 
     html += '</div>'
     container.innerHTML = html
+    animateCounters()
   }
 
   init()
