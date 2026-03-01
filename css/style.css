@@ -88,6 +88,8 @@ nav {
 }
 
 .nav-brand span { color: var(--accent); }
+a.nav-brand { text-decoration: none; color: var(--white); }
+a.nav-brand:hover { text-decoration: none; color: var(--white); }
 
 .nav-links {
   display: flex;
