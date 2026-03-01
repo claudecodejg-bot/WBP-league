@@ -47,8 +47,14 @@ export async function loadResults() {
       const t1score = matchScore(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
       const t2score = matchScore(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
 
-      const t1names = [memberMap[m.team1_player1], memberMap[m.team1_player2]].filter(Boolean).join(' & ')
-      const t2names = [memberMap[m.team2_player1], memberMap[m.team2_player2]].filter(Boolean).join(' & ')
+      const t1names = [
+        m.team1_player1 && memberMap[m.team1_player1] ? `<a href="player.html?id=${m.team1_player1}" class="player-link">${memberMap[m.team1_player1]}</a>` : null,
+        m.team1_player2 && memberMap[m.team1_player2] ? `<a href="player.html?id=${m.team1_player2}" class="player-link">${memberMap[m.team1_player2]}</a>` : null
+      ].filter(Boolean).join(' & ')
+      const t2names = [
+        m.team2_player1 && memberMap[m.team2_player1] ? `<a href="player.html?id=${m.team2_player1}" class="player-link">${memberMap[m.team2_player1]}</a>` : null,
+        m.team2_player2 && memberMap[m.team2_player2] ? `<a href="player.html?id=${m.team2_player2}" class="player-link">${memberMap[m.team2_player2]}</a>` : null
+      ].filter(Boolean).join(' & ')
 
       // Build set score string e.g. "6-3, 6-4"
       const sets = []

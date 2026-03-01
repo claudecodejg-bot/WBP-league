@@ -2,10 +2,144 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=standings.html">
-  <title>Paddle Tennis League</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WBP League — Paddle Tennis</title>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <p>Redirecting to <a href="standings.html">standings</a>…</p>
+
+<nav>
+  <div class="nav-brand"><img src="wbp-logo.png" alt="WBP"><span>WBP</span> League</div>
+  <ul class="nav-links">
+    <li><a href="standings.html"    data-page="standings">Standings</a></li>
+    <li><a href="results.html"      data-page="results">Results</a></li>
+    <li><a href="player.html"       data-page="player">Players</a></li>
+    <li><a href="matchups.html"     data-page="matchups">Matchups</a></li>
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+    <li><a href="suggestions.html"  data-page="suggestions">Suggestions</a></li>
+  </ul>
+  <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
+  <button id="nav-auth-btn">Sign In</button>
+</nav>
+<script>
+  (function () {
+    var btn = document.getElementById('nav-hamburger')
+    btn.addEventListener('click', function () {
+      var open = btn.closest('nav').classList.toggle('nav-open')
+      btn.textContent = open ? '\u2715' : '\u2630'
+      btn.setAttribute('aria-expanded', open)
+    })
+    document.querySelectorAll('.nav-links a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        btn.closest('nav').classList.remove('nav-open')
+        btn.textContent = '\u2630'
+        btn.setAttribute('aria-expanded', 'false')
+      })
+    })
+  })()
+</script>
+
+<main>
+
+  <!-- Hero -->
+  <div class="home-hero">
+    <img src="wbp-logo.png" alt="WBP League" class="home-hero-logo">
+    <h1 class="home-hero-title"><span>WBP</span> League</h1>
+    <p class="home-hero-sub">Paddle Tennis &mdash; Season 2026</p>
+  </div>
+
+  <!-- Live league stats -->
+  <div class="home-stats-row">
+    <div class="home-stat-card">
+      <div class="home-stat-value" id="stat-matches">—</div>
+      <div class="home-stat-label">Matches Played</div>
+    </div>
+    <div class="home-stat-card">
+      <div class="home-stat-value" id="stat-players">—</div>
+      <div class="home-stat-label">Players</div>
+    </div>
+    <div class="home-stat-card home-stat-card-accent">
+      <div class="home-stat-value" id="stat-leader">—</div>
+      <div class="home-stat-label">Season Leader</div>
+    </div>
+  </div>
+
+  <!-- Quick-nav cards -->
+  <div class="home-nav-grid">
+    <a href="standings.html" class="home-nav-card">
+      <div class="home-nav-icon">🏆</div>
+      <div class="home-nav-title">Standings</div>
+      <div class="home-nav-desc">Season rankings &amp; scores</div>
+    </a>
+    <a href="results.html" class="home-nav-card">
+      <div class="home-nav-icon">📋</div>
+      <div class="home-nav-title">Results</div>
+      <div class="home-nav-desc">All match results by week</div>
+    </a>
+    <a href="player.html" class="home-nav-card">
+      <div class="home-nav-icon">👤</div>
+      <div class="home-nav-title">Players</div>
+      <div class="home-nav-desc">Individual stats &amp; history</div>
+    </a>
+    <a href="matchups.html" class="home-nav-card">
+      <div class="home-nav-icon">⚔️</div>
+      <div class="home-nav-title">Matchups</div>
+      <div class="home-nav-desc">Head-to-head &amp; partner records</div>
+    </a>
+  </div>
+
+</main>
+
+<footer>WBP League &copy; <span id="footer-year"></span></footer>
+
+<script type="module">
+  import { initNav } from './js/auth.js'
+  import { supabase } from './js/supabase-client.js'
+  import { computeMemberStats } from './js/scoring.js'
+
+  document.getElementById('footer-year').textContent = new Date().getFullYear()
+  initNav('home')
+
+  async function loadHomeStats() {
+    const [membersRes, matchesRes] = await Promise.all([
+      supabase.from('members').select('id, full_name').eq('is_guest', false),
+      supabase.from('matches').select('*')
+    ])
+    if (membersRes.error || matchesRes.error) return
+
+    const members = membersRes.data
+    const matches = matchesRes.data
+
+    // Animate match count
+    animateHome(document.getElementById('stat-matches'), matches.length, false)
+    animateHome(document.getElementById('stat-players'), members.length, false)
+
+    // Find season leader (most matches played as tie-break)
+    let leader = null, bestAvg = -Infinity, bestPlayed = 0
+    for (const m of members) {
+      const s = computeMemberStats(m.id, matches)
+      if (s.matchesPlayed > 0 && (s.seasonAvg > bestAvg || (s.seasonAvg === bestAvg && s.matchesPlayed > bestPlayed))) {
+        bestAvg = s.seasonAvg
+        bestPlayed = s.matchesPlayed
+        leader = m.full_name.split(' ')[0]
+      }
+    }
+    if (leader) document.getElementById('stat-leader').textContent = leader
+  }
+
+  function animateHome(el, target, isDecimal) {
+    const duration = 900
+    const start = performance.now()
+    function step(now) {
+      const progress = Math.min((now - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      el.textContent = isDecimal ? (target * eased).toFixed(2) : Math.round(target * eased)
+      if (progress < 1) requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  }
+
+  loadHomeStats()
+</script>
 </body>
 </html>
