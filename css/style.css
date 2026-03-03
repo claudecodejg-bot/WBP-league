@@ -920,6 +920,138 @@ input:focus, select:focus, textarea:focus {
   .home-hero-logo { width: 80px; height: 80px; }
 }
 
+/* ----- Lightbox overlay (shared) ----- */
+.lb-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ----- Birthday Banner ----- */
+.birthday-banner {
+  text-align: center;
+  margin-bottom: 1.4rem;
+}
+.birthday-img {
+  width: 100%;
+  max-width: 520px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: opacity 0.2s;
+  display: block;
+  margin: 0 auto 0.75rem;
+}
+.birthday-img:hover { opacity: 0.88; }
+.birthday-caption {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--green-dark);
+  letter-spacing: 0.3px;
+}
+
+/* ----- Match Result Card (homepage) ----- */
+.result-pill-green {
+  background: #2e7d32;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+}
+.result-card {
+  border-left-color: #2e7d32 !important;
+}
+.result-final-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2e7d32;
+  background: #e8f5e9;
+  padding: 0.15rem 0.55rem;
+  border-radius: 12px;
+}
+.result-teams-layout {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.result-team-col {
+  flex: 1;
+}
+.winner-col { }
+.loser-col { text-align: right; }
+.result-team-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  margin-bottom: 0.3rem;
+}
+.winner-name {
+  color: var(--green-dark);
+  font-size: 1.05rem;
+}
+.result-sets {
+  display: flex;
+  gap: 0.4rem;
+}
+.loser-col .result-sets { justify-content: flex-end; }
+.result-set {
+  font-size: 1.3rem;
+  font-weight: 800;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.winner-set {
+  background: var(--green-dark);
+  color: #fff;
+}
+.loser-set {
+  background: var(--gray-200);
+  color: var(--gray-600);
+}
+.result-vs-center {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--gray-400);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+
+/* ----- Match Recap (homepage only) ----- */
+.match-recap {
+  margin-top: 1rem;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem 1.25rem;
+  border-left: 4px solid #2e7d32;
+}
+.match-recap p {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--gray-700, #374151);
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .result-teams-layout { gap: 0.4rem; }
+  .result-set { font-size: 1.1rem; width: 1.8rem; height: 1.8rem; }
+  .result-team-name { font-size: 0.88rem; }
+  .birthday-caption { font-size: 1.1rem; }
+}
+
 /* ----- Footer ----- */
 footer {
   text-align: center;
