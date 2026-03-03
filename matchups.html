@@ -407,7 +407,11 @@
     const rows = Object.entries(rec)
       .filter(([id]) => memberMap[id])
       .map(([id, r]) => ({ id, name: memberMap[id], wins: r.wins, losses: r.losses, played: r.wins + r.losses, winScoreSum: r.winScoreSum, lossScoreSum: r.lossScoreSum }))
-      .sort((a, b) => b.played - a.played || b.wins - a.wins)
+      .sort((a, b) => {
+        const pctA = a.played > 0 ? a.wins / a.played : 0
+        const pctB = b.played > 0 ? b.wins / b.played : 0
+        return pctB - pctA || b.played - a.played
+      })
 
     if (rows.length === 0) return '<p style="color:var(--gray-600);padding:0.5rem 0;">No data.</p>'
 
