@@ -73,11 +73,16 @@
       padding: 0 1.25rem 1.25rem;
     }
 
-    /* ── Gallery grid (shared with golf page) ──────────────────────────── */
+    /* ── Gallery grid ───────────────────────────────────────────────────── */
     .gallery-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 0.75rem;
+    }
+    .gallery-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
     }
     .gallery-thumb-wrap {
       position: relative;
@@ -85,16 +90,16 @@
       border-radius: var(--radius);
       overflow: hidden;
       aspect-ratio: 4/3;
-      background: var(--gray-200);
+      background: #1a1a1a;
     }
     .gallery-thumb {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
       transition: transform 0.2s;
     }
-    .gallery-thumb-wrap:hover .gallery-thumb { transform: scale(1.05); }
+    .gallery-thumb-wrap:hover .gallery-thumb { transform: scale(1.04); }
     .gallery-thumb-wrap::after {
       content: '🔍';
       position: absolute;
@@ -105,6 +110,13 @@
       transition: opacity 0.2s;
     }
     .gallery-thumb-wrap:hover::after { opacity: 1; }
+    .gallery-caption {
+      font-size: 0.72rem;
+      color: var(--gray-600);
+      text-align: center;
+      line-height: 1.3;
+      padding: 0 0.25rem;
+    }
 
     /* ── Lightbox ──────────────────────────────────────────────────────── */
     .lightbox-overlay {
@@ -272,13 +284,16 @@
     const allFiles = cat.photos.map(p => p.file)
 
     const thumbsHtml = cat.photos.map((p, i) => `
-      <div class="gallery-thumb-wrap"
-           data-cat="${cat.id}"
-           data-index="${i}"
-           tabindex="0"
-           role="button"
-           aria-label="View photo ${i + 1} of ${cat.photos.length}">
-        <img src="${p.file}" alt="${p.caption || cat.label + ' photo ' + (i + 1)}" class="gallery-thumb" loading="lazy">
+      <div class="gallery-item">
+        <div class="gallery-thumb-wrap"
+             data-cat="${cat.id}"
+             data-index="${i}"
+             tabindex="0"
+             role="button"
+             aria-label="View photo ${i + 1} of ${cat.photos.length}">
+          <img src="${p.file}" alt="${p.caption || cat.label + ' photo ' + (i + 1)}" class="gallery-thumb" loading="lazy">
+        </div>${p.caption ? `
+        <div class="gallery-caption">${p.caption}</div>` : ''}
       </div>`).join('')
 
     details.innerHTML = `
