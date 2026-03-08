@@ -45,6 +45,11 @@
   <h1 class="page-title">Match Results</h1>
   <p class="page-subtitle">All matches, grouped by week — most recent first.</p>
 
+  <div class="season-bar">
+    <label for="season-select">Season:</label>
+    <select id="season-select"></select>
+  </div>
+
   <div id="results-container">
     <div class="loading-state">
       <div class="spinner"></div> Loading results…
@@ -56,11 +61,36 @@
 
 <script type="module">
   import { initNav } from './js/auth.js'
+  import { supabase } from './js/supabase-client.js'
   import { loadResults } from './js/results.js'
 
   document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('results')
-  loadResults()
+
+  const CURRENT_SEASON = '2025-26'
+  const seasonSelect   = document.getElementById('season-select')
+  let _activeSeason    = localStorage.getItem('activeSeason') || CURRENT_SEASON
+
+  async function populateSeasonDropdown() {
+    const { data } = await supabase.from('matches').select('season')
+    if (!data) return
+    const seasons = [...new Set(data.map(m => m.season))].sort().reverse()
+    seasonSelect.innerHTML = seasons.map(s =>
+      `<option value="${s}"${s === _activeSeason ? ' selected' : ''}>${s}${s === CURRENT_SEASON ? ' (Current)' : ''}</option>`
+    ).join('')
+    if (!seasons.includes(_activeSeason)) {
+      _activeSeason = seasons[0] || CURRENT_SEASON
+      seasonSelect.value = _activeSeason
+    }
+  }
+
+  seasonSelect.addEventListener('change', () => {
+    _activeSeason = seasonSelect.value
+    localStorage.setItem('activeSeason', _activeSeason)
+    loadResults(_activeSeason)
+  })
+
+  populateSeasonDropdown().then(() => loadResults(_activeSeason))
 </script>
 </body>
 </html>

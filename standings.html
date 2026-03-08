@@ -45,6 +45,11 @@
   <h1 class="page-title">Season Standings</h1>
   <p class="page-subtitle" id="standings-subtitle">Season average score, ranked highest to lowest.</p>
 
+  <div class="season-bar">
+    <label for="season-select">Season:</label>
+    <select id="season-select"></select>
+  </div>
+
   <div class="card">
     <div id="standings-container">
       <div class="loading-state">
@@ -71,7 +76,11 @@
   document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('standings')
 
-  const container = document.getElementById('standings-container')
+  const container    = document.getElementById('standings-container')
+  const seasonSelect = document.getElementById('season-select')
+
+  const CURRENT_SEASON = '2025-26'
+  let _activeSeason = localStorage.getItem('activeSeason') || CURRENT_SEASON
 
   // Sort state
   let _sortCol = 'seasonAvg'
@@ -211,11 +220,33 @@
     })
   }
 
+  async function populateSeasonDropdown() {
+    const { data } = await supabase.from('matches').select('season')
+    if (!data) return
+    const seasons = [...new Set(data.map(m => m.season))].sort().reverse()
+    seasonSelect.innerHTML = seasons.map(s =>
+      `<option value="${s}"${s === _activeSeason ? ' selected' : ''}>${s}${s === CURRENT_SEASON ? ' (Current)' : ''}</option>`
+    ).join('')
+    // If saved season no longer exists, fall back to current
+    if (!seasons.includes(_activeSeason)) {
+      _activeSeason = seasons[0] || CURRENT_SEASON
+      seasonSelect.value = _activeSeason
+    }
+  }
+
+  seasonSelect.addEventListener('change', () => {
+    _activeSeason = seasonSelect.value
+    localStorage.setItem('activeSeason', _activeSeason)
+    loadStandings()
+  })
+
   async function loadStandings() {
+    container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading standings…</div>'
+
     const [membersRes, guestsRes, matchesRes] = await Promise.all([
       supabase.from('members').select('id, full_name').eq('is_guest', false).order('full_name'),
       supabase.from('members').select('id, full_name').eq('is_guest', true).order('full_name'),
-      supabase.from('matches').select('*')
+      supabase.from('matches').select('*').eq('season', _activeSeason)
     ])
 
     if (membersRes.error || guestsRes.error || matchesRes.error) {
@@ -224,9 +255,10 @@
     }
 
     const matches = matchesRes.data
+    const seasonLabel = _activeSeason === CURRENT_SEASON ? 'this season' : `the ${_activeSeason} season`
 
     document.getElementById('standings-subtitle').textContent =
-      `${matches.length} match${matches.length !== 1 ? 'es' : ''} played this season.`
+      `${matches.length} match${matches.length !== 1 ? 'es' : ''} played ${seasonLabel}.`
 
     function lastPlayedDate(memberId) {
       const played = matches
@@ -260,7 +292,7 @@
     renderTables()
   }
 
-  loadStandings()
+  populateSeasonDropdown().then(() => loadStandings())
 </script>
 </body>
 </html>

@@ -193,6 +193,11 @@
   <h1 class="page-title">Matchups</h1>
   <p class="page-subtitle">Select a player to see their record with partners and against opponents.</p>
 
+  <div class="season-bar">
+    <label for="season-select">Season:</label>
+    <select id="season-select"></select>
+  </div>
+
   <div class="card">
     <div class="form-group" style="margin-bottom:0;">
       <label for="player-select">Select Player</label>
@@ -223,32 +228,64 @@
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal() })
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal() })
 
+  // ── Season state ───────────────────────────────────────────────────────
+  const CURRENT_SEASON = '2025-26'
+  const seasonSelect   = document.getElementById('season-select')
+  let _activeSeason    = localStorage.getItem('activeSeason') || CURRENT_SEASON
+
   // ── Data ───────────────────────────────────────────────────────────────
   let allMembers = []
   let allMatches = []
   let memberMap  = {}
 
-  // ── Load ───────────────────────────────────────────────────────────────
-  async function init() {
-    const [membersRes, matchesRes] = await Promise.all([
-      supabase.from('members').select('id, full_name, is_guest').order('full_name'),
-      supabase.from('matches').select('*').order('played_on', { ascending: false })
-    ])
+  // ── Populate season dropdown ───────────────────────────────────────────
+  async function populateSeasonDropdown() {
+    const { data } = await supabase.from('matches').select('season')
+    if (!data) return
+    const seasons = [...new Set(data.map(m => m.season))].sort().reverse()
+    seasonSelect.innerHTML = seasons.map(s =>
+      `<option value="${s}"${s === _activeSeason ? ' selected' : ''}>${s}${s === CURRENT_SEASON ? ' (Current)' : ''}</option>`
+    ).join('')
+    if (!seasons.includes(_activeSeason)) {
+      _activeSeason = seasons[0] || CURRENT_SEASON
+      seasonSelect.value = _activeSeason
+    }
+  }
 
-    if (membersRes.error || matchesRes.error) {
+  seasonSelect.addEventListener('change', () => {
+    _activeSeason = seasonSelect.value
+    localStorage.setItem('activeSeason', _activeSeason)
+    document.getElementById('matchups-container').innerHTML = ''
+    loadSeasonData()
+  })
+
+  // ── Load season data + rebuild player dropdown ─────────────────────────
+  async function loadSeasonData() {
+    const matchesRes = await supabase
+      .from('matches').select('*')
+      .eq('season', _activeSeason)
+      .order('played_on', { ascending: false })
+
+    if (matchesRes.error) {
       document.getElementById('matchups-container').innerHTML =
         '<div class="alert alert-error">Failed to load data. Please try again.</div>'
       return
     }
 
-    allMembers = membersRes.data
     allMatches = matchesRes.data
     memberMap  = Object.fromEntries(
       allMembers.filter(m => m.full_name !== 'Forfeit').map(m => [m.id, m.full_name])
     )
 
-    const select  = document.getElementById('player-select')
-    const members = allMembers.filter(m => !m.is_guest)
+    // Rebuild player dropdown — only show players who played in this season
+    const select = document.getElementById('player-select')
+    const prevVal = select.value
+    select.innerHTML = '<option value="">— Choose a player —</option>'
+
+    const members = allMembers.filter(m => !m.is_guest && allMatches.some(
+      mx => mx.team1_player1 === m.id || mx.team1_player2 === m.id ||
+            mx.team2_player1 === m.id || mx.team2_player2 === m.id
+    ))
     const guests  = allMembers.filter(m => m.is_guest && m.full_name !== 'Forfeit' && allMatches.some(
       mx => mx.team1_player1 === m.id || mx.team1_player2 === m.id ||
             mx.team2_player1 === m.id || mx.team2_player2 === m.id
@@ -276,10 +313,36 @@
       select.appendChild(grp)
     }
 
+    // Restore previously selected player if still present in this season
+    if (prevVal && [...select.options].some(o => o.value === prevVal)) {
+      select.value = prevVal
+      showMatchups(prevVal)
+    } else {
+      document.getElementById('matchups-container').innerHTML = ''
+    }
+  }
+
+  // ── Load ───────────────────────────────────────────────────────────────
+  async function init() {
+    const membersRes = await supabase
+      .from('members').select('id, full_name, is_guest').order('full_name')
+
+    if (membersRes.error) {
+      document.getElementById('matchups-container').innerHTML =
+        '<div class="alert alert-error">Failed to load data. Please try again.</div>'
+      return
+    }
+
+    allMembers = membersRes.data
+
+    const select = document.getElementById('player-select')
     select.addEventListener('change', () => {
       if (select.value) showMatchups(select.value)
       else document.getElementById('matchups-container').innerHTML = ''
     })
+
+    await populateSeasonDropdown()
+    await loadSeasonData()
   }
 
   // ── Aggregate records ──────────────────────────────────────────────────

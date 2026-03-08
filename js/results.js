@@ -5,12 +5,13 @@
 import { supabase } from './supabase-client.js'
 import { isWinner, matchScore, fmt } from './scoring.js'
 
-export async function loadResults() {
+export async function loadResults(season = '2025-26') {
   const container = document.getElementById('results-container')
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading results…</div>'
 
   const [membersRes, matchesRes] = await Promise.all([
     supabase.from('members').select('id, full_name'),
-    supabase.from('matches').select('*').order('played_on', { ascending: false })
+    supabase.from('matches').select('*').eq('season', season).order('played_on', { ascending: false })
   ])
 
   if (membersRes.error || matchesRes.error) {
