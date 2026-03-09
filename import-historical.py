@@ -22,11 +22,19 @@ from datetime import datetime, timedelta
 
 EXCEL_PATH = '/Users/claudecodejg/Documents/Claude Projects/Paddle Project/Historical Scores.xlsx'
 
-# Approximate season start dates (Week 1). Adjust if you know the exact dates.
+# The Excel file labels seasons one year behind the correct labels.
+# This map corrects them on import.
+SEASON_LABEL_MAP = {
+    '2023-24': '2024-25',
+    '2022-23': '2023-24',
+    '2021-22': '2022-23',
+}
+
+# Approximate season start dates (Week 1). Keyed by CORRECT label.
 SEASON_STARTS = {
-    '2023-24': datetime(2023, 10, 16),
-    '2022-23': datetime(2022, 10, 17),
-    '2021-22': datetime(2021, 10, 18),
+    '2024-25': datetime(2023, 10, 16),
+    '2023-24': datetime(2022, 10, 17),
+    '2022-23': datetime(2021, 10, 18),
 }
 
 # Members already in the current-season Supabase table.
@@ -386,9 +394,12 @@ def main():
 
         season_label, weeks, player_data, player_vs = parse_section(ws, start, end)
 
-        # Skip 2021-22: data is confirmed identical to 2022-23 (copy error in Excel)
-        if season_label == '2021-22':
-            print(f'  Skipping 2021-22 (duplicate of 2022-23)')
+        # Remap Excel label to correct season label
+        season_label = SEASON_LABEL_MAP.get(season_label, season_label)
+
+        # Skip 2022-23: data is confirmed identical to 2023-24 (copy error in Excel)
+        if season_label == '2022-23':
+            print(f'  Skipping 2022-23 (duplicate of 2023-24)')
             continue
 
         # Skip other duplicate season labels
