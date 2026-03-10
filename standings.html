@@ -95,6 +95,7 @@
       { key: 'matchesPlayed', label: 'Played'      },
       { key: 'wins',          label: 'Won'         },
       { key: 'losses',        label: 'Lost'        },
+      { key: 'winPct',        label: 'Win%'        },
       { key: 'seasonAvg',     label: _activeSeason === 'all' ? 'Overall Avg' : 'Season Avg' },
       { key: 'lastPlayed',    label: 'Last Played' },
     ]
@@ -176,6 +177,7 @@
         ? `<span class="streak-badge streak-win">🔥 ${streak.count}W</span>`
         : ''
 
+      const winPctDisplay = s.matchesPlayed > 0 ? Math.round(s.wins / s.matchesPlayed * 100) + '%' : '—'
       html += `
         <tr class="${rowClass}">
           <td class="rank">${rankDisplay}</td>
@@ -183,6 +185,7 @@
           <td>${s.matchesPlayed}</td>
           <td>${s.wins}</td>
           <td>${s.losses}</td>
+          <td>${winPctDisplay}</td>
           <td class="avg-score">${fmt(s.seasonAvg)}</td>
           <td class="last-played">${daysSince(s.lastPlayed)}</td>
         </tr>`
@@ -276,21 +279,29 @@
       return played.length ? played.reduce((a, b) => a > b ? a : b) : null
     }
 
-    _memberStats = defaultSort(membersRes.data.map(m => ({
-      id: m.id,
-      ...computeMemberStats(m.id, matches),
-      name: m.full_name,
-      lastPlayed: lastPlayedDate(m.id),
-      streak: calcStreak(m.id, matches)
-    })).filter(s => s.matchesPlayed > 0))
+    _memberStats = defaultSort(membersRes.data.map(m => {
+      const stats = computeMemberStats(m.id, matches)
+      return {
+        id: m.id,
+        ...stats,
+        winPct: stats.matchesPlayed > 0 ? stats.wins / stats.matchesPlayed : null,
+        name: m.full_name,
+        lastPlayed: lastPlayedDate(m.id),
+        streak: calcStreak(m.id, matches)
+      }
+    }).filter(s => s.matchesPlayed > 0))
 
-    _guestStats = defaultSort(guestsRes.data.filter(m => m.full_name !== 'Forfeit').map(m => ({
-      id: m.id,
-      ...computeMemberStats(m.id, matches),
-      name: m.full_name,
-      lastPlayed: lastPlayedDate(m.id),
-      streak: calcStreak(m.id, matches)
-    })).filter(s => s.matchesPlayed > 0))
+    _guestStats = defaultSort(guestsRes.data.filter(m => m.full_name !== 'Forfeit').map(m => {
+      const stats = computeMemberStats(m.id, matches)
+      return {
+        id: m.id,
+        ...stats,
+        winPct: stats.matchesPlayed > 0 ? stats.wins / stats.matchesPlayed : null,
+        name: m.full_name,
+        lastPlayed: lastPlayedDate(m.id),
+        streak: calcStreak(m.id, matches)
+      }
+    }).filter(s => s.matchesPlayed > 0))
 
     if (_memberStats.length === 0) {
       container.innerHTML = '<p style="color:var(--gray-600);text-align:center;padding:2rem;">No data yet.</p>'

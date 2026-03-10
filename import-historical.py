@@ -6,7 +6,7 @@ Single season:
   python3 import-historical.py --file "/path/to/History/WBP 24-25.xlsx"
   python3 import-historical.py --file "/path/to/History/WBP 24-25.xlsx" --season 2024-25
 
-All seasons in a directory (skips golf files and .xls files):
+All seasons in a directory (processes both .xlsx and .xls, skips golf files):
   python3 import-historical.py --dir "/path/to/History"
   python3 import-historical.py --dir "/path/to/History" --skip 2024-25
 
@@ -19,6 +19,11 @@ Run BOTH sql files in order in the Supabase SQL editor:
 """
 
 import openpyxl
+try:
+    import xlrd
+    HAS_XLRD = True
+except ImportError:
+    HAS_XLRD = False
 import re
 import sys
 import os
@@ -44,12 +49,18 @@ SEASON_STARTS = {
     '2013-14': datetime(2012, 10, 15),
     '2012-13': datetime(2011, 10, 17),
     '2011-12': datetime(2010, 10, 18),
+    # .xls seasons
+    '2010-11': datetime(2010, 10, 11),
+    '2009-10': datetime(2009, 10, 12),
+    '2008-09': datetime(2008, 10, 13),
+    '2007-08': datetime(2007, 10, 15),
+    '2006-07': datetime(2006, 10, 16),
 }
 
 # ── Score / team name detection ───────────────────────────────────────────────
 
 # Headers that sometimes bleed into the member list column
-_HEADER_RE = re.compile(r'^(week|court)\s*\d*$', re.IGNORECASE)
+_HEADER_RE = re.compile(r'^(week|court|average|name|position|record|total|subbed|matches)\s*\d*$', re.IGNORECASE)
 
 def is_valid_member_name(v):
     """Return True if v looks like a real player name (has letters, not a header)."""
@@ -91,7 +102,11 @@ def normalize_player_name(name):
     if not name:
         return None
     name = str(name).strip()
-    name = re.sub(r'\s*\(sub\w*\)\s*', '', name, flags=re.IGNORECASE).strip()
+    # Strip any parenthetical containing 'sub' (handles many annotation styles):
+    #   "(sub)", "(subbed)", "(Sub for Laird)", "(Craigin Sub)", "(Duane Biasi sub)"
+    name = re.sub(r'\s*\([^)]*\bsub\b[^)]*\)\s*', '', name, flags=re.IGNORECASE).strip()
+    # Strip trailing notes after comma: "Smith, out Week 3" → "Smith"
+    name = re.split(r'\s*,\s*(?:out|dnf|rained)', name, maxsplit=1, flags=re.IGNORECASE)[0].strip()
     name = re.sub(r'\s+', ' ', name)
     if name.upper() in _INVALID_NAMES:
         return None
@@ -260,6 +275,114 @@ def parse_season_file(xlsx_path, season_label):
 
     return matches, season_members, use_named_members
 
+# ── .xls parsing (2006-07 through 2010-11) ────────────────────────────────────
+
+def parse_xls_file(xls_path, season_label):
+    """
+    Parse a WBP season .xls file using xlrd.
+    Structure (Scoring sheet):
+      - Member names: col 2 (0-indexed), rows 3-21 (0-indexed)
+      - Court rows: col 1 contains 'Court N'
+      - Week columns: 3, 6, 9, ... (step 3)
+      - Match format: score at col N, team name at col N+1 (inverted layout)
+    Returns (matches, season_members, use_named_members).
+    """
+    if not HAS_XLRD:
+        print('ERROR: xlrd not installed. Run: pip3 install xlrd')
+        return [], set(), True
+
+    wb = xlrd.open_workbook(xls_path)
+    ws = wb.sheet_by_name('Scoring')
+
+    # Extract member list from col 2, rows 3-21 (0-indexed)
+    season_members = set()
+    for r in range(3, 22):
+        if r >= ws.nrows:
+            break
+        v = ws.cell_value(r, 2)
+        v_str = str(v).strip() if v else ''
+        if is_valid_member_name(v_str):
+            season_members.add(v_str)
+
+    print(f"  Member list from col C ({len(season_members)}): {sorted(season_members)}")
+
+    # Find court rows by scanning col 1 for "Court" keyword
+    court_top_rows = []
+    for r in range(ws.nrows):
+        v = str(ws.cell_value(r, 1)).strip()
+        if re.match(r'Court\s*\d*', v, re.IGNORECASE) and v.lower() != 'court':
+            court_top_rows.append(r)
+
+    print(f"  Courts found: {len(court_top_rows)}")
+
+    # Week columns: 3, 6, 9, ...
+    week_cols = list(range(3, ws.ncols - 1, 3))
+
+    matches = []
+    for court_idx, top_r in enumerate(court_top_rows):
+        bot_r = top_r + 2   # skip 'vs' row at top_r + 1
+        if bot_r >= ws.nrows:
+            continue
+
+        # Build row lists compatible with get_team_and_score()
+        top_row = [ws.cell_value(top_r, c) if c < ws.ncols else None for c in range(ws.ncols)]
+        bot_row = [ws.cell_value(bot_r, c) if c < ws.ncols else None for c in range(ws.ncols)]
+
+        for col in week_cols:
+            top_team_str, top_score_str = get_team_and_score(top_row, col)
+            if not top_team_str:
+                continue
+
+            bot_team_str, bot_score_str = get_team_and_score(bot_row, col)
+
+            top_parts = [normalize_player_name(p) for p in top_team_str.split('/')]
+            top_parts = [p for p in top_parts if p]
+            bot_parts = []
+            if bot_team_str:
+                bot_parts = [normalize_player_name(p) for p in bot_team_str.split('/')]
+                bot_parts = [p for p in bot_parts if p]
+
+            if len(top_parts) != 2:
+                continue
+            if len(bot_parts) != 2:
+                continue
+
+            top_scores = parse_score(top_score_str)
+            bot_scores = parse_score(bot_score_str)
+
+            week_num = (col - 3) // 3 + 1
+
+            matches.append({
+                'season':        season_label,
+                'week_num':      week_num,
+                'week_label':    f'Week {week_num}',
+                'court':         f'Court {court_idx + 1}',
+                'team1_player1': top_parts[0],
+                'team1_player2': top_parts[1],
+                'team2_player1': bot_parts[0],
+                'team2_player2': bot_parts[1],
+                'team1_scores':  top_scores,
+                'team2_scores':  bot_scores,
+            })
+
+    # Fall back to deriving members from match data if list was too sparse
+    if len(season_members) < 4:
+        season_members = set()
+        for m in matches:
+            for name in [m['team1_player1'], m['team1_player2'],
+                         m['team2_player1'], m['team2_player2']]:
+                if name:
+                    season_members.add(name)
+        print(f"  Derived {len(season_members)} members from match data")
+
+    # Return use_named_members=False so the batch mode inserts ALL participants.
+    # This ensures early players (Laird, Zejda, DeGulis, etc.) that predate
+    # the 2011-12 import get added to the DB, with is_guest=False for members
+    # and is_guest=True for guests.
+    # We handle the guest flag ourselves below so caller gets a full list.
+    return matches, season_members, False  # False → batch inserts all players
+
+
 # ── SQL generation ────────────────────────────────────────────────────────────
 
 def member_lookup(name):
@@ -364,8 +487,8 @@ def generate_data_sql(all_season_matches):
 # ── Filename helpers ──────────────────────────────────────────────────────────
 
 def detect_season_from_filename(path):
-    """Extract '2024-25' from 'WBP 24-25.xlsx'."""
-    m = re.search(r'WBP (\d{2})-(\d{2})\.xlsx', str(path), re.IGNORECASE)
+    """Extract '2024-25' from 'WBP 24-25.xlsx' or 'WBP 10-11.xls'."""
+    m = re.search(r'WBP (\d{2})-(\d{2})\.xlsx?', str(path), re.IGNORECASE)
     if m:
         y1, y2 = m.group(1), m.group(2)
         return f'20{y1}-{y2}'
@@ -385,10 +508,12 @@ def sort_key(season_label):
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
-def process_file(xlsx_path, season_label):
-    """Process a single season file. Returns (matches, season_members, use_named_members)."""
-    print(f'\nReading: {os.path.basename(xlsx_path)}  →  season {season_label}')
-    return parse_season_file(xlsx_path, season_label)
+def process_file(path, season_label):
+    """Process a single season file (.xlsx or .xls). Returns (matches, season_members, use_named_members)."""
+    print(f'\nReading: {os.path.basename(path)}  →  season {season_label}')
+    if path.lower().endswith('.xls'):
+        return parse_xls_file(path, season_label)
+    return parse_season_file(path, season_label)
 
 def print_match_table(matches, season_members):
     """Print a formatted match list for review."""
@@ -466,8 +591,11 @@ def main():
     # ── Directory (batch) mode ────────────────────────────────────────────────
     else:
         history_dir = args.dir
-        pattern = os.path.join(history_dir, 'WBP *.xlsx')
-        all_files = sorted(glob.glob(pattern))
+        # Collect both .xlsx and .xls files (glob *.xls does NOT match *.xlsx)
+        all_files = sorted(
+            glob.glob(os.path.join(history_dir, 'WBP *.xlsx')) +
+            glob.glob(os.path.join(history_dir, 'WBP *.xls'))
+        )
 
         season_files = []
         for path in all_files:
