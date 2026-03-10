@@ -76,8 +76,9 @@
   const seasonSelect   = document.getElementById('season-select')
   let _activeSeason    = localStorage.getItem('activeSeason') || CURRENT_SEASON
 
-  let allMembers = []
-  let allMatches = []
+  let allMembers       = []
+  let allMatches       = []
+  let allMemberSeasons = []   // [{ member_id, season }] — from member_seasons table
 
   // ── Season dropdown ─────────────────────────────────────────────────────
   async function populateSeasonDropdown() {
@@ -118,24 +119,39 @@
 
     allMatches = matchesRes.data
 
-    // Rebuild player dropdown — only players who played in this season
+    // Determine which season to use as the membership reference:
+    //   - specific season → that season's member_seasons rows
+    //   - "Entire History" → current season (25-26) as reference
+    const refSeason = _activeSeason === 'all' ? CURRENT_SEASON : _activeSeason
+    const activeMemberIds = new Set(
+      allMemberSeasons.filter(ms => ms.season === refSeason).map(ms => ms.member_id)
+    )
+    const everMemberIds = new Set(allMemberSeasons.map(ms => ms.member_id))
+
+    function playedInMatches(m) {
+      return allMatches.some(
+        mx => mx.team1_player1 === m.id || mx.team1_player2 === m.id ||
+              mx.team2_player1 === m.id || mx.team2_player2 === m.id
+      )
+    }
+
+    // Rebuild player dropdown — only players who appear in match data this season
     const select = document.getElementById('player-select')
     const prevVal = select.value
     select.innerHTML = '<option value="">— Choose a player —</option>'
 
-    const members = allMembers.filter(m => !m.is_guest && allMatches.some(
-      mx => mx.team1_player1 === m.id || mx.team1_player2 === m.id ||
-            mx.team2_player1 === m.id || mx.team2_player2 === m.id
-    ))
-    const guests = allMembers.filter(m => m.is_guest && allMatches.some(
-      mx => mx.team1_player1 === m.id || mx.team1_player2 === m.id ||
-            mx.team2_player1 === m.id || mx.team2_player2 === m.id
-    ))
+    const activeMembers = allMembers.filter(m =>
+      !m.is_guest && activeMemberIds.has(m.id) && playedInMatches(m))
+    const formerMembers = allMembers.filter(m =>
+      !m.is_guest && !activeMemberIds.has(m.id) && everMemberIds.has(m.id) && playedInMatches(m))
+    const guests = allMembers.filter(m =>
+      m.is_guest && playedInMatches(m))
 
-    if (members.length > 0) {
+    const addGroup = (label, list) => {
+      if (list.length === 0) return
       const grp = document.createElement('optgroup')
-      grp.label = 'Members'
-      members.forEach(m => {
+      grp.label = label
+      list.forEach(m => {
         const opt = document.createElement('option')
         opt.value = m.id
         opt.textContent = m.full_name
@@ -144,17 +160,9 @@
       select.appendChild(grp)
     }
 
-    if (guests.length > 0) {
-      const grp = document.createElement('optgroup')
-      grp.label = 'Guests'
-      guests.forEach(m => {
-        const opt = document.createElement('option')
-        opt.value = m.id
-        opt.textContent = m.full_name
-        grp.appendChild(opt)
-      })
-      select.appendChild(grp)
-    }
+    addGroup('Members', activeMembers)
+    addGroup('Former Members', formerMembers)
+    addGroup('Guests', guests)
 
     // Restore previously selected player if still present this season
     if (prevVal && [...select.options].some(o => o.value === prevVal)) {
@@ -174,8 +182,10 @@
 
   // ── Init ────────────────────────────────────────────────────────────────
   async function init() {
-    const membersRes = await supabase
-      .from('members').select('id, full_name, is_guest').order('full_name')
+    const [membersRes, seasonsRes] = await Promise.all([
+      supabase.from('members').select('id, full_name, is_guest').order('full_name'),
+      supabase.from('member_seasons').select('member_id, season')
+    ])
 
     if (membersRes.error) {
       document.getElementById('player-container').innerHTML =
@@ -183,7 +193,8 @@
       return
     }
 
-    allMembers = membersRes.data
+    allMembers       = membersRes.data
+    allMemberSeasons = seasonsRes.data || []
 
     const select = document.getElementById('player-select')
     select.addEventListener('change', () => {

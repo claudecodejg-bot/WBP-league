@@ -85,8 +85,9 @@
   // Sort state
   let _sortCol = 'seasonAvg'
   let _sortDir = 'desc'
-  let _memberStats = []
-  let _guestStats = []
+  let _memberStats       = []
+  let _formerMemberStats = []
+  let _guestStats        = []
 
   function getCols() {
     return [
@@ -195,8 +196,12 @@
   }
 
   function renderTables() {
+
     const isDefault = _sortCol === 'seasonAvg' && _sortDir === 'desc'
     let html = '<h2 class="section-title">Members</h2>' + buildTable(sortData(_memberStats), { podium: isDefault })
+    if (_formerMemberStats.length > 0) {
+      html += '<h2 class="section-title" style="margin-top:2rem;">Former Members</h2>' + buildTable(sortData(_formerMemberStats))
+    }
     if (_guestStats.length > 0) {
       html += '<h2 class="section-title" style="margin-top:2rem;">Guests</h2>' + buildTable(sortData(_guestStats))
     }
@@ -254,10 +259,11 @@
     let matchQuery = supabase.from('matches').select('*')
     if (_activeSeason !== 'all') matchQuery = matchQuery.eq('season', _activeSeason)
 
-    const [membersRes, guestsRes, matchesRes] = await Promise.all([
+    const [membersRes, guestsRes, matchesRes, seasonsRes] = await Promise.all([
       supabase.from('members').select('id, full_name').eq('is_guest', false).order('full_name'),
       supabase.from('members').select('id, full_name').eq('is_guest', true).order('full_name'),
-      matchQuery
+      matchQuery,
+      supabase.from('member_seasons').select('member_id, season')
     ])
 
     if (membersRes.error || guestsRes.error || matchesRes.error) {
@@ -266,6 +272,14 @@
     }
 
     const matches = matchesRes.data
+    const memberSeasons = seasonsRes.data || []
+
+    // Determine which season to use as membership reference
+    const refSeason = _activeSeason === 'all' ? CURRENT_SEASON : _activeSeason
+    const activeMemberIds = new Set(
+      memberSeasons.filter(ms => ms.season === refSeason).map(ms => ms.member_id)
+    )
+    const everMemberIds = new Set(memberSeasons.map(ms => ms.member_id))
     const seasonLabel = _activeSeason === 'all' ? 'across all seasons' : (_activeSeason === CURRENT_SEASON ? 'this season' : `the ${_activeSeason} season`)
 
     document.getElementById('standings-subtitle').textContent =
@@ -279,7 +293,7 @@
       return played.length ? played.reduce((a, b) => a > b ? a : b) : null
     }
 
-    _memberStats = defaultSort(membersRes.data.map(m => {
+    const allNonGuestStats = membersRes.data.map(m => {
       const stats = computeMemberStats(m.id, matches)
       return {
         id: m.id,
@@ -289,7 +303,10 @@
         lastPlayed: lastPlayedDate(m.id),
         streak: calcStreak(m.id, matches)
       }
-    }).filter(s => s.matchesPlayed > 0))
+    }).filter(s => s.matchesPlayed > 0)
+
+    _memberStats       = defaultSort(allNonGuestStats.filter(s => activeMemberIds.has(s.id)))
+    _formerMemberStats = defaultSort(allNonGuestStats.filter(s => !activeMemberIds.has(s.id) && everMemberIds.has(s.id)))
 
     _guestStats = defaultSort(guestsRes.data.filter(m => m.full_name !== 'Forfeit').map(m => {
       const stats = computeMemberStats(m.id, matches)
@@ -303,7 +320,7 @@
       }
     }).filter(s => s.matchesPlayed > 0))
 
-    if (_memberStats.length === 0) {
+    if (_memberStats.length === 0 && _formerMemberStats.length === 0 && _guestStats.length === 0) {
       container.innerHTML = '<p style="color:var(--gray-600);text-align:center;padding:2rem;">No data yet.</p>'
       return
     }

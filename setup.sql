@@ -14,8 +14,18 @@ CREATE TABLE members (
   auth_id    uuid UNIQUE REFERENCES auth.users(id) ON DELETE SET NULL,
   full_name  text NOT NULL,
   email      text NOT NULL UNIQUE,
+  is_guest   boolean NOT NULL DEFAULT false,  -- true = fill-in guest (never a season member)
   is_admin   boolean NOT NULL DEFAULT false,
   created_at timestamptz DEFAULT now()
+);
+
+-- Tracks which seasons each member was officially active (played ≥1 match as a season member).
+-- Populated by member-seasons.sql after running merge-players.sql.
+CREATE TABLE member_seasons (
+  id        uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  season    text NOT NULL,
+  UNIQUE(member_id, season)
 );
 
 CREATE TABLE matches (
@@ -52,9 +62,10 @@ CREATE TABLE availability (
 --  STEP 2: Enable Row Level Security
 -- =============================================
 
-ALTER TABLE members      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE matches       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE availability  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE members        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE matches         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE availability    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_seasons  ENABLE ROW LEVEL SECURITY;
 
 
 -- =============================================
@@ -106,6 +117,10 @@ CREATE POLICY "Admins manage members"
 CREATE POLICY "Logged-in users can read availability"
   ON availability FOR SELECT
   USING (auth.uid() IS NOT NULL);
+
+-- MEMBER_SEASONS: anyone can read
+CREATE POLICY "Anyone can read member_seasons"
+  ON member_seasons FOR SELECT USING (true);
 
 -- AVAILABILITY: members can only write their own rows
 CREATE POLICY "Members manage own availability"
