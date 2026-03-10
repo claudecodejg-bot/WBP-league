@@ -274,7 +274,7 @@
       name: m.full_name,
       lastPlayed: lastPlayedDate(m.id),
       streak: calcStreak(m.id, matches)
-    })))
+    })).filter(s => s.matchesPlayed > 0))
 
     _guestStats = defaultSort(guestsRes.data.filter(m => m.full_name !== 'Forfeit').map(m => ({
       id: m.id,

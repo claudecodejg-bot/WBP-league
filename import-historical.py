@@ -1,359 +1,352 @@
 #!/usr/bin/env python3
 """
-Import historical paddle tennis match data from Excel into Supabase.
+Import historical paddle tennis match data from WBP season Excel files.
 
-Usage:
-  python3 import-historical.py
+Single season:
+  python3 import-historical.py --file "/path/to/History/WBP 24-25.xlsx"
+  python3 import-historical.py --file "/path/to/History/WBP 24-25.xlsx" --season 2024-25
 
-Reads: /Users/claudecodejg/Documents/Claude Projects/Paddle Project/Historical Scores.xlsx
-Writes: historical-members.sql and historical-data.sql
+All seasons in a directory (skips golf files and .xls files):
+  python3 import-historical.py --dir "/path/to/History"
+  python3 import-historical.py --dir "/path/to/History" --skip 2024-25
+
+Single-season output:   historical-members.sql + historical-data.sql
+Multi-season output:    historical-members-all.sql + historical-data-all.sql
 
 Run BOTH sql files in order in the Supabase SQL editor:
-  1. historical-members.sql  (adds any new historical-only members)
-  2. historical-data.sql     (inserts historical match records)
+  1. historical-members[-all].sql  (adds new/guest players)
+  2. historical-data[-all].sql     (deletes old season data, inserts fresh matches)
 """
 
 import openpyxl
 import re
 import sys
+import os
+import glob
+import argparse
 from datetime import datetime, timedelta
 
-# ── Config ──────────────────────────────────────────────────────────────────
+# ── Season start dates (Week 1 date, keyed by season label) ─────────────────
+# These are estimated Monday start dates; close enough for historical purposes.
 
-EXCEL_PATH = '/Users/claudecodejg/Documents/Claude Projects/Paddle Project/Historical Scores.xlsx'
-
-# The Excel file labels seasons one year behind the correct labels.
-# This map corrects them on import.
-SEASON_LABEL_MAP = {
-    '2023-24': '2024-25',
-    '2022-23': '2023-24',
-    '2021-22': '2022-23',
-}
-
-# Approximate season start dates (Week 1). Keyed by CORRECT label.
 SEASON_STARTS = {
     '2024-25': datetime(2023, 10, 16),
     '2023-24': datetime(2022, 10, 17),
     '2022-23': datetime(2021, 10, 18),
+    '2021-22': datetime(2020, 10, 19),
+    '2020-21': datetime(2019, 10, 21),
+    '2019-20': datetime(2018, 10, 15),
+    '2018-19': datetime(2017, 10, 16),
+    '2017-18': datetime(2016, 10, 17),
+    '2016-17': datetime(2015, 10, 19),
+    '2015-16': datetime(2014, 10, 20),
+    '2014-15': datetime(2013, 10, 21),
+    '2013-14': datetime(2012, 10, 15),
+    '2012-13': datetime(2011, 10, 17),
+    '2011-12': datetime(2010, 10, 18),
 }
 
-# Members already in the current-season Supabase table.
-# If a historical player's name is NOT here, they'll get an INSERT in historical-members.sql.
-# Names are matched case-insensitively and by last name.
-CURRENT_MEMBERS = [
-    'Ridder', 'Grills', 'Adams', 'Walsh', "D'Acunto", 'McGurren',
-    'Dolan', 'Luecke', 'Rayhill', 'Brown', 'Jonson', 'Smith',
-    'Dolcetti', 'Napolitano', 'Rockman', 'Baum',
-    # Guests
-    'Alpetkin', 'Davidson', 'Officer', 'Moyers', 'Bennett',
-]
+# ── Score / team name detection ───────────────────────────────────────────────
 
-# ── Score parsing ────────────────────────────────────────────────────────────
+# Headers that sometimes bleed into the member list column
+_HEADER_RE = re.compile(r'^(week|court)\s*\d*$', re.IGNORECASE)
 
-def decode_score(val):
+def is_valid_member_name(v):
+    """Return True if v looks like a real player name (has letters, not a header)."""
+    if not isinstance(v, str):
+        return False
+    s = v.strip()
+    return bool(re.search(r'[a-zA-Z]', s)) and not _HEADER_RE.match(s)
+
+def is_team_name(v):
     """
-    Excel auto-converted score strings like '6/2/6' into dates.
-    Reverse that: datetime(2006,6,2) -> [6,2,6], datetime(2026,4,3) -> [4,3].
-    Also handles raw strings like '7/0/1' and tiebreak notation '6(4)/7/6'.
-    Returns list of ints or None.
+    Return True if v looks like 'LastName/LastName' — has letters on BOTH sides of '/'.
+    E.g. "Jonson/Richards" → True.  "6/2/6" → False.  "Rained Out" → False.
     """
-    if val is None:
+    if not v or not isinstance(v, str):
+        return False
+    parts = str(v).split('/')
+    return len(parts) >= 2 and all(re.search(r'[a-zA-Z]', p) for p in parts[:2])
+
+def is_score_str(v):
+    """
+    Return True if v looks like a score string — only digits, '/', '(', ')' and must contain '/'.
+    E.g. "6/2/6", "6(4)/7", "1/1" → True.  "Jonson/Richards", "Rained Out" → False.
+    """
+    if not v:
+        return False
+    s = str(v).strip()
+    return '/' in s and bool(re.match(r"^[\d/()\'\s]+$", s))
+
+# Names to treat as "no player" (byes, placeholders, etc.)
+_INVALID_NAMES = {'NA', 'N/A', 'TBD', 'BYE', ''}
+
+def normalize_player_name(name):
+    """
+    Clean up a raw player name from the spreadsheet:
+    - Strip substitute markers: "Harris(sub)" → "Harris"
+    - Normalize whitespace
+    - Return None for known-invalid placeholders
+    """
+    if not name:
         return None
-    if isinstance(val, datetime):
-        if val.year == 2026:
-            # 2-set score: month=set1, day=set2
-            return [val.month, val.day]
-        else:
-            # 3-set score: month=set1, day=set2, year%100=set3
-            return [val.month, val.day, val.year % 100]
-    if isinstance(val, str):
-        val = val.strip()
-        # Strip tiebreak notation: '6(4)' -> '6', '7(7)' -> '7'
-        val = re.sub(r'\(\d+\)', '', val)
-        # Handle apostrophe typo as slash
-        val = val.replace("'", '/')
-        parts = val.split('/')
-        try:
-            return [int(p) for p in parts if p.strip()]
-        except ValueError:
-            return None
-    return None
+    name = str(name).strip()
+    name = re.sub(r'\s*\(sub\w*\)\s*', '', name, flags=re.IGNORECASE).strip()
+    name = re.sub(r'\s+', ' ', name)
+    if name.upper() in _INVALID_NAMES:
+        return None
+    return name if name else None
 
-def infer_opp_score(our_score):
-    """Estimate opponent's score in a set from our score."""
-    if our_score >= 7:
-        return 5   # tiebreak
-    elif our_score == 6:
-        return 3   # typical win
-    elif our_score == 5:
-        return 7   # typical loss (7-5)
-    elif our_score == 0:
-        return 6
+def get_team_and_score(row, col):
+    """
+    Given a row values tuple and starting column index, return (team_str, score_str).
+
+    Handles two layouts found in WBP files:
+      Standard (2015-16+): row[col]=team_name, row[col+1]=score
+      Inverted (2011-14):   row[col]=score,     row[col+1]=team_name
+
+    Returns (None, None) if no valid team is found at this column.
+    """
+    val0 = row[col]     if col     < len(row) else None
+    val1 = row[col + 1] if col + 1 < len(row) else None
+
+    if is_team_name(val0):
+        return str(val0), val1          # standard format
+    elif is_score_str(val0) and is_team_name(val1):
+        return str(val1), val0          # inverted format
+    return None, None                   # rained out, blank, etc.
+
+def parse_score(s):
+    """
+    Parse a score string like '6/2/6', '6/6', '6(4)/7/6', "6/2'6", '/4/6/1'.
+    Returns list of ints, or [] if unparseable.
+    """
+    if not s:
+        return []
+    s = str(s).strip()
+    if not s:
+        return []
+    s = s.lstrip('/')                        # leading slash typo
+    s = re.sub(r'\(\d+\)', '', s)           # strip tiebreak: 6(4) -> 6
+    s = s.replace("'", '/')                  # apostrophe typo: 6/2'6 -> 6/2/6
+    parts = [p.strip() for p in s.split('/') if p.strip()]
+    result = []
+    try:
+        for p in parts:
+            n = int(p)
+            # Detect merged set scores > 20 where both digits are valid set values (0-7).
+            # e.g. "66" → likely "6/6" typo → expand to [6, 6].
+            # Numbers ≤ 20 are kept as-is (could be a 10-pt tiebreak: 11/9, 10/8, etc.)
+            if n > 20:
+                tens, ones = n // 10, n % 10
+                if tens <= 7 and ones <= 7:
+                    result.extend([tens, ones])
+                    continue
+            result.append(n)
+    except ValueError:
+        return []
+    return result
+
+def null_or_int(scores, idx):
+    """Return scores[idx] as string int, or 'NULL'."""
+    if idx < len(scores):
+        return str(scores[idx])
+    return 'NULL'
+
+# ── Excel parsing ─────────────────────────────────────────────────────────────
+
+def parse_season_file(xlsx_path, season_label):
+    """
+    Parse a WBP season Excel file.
+    Returns (matches, season_members, use_named_members) where:
+      matches            = list of match dicts
+      season_members     = set of last names for this season
+      use_named_members  = True if member list came from D4:D20 (named)
+                           False if derived from match data (pre-2017 rating files)
+    """
+    wb = openpyxl.load_workbook(xlsx_path, data_only=True)
+    ws = wb['Scoring']
+
+    # Read member list: col D (index 3), rows 4-20
+    raw_vals = []
+    for row in ws.iter_rows(min_row=4, max_row=20, min_col=4, max_col=4, values_only=True):
+        if row[0] is not None:
+            raw_vals.append(row[0])
+
+    # Pre-2017 files store numerical ratings in D4:D20, not names.
+    # Detect by counting how many values look like real player names.
+    name_count = sum(1 for v in raw_vals if is_valid_member_name(v))
+    use_named_members = name_count >= 8
+
+    if use_named_members:
+        season_members = {str(v).strip() for v in raw_vals if is_valid_member_name(v)}
+        print(f"  Member list from D4:D20 ({len(season_members)}): {sorted(season_members)}")
     else:
-        return 6   # any low score -> opponent won 6
+        season_members = None   # will be derived from match data below
+        print(f"  Member list: numerical ratings detected — will derive from match data")
 
-def scores_to_sets(scores):
-    """
-    Given one team's set scores, return (t1s1, t1s2, t1s3, t2s1, t2s2, t2s3)
-    by inferring the opponent's scores.
-    """
-    s = (scores or [])
-    t1 = [s[i] if i < len(s) else None for i in range(3)]
-    t2 = [infer_opp_score(t1[i]) if t1[i] is not None else None for i in range(3)]
-    return t1[0], t1[1], t1[2], t2[0], t2[1], t2[2]
+    # Find court rows by scanning col B (index 1) for "Court N"
+    court_rows = []  # list of (top_row_values, bot_row_values, court_name)
+    all_rows = list(ws.iter_rows(min_row=1, max_row=ws.max_row, values_only=True))
 
-def combine_scores(t1_scores, t2_scores):
-    """
-    Combine known scores from both perspectives into a 6-tuple.
-    Prefer t2's own reported scores over inferred ones.
-    """
-    t1 = (t1_scores or [])
-    t2 = (t2_scores or [])
-    n = max(len(t1), len(t2))
-
-    t1s = [t1[i] if i < len(t1) else None for i in range(n)]
-    t2s = [t2[i] if i < len(t2) else None for i in range(n)]
-
-    # Fill in any missing values by inference
-    for i in range(n):
-        if t1s[i] is not None and t2s[i] is None:
-            t2s[i] = infer_opp_score(t1s[i])
-        elif t2s[i] is not None and t1s[i] is None:
-            t1s[i] = infer_opp_score(t2s[i])
-
-    # Pad/truncate to 3 sets
-    while len(t1s) < 3:
-        t1s.append(None)
-        t2s.append(None)
-
-    return t1s[0], t1s[1], t1s[2], t2s[0], t2s[1], t2s[2]
-
-# ── Excel parsing ────────────────────────────────────────────────────────────
-
-def parse_section(ws, start_row, end_row):
-    """Parse one season section. Returns (season_label, player_data dict)."""
-    rows = list(ws.iter_rows(min_row=start_row, max_row=end_row, values_only=True))
-    season_label = str(rows[0][0])
-
-    # Row 2 (index 1) has week headers
-    header = rows[1]
-    weeks = {}  # week_label -> col_index
-    for col_idx, val in enumerate(header):
-        if val and str(val).startswith('Week'):
-            weeks[str(val)] = col_idx
-
-    # Rows 3+ are player data
-    player_data = {}   # player_name -> {week_label -> {'opponent': str, 'scores': list}}
-    player_vs   = set()  # players with 'vs' rows (on opposing teams)
-
-    for row in rows[2:]:
-        player = row[0]
-        if not player:
+    i = 0
+    while i < len(all_rows):
+        row = all_rows[i]
+        col_b = row[1] if len(row) > 1 else None
+        if col_b and str(col_b).strip().startswith('Court'):
+            court_name = str(col_b).strip()
+            top_row = row
+            vs_row  = all_rows[i + 1] if i + 1 < len(all_rows) else []
+            bot_row = all_rows[i + 2] if i + 2 < len(all_rows) else []
+            court_rows.append((top_row, bot_row, court_name))
+            i += 3
             continue
+        i += 1
 
-        week1_val = row[2] if len(row) > 2 else None
-        if week1_val == 'vs':
-            player_vs.add(player)
+    print(f"  Courts found: {[c for _, _, c in court_rows]}")
 
-        matches_for_player = {}
-        for week_label, col_idx in weeks.items():
-            if col_idx >= len(row):
-                continue
-            opponent = row[col_idx]
-            if not opponent or opponent == 'vs':
-                continue
-            score_raw = row[col_idx + 1] if col_idx + 1 < len(row) else None
-            scores = decode_score(score_raw)
-            matches_for_player[week_label] = {
-                'opponent': str(opponent).strip(),
-                'scores': scores,
-            }
+    # Week columns: 3, 6, 9, ... up to max_column
+    week_cols = list(range(3, ws.max_column, 3))
 
-        if matches_for_player:
-            player_data[player] = matches_for_player
-
-    return season_label, weeks, player_data, player_vs
-
-# ── Match reconstruction ─────────────────────────────────────────────────────
-
-def parse_opponent_names(opp_str):
-    """'D\'Acunto/Baum' -> ['D\'Acunto', 'Baum']"""
-    parts = opp_str.split('/')
-    return [p.strip() for p in parts if p.strip()]
-
-def reconstruct_matches(season_label, weeks, player_data):
-    """
-    Cross-reference player rows to reconstruct full 4-player match records.
-    Returns list of match dicts, deduped.
-    """
-    # Use frozenset of both teams so (A+B vs C+D) and (C+D vs A+B) are the same match
-    seen = set()
     matches = []
+    for top_row, bot_row, court_name in court_rows:
+        for col in week_cols:
+            # Smart detection: handles both standard (team/score) and inverted (score/team) layouts
+            top_team_str, top_score_str = get_team_and_score(top_row, col)
+            if not top_team_str:
+                continue   # rained out, blank, or non-player data
 
-    for player_a, weeks_data in player_data.items():
-        for week_label, entry_a in weeks_data.items():
-            opp_names = parse_opponent_names(entry_a['opponent'])
-            if len(opp_names) != 2:
-                continue
+            bot_team_str, bot_score_str = get_team_and_score(bot_row, col)
 
-            opp1, opp2 = opp_names
+            # Parse and normalize team names
+            top_parts = [normalize_player_name(p) for p in top_team_str.split('/')]
+            top_parts = [p for p in top_parts if p]   # drop None/empty
+            bot_parts = []
+            if bot_team_str:
+                bot_parts = [normalize_player_name(p) for p in bot_team_str.split('/')]
+                bot_parts = [p for p in bot_parts if p]
 
-            # Skip rows where the player's own name appears in the opponent column.
-            # This happens when the data entry shows the player's OWN team rather
-            # than the opposing team (an inconsistency in the source spreadsheet).
-            if player_a in opp_names:
-                continue
+            if len(top_parts) != 2:
+                continue  # skip malformed or incomplete entries
+            if len(bot_parts) != 2:
+                continue  # skip bye weeks / missing opponent
 
-            # Try to find player_a's partner by cross-referencing:
-            # Look for a row by opp1 or opp2 whose opponent for this week includes player_a
-            partner_a = None
-            opp_scores = None
+            top_scores = parse_score(top_score_str)
+            bot_scores = parse_score(bot_score_str)
 
-            for opp_player in [opp1, opp2]:
-                if opp_player not in player_data:
-                    continue
-                opp_week_data = player_data[opp_player].get(week_label)
-                if not opp_week_data:
-                    continue
-                opp_opp_names = parse_opponent_names(opp_week_data['opponent'])
-                if player_a in opp_opp_names:
-                    other = [n for n in opp_opp_names if n != player_a]
-                    if other:
-                        partner_a = other[0]
-                    opp_scores = opp_week_data['scores']
-                    break
-
-            # Normalize team sets so (A+B vs C+D) == (C+D vs A+B) for deduplication
-            team1_set = frozenset([player_a, partner_a or '__UNKNOWN__'])
-            team2_set = frozenset([opp1, opp2])
-            match_key = (week_label, frozenset({team1_set, team2_set}))
-            if match_key in seen:
-                continue
-            seen.add(match_key)
-
-            # Compute final set scores
-            if opp_scores is not None:
-                t1s1, t1s2, t1s3, t2s1, t2s2, t2s3 = combine_scores(
-                    entry_a['scores'], opp_scores
-                )
-            else:
-                t1s1, t1s2, t1s3, t2s1, t2s2, t2s3 = scores_to_sets(entry_a['scores'])
-
-            # Skip matches with no score data at all
-            if all(v is None for v in [t1s1, t1s2, t2s1, t2s2]):
-                continue
+            week_num = (col - 3) // 3 + 1
 
             matches.append({
-                'season':         season_label,
-                'week_label':     week_label,
-                'team1_player1':  player_a,
-                'team1_player2':  partner_a,
-                'team2_player1':  opp1,
-                'team2_player2':  opp2,
-                't1s1': t1s1, 't1s2': t1s2, 't1s3': t1s3,
-                't2s1': t2s1, 't2s2': t2s2, 't2s3': t2s3,
-                'partner_found': partner_a is not None,
+                'season':        season_label,
+                'week_num':      week_num,
+                'week_label':    f'Week {week_num}',
+                'court':         court_name,
+                'team1_player1': top_parts[0],
+                'team1_player2': top_parts[1],
+                'team2_player1': bot_parts[0] if len(bot_parts) > 0 else None,
+                'team2_player2': bot_parts[1] if len(bot_parts) > 1 else None,
+                'team1_scores':  top_scores,
+                'team2_scores':  bot_scores,
             })
 
-    return matches
+    # For pre-2017 files: derive season_members from all participants
+    if season_members is None:
+        season_members = set()
+        for m in matches:
+            for name in [m['team1_player1'], m['team1_player2'], m['team2_player1'], m['team2_player2']]:
+                if name:
+                    season_members.add(name)
+        print(f"  Derived {len(season_members)} members from match data: {sorted(season_members)}")
+
+    return matches, season_members, use_named_members
 
 # ── SQL generation ────────────────────────────────────────────────────────────
 
 def member_lookup(name):
-    """Generate a subquery to look up a member by name."""
+    """Generate a subquery to look up a member ID by last name."""
     if not name:
         return 'NULL'
-    # Escape single quotes
     safe = name.replace("'", "''")
     return f"(SELECT id FROM members WHERE LOWER(full_name) = LOWER('{safe}') LIMIT 1)"
 
-def null_or_int(v):
-    return 'NULL' if v is None else str(int(v))
-
-def week_to_date(season_label, week_label):
+def week_to_date(season_label, week_num):
     start = SEASON_STARTS.get(season_label)
     if not start:
         return "'2000-01-01'"
-    week_num = int(week_label.replace('Week ', ''))
     d = start + timedelta(weeks=week_num - 1)
     return f"'{d.strftime('%Y-%m-%d')}'"
 
-def generate_sql(all_seasons_matches):
-    """Generate two SQL files: historical-members.sql and historical-data.sql."""
+def name_to_email(name):
+    """Generate a placeholder email for historical members."""
+    safe = name.lower().replace(' ', '.').replace("'", '')
+    return f"{safe}@historical.local"
 
-    # Collect all player names mentioned
-    all_names = set()
-    for m in all_seasons_matches:
-        for field in ['team1_player1', 'team1_player2', 'team2_player1', 'team2_player2']:
-            if m[field]:
-                all_names.add(m[field])
-
-    # Determine which names are NOT in current members list
-    def is_current(name):
-        name_lower = name.lower()
-        for cm in CURRENT_MEMBERS:
-            if cm.lower() in name_lower or name_lower in cm.lower():
-                return True
-        return False
-
-    new_members = sorted(n for n in all_names if not is_current(n))
-
-    # ── historical-members.sql ──
-    members_sql = ['-- =============================================',
-                   '-- historical-members.sql',
-                   '-- Run FIRST in Supabase SQL editor.',
-                   '-- Adds any historical players not in current roster.',
-                   '-- =============================================',
-                   '']
-    if new_members:
-        for name in new_members:
+def generate_members_sql(all_new_members):
+    """
+    Generate SQL to insert new members.
+    all_new_members: list of (name, is_guest) tuples
+    """
+    lines = [
+        '-- =============================================',
+        '-- historical-members-all.sql',
+        '-- Run FIRST in Supabase SQL editor.',
+        '-- Adds historical players not yet in the members table.',
+        '-- =============================================',
+        '',
+    ]
+    if all_new_members:
+        for name, is_guest in sorted(all_new_members, key=lambda x: x[0]):
             safe = name.replace("'", "''")
-            safe_email = name.lower().replace(' ', '.').replace("'", '') + '@historical.local'
-            members_sql.append(
+            email = name_to_email(name)
+            guest_str = 'true' if is_guest else 'false'
+            lines.append(
                 f"INSERT INTO members (full_name, email, is_guest, is_admin)"
-                f" VALUES ('{safe}', '{safe_email}', true, false)"
+                f" VALUES ('{safe}', '{email}', {guest_str}, false)"
                 f" ON CONFLICT DO NOTHING;"
             )
-        members_sql.append('')
-        members_sql.append(f'-- {len(new_members)} new historical member(s) added as guests.')
+        lines.append('')
+        lines.append(f'-- {len(all_new_members)} player(s) added')
     else:
-        members_sql.append('-- No new members to add. All historical players are already in the roster.')
+        lines.append('-- No new players to add.')
+    return '\n'.join(lines)
 
-    # ── historical-data.sql ──
-    data_sql = ['-- =============================================',
-                '-- historical-data.sql',
-                '-- Run SECOND in Supabase SQL editor (after historical-members.sql).',
-                '-- Inserts historical match records.',
-                '-- =============================================',
-                '']
-
-    season_order = sorted(set(m['season'] for m in all_seasons_matches), reverse=True)
-    for season in season_order:
-        season_matches = [m for m in all_seasons_matches if m['season'] == season]
-        data_sql.append(f'-- === Season {season} ({len(season_matches)} matches) ===')
-        data_sql.append('')
-
-        incomplete = sum(1 for m in season_matches if not m['partner_found'])
-        if incomplete:
-            data_sql.append(f'-- NOTE: {incomplete} match(es) have unknown partners')
-            data_sql.append('-- (marked with team1_player2 = NULL or a guest placeholder).')
-            data_sql.append('')
-
-        for m in season_matches:
+def generate_data_sql(all_season_matches):
+    """
+    Generate SQL to delete and re-insert matches for multiple seasons.
+    all_season_matches: list of (season_label, matches) tuples
+    """
+    lines = [
+        '-- =============================================',
+        '-- historical-data-all.sql',
+        '-- Run SECOND in Supabase SQL editor (after historical-members-all.sql).',
+        f'-- Covers {len(all_season_matches)} season(s).',
+        '-- =============================================',
+        '',
+    ]
+    total = 0
+    for season_label, matches in all_season_matches:
+        lines.append(f"DELETE FROM matches WHERE season = '{season_label}';")
+        lines.append(f'')
+        lines.append(f'-- === Season {season_label} ({len(matches)} matches) ===')
+        lines.append('')
+        for m in matches:
             t1p1 = member_lookup(m['team1_player1'])
-            t1p2 = member_lookup(m['team1_player2']) if m['team1_player2'] else 'NULL'
+            t1p2 = member_lookup(m['team1_player2'])
             t2p1 = member_lookup(m['team2_player1'])
             t2p2 = member_lookup(m['team2_player2'])
-            date_str = week_to_date(m['season'], m['week_label'])
+            date_str = week_to_date(m['season'], m['week_num'])
 
-            t1s1 = null_or_int(m['t1s1'])
-            t1s2 = null_or_int(m['t1s2'])
-            t1s3 = null_or_int(m['t1s3'])
-            t2s1 = null_or_int(m['t2s1'])
-            t2s2 = null_or_int(m['t2s2'])
-            t2s3 = null_or_int(m['t2s3'])
+            s1 = m['team1_scores']
+            s2 = m['team2_scores']
 
-            data_sql.append(
+            t1s1 = null_or_int(s1, 0)
+            t1s2 = null_or_int(s1, 1)
+            t1s3 = null_or_int(s1, 2)
+            t2s1 = null_or_int(s2, 0)
+            t2s2 = null_or_int(s2, 1)
+            t2s3 = null_or_int(s2, 2)
+
+            lines.append(
                 f"INSERT INTO matches"
                 f" (season, week_label, played_on,"
                 f"  team1_player1, team1_player2, team2_player1, team2_player2,"
@@ -363,79 +356,198 @@ def generate_sql(all_seasons_matches):
                 f"  {t1p1}, {t1p2}, {t2p1}, {t2p2},"
                 f"  {t1s1}, {t1s2}, {t1s3}, {t2s1}, {t2s2}, {t2s3});"
             )
-        data_sql.append('')
+            total += 1
+        lines.append('')
+    lines.append(f'-- Total: {total} matches across {len(all_season_matches)} season(s)')
+    return '\n'.join(lines)
 
-    return '\n'.join(members_sql), '\n'.join(data_sql)
+# ── Filename helpers ──────────────────────────────────────────────────────────
+
+def detect_season_from_filename(path):
+    """Extract '2024-25' from 'WBP 24-25.xlsx'."""
+    m = re.search(r'WBP (\d{2})-(\d{2})\.xlsx', str(path), re.IGNORECASE)
+    if m:
+        y1, y2 = m.group(1), m.group(2)
+        return f'20{y1}-{y2}'
+    return None
+
+def is_golf_file(path):
+    """Return True if the file looks like a golf file."""
+    name = os.path.basename(path).lower()
+    return 'golf' in name
+
+def sort_key(season_label):
+    """Sort '2023-24' numerically."""
+    m = re.match(r'(\d{4})-(\d{2})', season_label)
+    if m:
+        return int(m.group(1)) * 100 + int(m.group(2))
+    return 0
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
+def process_file(xlsx_path, season_label):
+    """Process a single season file. Returns (matches, season_members, use_named_members)."""
+    print(f'\nReading: {os.path.basename(xlsx_path)}  →  season {season_label}')
+    return parse_season_file(xlsx_path, season_label)
+
+def print_match_table(matches, season_members):
+    """Print a formatted match list for review."""
+    print(f'\n  {"#":>3}  {"Week":>6}  {"Court":8}  {"Team 1":22}  {"Score":10}  {"Team 2":22}  {"Score"}')
+    print(f'  {"-"*90}')
+    guests_seen = set()
+    for i, m in enumerate(matches, 1):
+        t1 = f"{m['team1_player1']}/{m['team1_player2']}"
+        t2 = f"{m['team2_player1'] or '?'}/{m['team2_player2'] or '?'}"
+        s1 = '/'.join(str(x) for x in m['team1_scores']) or '?'
+        s2 = '/'.join(str(x) for x in m['team2_scores']) or '?'
+
+        flags = []
+        for name in [m['team1_player1'], m['team1_player2'], m['team2_player1'], m['team2_player2']]:
+            if name and name not in season_members:
+                guests_seen.add(name)
+                flags.append(f'*{name}')
+        flag_str = '  ' + ','.join(flags) if flags else ''
+        print(f'  {i:3d}  {m["week_label"]:>6}  {m["court"]:8}  {t1:22}  {s1:10}  {t2:22}  {s2}{flag_str}')
+
+    if guests_seen:
+        print(f'\n  Guests flagged: {sorted(guests_seen)}')
+    return guests_seen
+
 def main():
-    print(f'Reading {EXCEL_PATH}...')
-    wb = openpyxl.load_workbook(EXCEL_PATH, data_only=True)
-    ws = wb['Sheet1']
+    parser = argparse.ArgumentParser(description='Import WBP season Excel files into Supabase SQL.')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--file', help='Path to a single WBP season xlsx file')
+    group.add_argument('--dir',  help='Directory containing WBP season xlsx files (processes all)')
+    parser.add_argument('--season', help='Season label e.g. 2024-25 (auto-detected from filename if omitted; only for --file)')
+    parser.add_argument('--skip',   help='Comma-separated season labels to skip e.g. 2024-25', default='')
+    args = parser.parse_args()
 
-    # Detect section boundaries by finding rows where col A is a season label
-    section_starts = []
-    for i, row in enumerate(ws.iter_rows(min_row=1, values_only=True), 1):
-        if row[0] and str(row[0]).strip() and re.match(r'\d{4}-\d{2,4}', str(row[0])):
-            section_starts.append(i)
+    skip_seasons = {s.strip() for s in args.skip.split(',') if s.strip()}
 
-    print(f'Found {len(section_starts)} season section(s): rows {section_starts}')
+    # ── Single file mode ──────────────────────────────────────────────────────
+    if args.file:
+        xlsx_path = args.file
+        season_label = args.season or detect_season_from_filename(xlsx_path)
+        if not season_label:
+            print('ERROR: Could not detect season label from filename. Use --season 2024-25')
+            sys.exit(1)
 
-    # Add sentinel end
-    section_starts.append(ws.max_row + 1)
+        matches, season_members, use_named = process_file(xlsx_path, season_label)
+        print(f'\nMatches found: {len(matches)}')
+        guests_seen = print_match_table(matches, season_members)
 
-    all_matches = []
-    seen_seasons = set()
+        # Collect new members to insert
+        # In single-file mode: guests from named seasons, all from rated seasons
+        new_members = []
+        if use_named:
+            for name in sorted(guests_seen):
+                new_members.append((name, True))
+        else:
+            # All match participants need to be in members table
+            for name in sorted(season_members):
+                new_members.append((name, False))
 
-    for idx in range(len(section_starts) - 1):
-        start = section_starts[idx]
-        end   = section_starts[idx + 1] - 1
+        members_sql = generate_members_sql(new_members)
+        data_sql    = generate_data_sql([(season_label, matches)])
 
-        season_label, weeks, player_data, player_vs = parse_section(ws, start, end)
+        with open('historical-members.sql', 'w') as f:
+            f.write(members_sql)
+        print('\nWrote: historical-members.sql')
 
-        # Remap Excel label to correct season label
-        season_label = SEASON_LABEL_MAP.get(season_label, season_label)
+        with open('historical-data.sql', 'w') as f:
+            f.write(data_sql)
+        print('Wrote: historical-data.sql')
 
-        # Skip 2022-23: data is confirmed identical to 2023-24 (copy error in Excel)
-        if season_label == '2022-23':
-            print(f'  Skipping 2022-23 (duplicate of 2023-24)')
-            continue
+        print('\nNext steps:')
+        print('  1. Review both SQL files for accuracy')
+        print('  2. Run historical-members.sql in Supabase SQL editor')
+        print('  3. Run historical-data.sql in Supabase SQL editor')
 
-        # Skip other duplicate season labels
-        if season_label in seen_seasons:
-            print(f'  Skipping duplicate: {season_label}')
-            continue
-        seen_seasons.add(season_label)
+    # ── Directory (batch) mode ────────────────────────────────────────────────
+    else:
+        history_dir = args.dir
+        pattern = os.path.join(history_dir, 'WBP *.xlsx')
+        all_files = sorted(glob.glob(pattern))
 
-        print(f'\n  Season {season_label} (rows {start}-{end}):')
-        print(f'    Weeks: {list(weeks.keys())}')
-        print(f'    Players with data: {list(player_data.keys())}')
+        season_files = []
+        for path in all_files:
+            if is_golf_file(path):
+                print(f'  Skipping golf file: {os.path.basename(path)}')
+                continue
+            sl = detect_season_from_filename(path)
+            if not sl:
+                print(f'  Skipping (cannot parse season): {os.path.basename(path)}')
+                continue
+            if sl in skip_seasons:
+                print(f'  Skipping (--skip): {sl}')
+                continue
+            season_files.append((path, sl))
 
-        matches = reconstruct_matches(season_label, weeks, player_data)
+        # Sort oldest → newest
+        season_files.sort(key=lambda x: sort_key(x[1]))
 
-        complete   = sum(1 for m in matches if m['partner_found'])
-        incomplete = sum(1 for m in matches if not m['partner_found'])
-        print(f'    Matches reconstructed: {len(matches)} ({complete} complete, {incomplete} with unknown partner)')
+        print(f'\nFound {len(season_files)} season file(s) to process:')
+        for path, sl in season_files:
+            print(f'  {sl}  →  {os.path.basename(path)}')
 
-        all_matches.extend(matches)
+        # Track all unique players we'll need in the DB
+        # key: name (lowercased for dedup), value: (canonical_name, is_guest)
+        all_new_members = {}   # name.lower() -> (name, is_guest)
+        all_season_data  = []  # list of (season_label, matches)
 
-    print(f'\nTotal matches across all seasons: {len(all_matches)}')
+        for path, season_label in season_files:
+            matches, season_members, use_named = process_file(path, season_label)
+            print(f'  → {len(matches)} matches')
 
-    members_sql, data_sql = generate_sql(all_matches)
+            all_season_data.append((season_label, matches))
 
-    with open('historical-members.sql', 'w') as f:
-        f.write(members_sql)
-    print('\nWrote: historical-members.sql')
+            # Collect players to insert
+            all_in_season = set()
+            for m in matches:
+                for name in [m['team1_player1'], m['team1_player2'],
+                             m['team2_player1'], m['team2_player2']]:
+                    if name:
+                        all_in_season.add(name)
 
-    with open('historical-data.sql', 'w') as f:
-        f.write(data_sql)
-    print('Wrote: historical-data.sql')
-    print('\nNext steps:')
-    print('  1. Review both SQL files for accuracy')
-    print('  2. Run add-season-column.sql in Supabase SQL editor (if not done yet)')
-    print('  3. Run historical-members.sql in Supabase SQL editor')
-    print('  4. Run historical-data.sql in Supabase SQL editor')
+            if use_named:
+                # Only guests need inserting (members assumed to already exist)
+                guests = all_in_season - season_members
+                for name in guests:
+                    key = name.lower()
+                    if key not in all_new_members:
+                        all_new_members[key] = (name, True)   # is_guest
+            else:
+                # Pre-2017: all players need to be in members table
+                for name in all_in_season:
+                    key = name.lower()
+                    if key not in all_new_members:
+                        all_new_members[key] = (name, False)  # not a guest
+
+        new_members_list = sorted(all_new_members.values(), key=lambda x: x[0])
+
+        print(f'\n── Summary ──────────────────────────────────────────────')
+        print(f'Seasons processed: {len(all_season_data)}')
+        print(f'Total matches:     {sum(len(m) for _, m in all_season_data)}')
+        print(f'New members/guests to insert: {len(new_members_list)}')
+        if new_members_list:
+            for name, is_guest in new_members_list:
+                print(f'  {"[guest]" if is_guest else "[member]":9s} {name}')
+
+        members_sql = generate_members_sql(new_members_list)
+        data_sql    = generate_data_sql(all_season_data)
+
+        with open('historical-members-all.sql', 'w') as f:
+            f.write(members_sql)
+        print('\nWrote: historical-members-all.sql')
+
+        with open('historical-data-all.sql', 'w') as f:
+            f.write(data_sql)
+        print('Wrote: historical-data-all.sql')
+
+        print('\nNext steps:')
+        print('  1. Review both SQL files for accuracy')
+        print('  2. Run historical-members-all.sql in Supabase SQL editor')
+        print('  3. Run historical-data-all.sql in Supabase SQL editor')
 
 if __name__ == '__main__':
     main()
