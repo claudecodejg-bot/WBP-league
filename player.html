@@ -43,7 +43,12 @@
 
 <main>
   <h1 class="page-title">Player Stats</h1>
-  <p class="page-subtitle">Select a player to see their season summary and match history.</p>
+  <p class="page-subtitle">Select a player to see their summary and match history.</p>
+
+  <div class="season-bar">
+    <label for="season-select">Season:</label>
+    <select id="season-select"></select>
+  </div>
 
   <div class="card">
     <div class="form-group" style="margin-bottom:0;">
@@ -67,29 +72,62 @@
   document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('player')
 
+  const CURRENT_SEASON = '2025-26'
+  const seasonSelect   = document.getElementById('season-select')
+  let _activeSeason    = localStorage.getItem('activeSeason') || CURRENT_SEASON
+
   let allMembers = []
   let allMatches = []
 
-  async function init() {
-    const [membersRes, matchesRes] = await Promise.all([
-      supabase.from('members').select('id, full_name, is_guest').order('full_name'),
-      supabase.from('matches').select('*').order('played_on', { ascending: false })
-    ])
+  // ── Season dropdown ─────────────────────────────────────────────────────
+  async function populateSeasonDropdown() {
+    const { data } = await supabase.from('matches').select('season')
+    if (!data) return
+    const seasons = [...new Set(data.map(m => m.season))].sort().reverse()
+    const options = [seasons[0], 'all', ...seasons.slice(1)]
+    seasonSelect.innerHTML = options.map(s => {
+      if (s === 'all') return `<option value="all"${_activeSeason === 'all' ? ' selected' : ''}>Entire History</option>`
+      return `<option value="${s}"${s === _activeSeason ? ' selected' : ''}>${s}${s === CURRENT_SEASON ? ' (Current)' : ''}</option>`
+    }).join('')
+    if (!seasons.includes(_activeSeason) && _activeSeason !== 'all') {
+      _activeSeason = seasons[0] || CURRENT_SEASON
+      seasonSelect.value = _activeSeason
+    }
+  }
 
-    if (membersRes.error || matchesRes.error) {
+  seasonSelect.addEventListener('change', () => {
+    _activeSeason = seasonSelect.value
+    localStorage.setItem('activeSeason', _activeSeason)
+    document.getElementById('player-container').innerHTML = ''
+    loadSeasonData()
+  })
+
+  // ── Load season-filtered matches + rebuild player dropdown ───────────────
+  async function loadSeasonData() {
+    let matchQuery = supabase.from('matches').select('*')
+    if (_activeSeason !== 'all') {
+      matchQuery = matchQuery.eq('season', _activeSeason)
+    }
+    const matchesRes = await matchQuery.order('played_on', { ascending: false })
+
+    if (matchesRes.error) {
       document.getElementById('player-container').innerHTML =
         '<div class="alert alert-error">Failed to load data. Please try again.</div>'
       return
     }
 
-    allMembers = membersRes.data
     allMatches = matchesRes.data
 
+    // Rebuild player dropdown — only players who played in this season
     const select = document.getElementById('player-select')
+    const prevVal = select.value
+    select.innerHTML = '<option value="">— Choose a player —</option>'
 
-    // Members first, then guests who played
-    const members = allMembers.filter(m => !m.is_guest)
-    const guests  = allMembers.filter(m => m.is_guest && allMatches.some(
+    const members = allMembers.filter(m => !m.is_guest && allMatches.some(
+      mx => mx.team1_player1 === m.id || mx.team1_player2 === m.id ||
+            mx.team2_player1 === m.id || mx.team2_player2 === m.id
+    ))
+    const guests = allMembers.filter(m => m.is_guest && allMatches.some(
       mx => mx.team1_player1 === m.id || mx.team1_player2 === m.id ||
             mx.team2_player1 === m.id || mx.team2_player2 === m.id
     ))
@@ -118,19 +156,46 @@
       select.appendChild(grp)
     }
 
+    // Restore previously selected player if still present this season
+    if (prevVal && [...select.options].some(o => o.value === prevVal)) {
+      select.value = prevVal
+      showPlayer(prevVal)
+    } else {
+      // Check URL param (e.g. player.html?id=UUID)
+      const preselect = new URLSearchParams(window.location.search).get('id')
+      if (preselect && [...select.options].some(o => o.value === preselect)) {
+        select.value = preselect
+        showPlayer(preselect)
+      } else {
+        document.getElementById('player-container').innerHTML = ''
+      }
+    }
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────
+  async function init() {
+    const membersRes = await supabase
+      .from('members').select('id, full_name, is_guest').order('full_name')
+
+    if (membersRes.error) {
+      document.getElementById('player-container').innerHTML =
+        '<div class="alert alert-error">Failed to load data. Please try again.</div>'
+      return
+    }
+
+    allMembers = membersRes.data
+
+    const select = document.getElementById('player-select')
     select.addEventListener('change', () => {
       if (select.value) showPlayer(select.value)
       else document.getElementById('player-container').innerHTML = ''
     })
 
-    // Auto-select player from URL param e.g. player.html?id=UUID
-    const preselect = new URLSearchParams(window.location.search).get('id')
-    if (preselect) {
-      select.value = preselect
-      if (select.value) showPlayer(preselect)
-    }
+    await populateSeasonDropdown()
+    await loadSeasonData()
   }
 
+  // ── Streak ──────────────────────────────────────────────────────────────
   function calcStreak(playerMatches, memberId) {
     const sorted = [...playerMatches].sort((a, b) => a.played_on.localeCompare(b.played_on))
     if (sorted.length === 0) return null
@@ -150,6 +215,7 @@
     return { type: last, count }
   }
 
+  // ── Sparkline ───────────────────────────────────────────────────────────
   function buildSparkline(pts, label) {
     if (pts.length < 2) return ''
     const rawMin = Math.min(...pts), rawMax = Math.max(...pts)
@@ -189,6 +255,7 @@
       </div>`
   }
 
+  // ── Counter animations ──────────────────────────────────────────────────
   function animateCounters() {
     document.querySelectorAll('#player-container .stat-value[data-target]').forEach(el => {
       const target = parseFloat(el.dataset.target)
@@ -206,11 +273,12 @@
     })
   }
 
+  // ── Show player ─────────────────────────────────────────────────────────
   function showPlayer(memberId) {
-    const container = document.getElementById('player-container')
-    const memberMap = Object.fromEntries(allMembers.map(m => [m.id, m.full_name]))
-    const member = allMembers.find(m => m.id === memberId)
-    const stats = computeMemberStats(memberId, allMatches)
+    const container  = document.getElementById('player-container')
+    const memberMap  = Object.fromEntries(allMembers.map(m => [m.id, m.full_name]))
+    const stats      = computeMemberStats(memberId, allMatches)
+    const avgLabel   = _activeSeason === 'all' ? 'Overall Avg' : 'Season Avg'
 
     const playerMatches = allMatches.filter(m =>
       m.team1_player1 === memberId || m.team1_player2 === memberId ||
@@ -240,14 +308,15 @@
           </div>
           <div class="stat-box stat-box-highlight">
             <div class="stat-value" data-target="${stats.seasonAvg}" data-decimal="true">0.00</div>
-            <div class="stat-label">Season Avg</div>
+            <div class="stat-label">${avgLabel}</div>
           </div>
         </div>
         ${streakBadge ? `<div class="streak-row">Current streak: ${streakBadge}</div>` : ''}
         ${(() => {
           const chronological = [...stats.matchScores].reverse()
           const avgPts = chronological.map((_, i) => seasonAverage(chronological.slice(0, i + 1)))
-          return buildSparkline(avgPts, 'Season Average') + buildSparkline(chronological, 'Match Scores')
+          const chartLabel = _activeSeason === 'all' ? 'Career Average' : 'Season Average'
+          return buildSparkline(avgPts, chartLabel) + buildSparkline(chronological, 'Match Scores')
         })()}
       </div>
     `
@@ -260,11 +329,14 @@
       return
     }
 
-    // Group by week
+    // Group by week — include season prefix when viewing Entire History
     const weeks = {}
     for (const m of playerMatches) {
-      if (!weeks[m.week_label]) weeks[m.week_label] = []
-      weeks[m.week_label].push(m)
+      const key = _activeSeason === 'all'
+        ? `${m.season} — ${m.week_label}`
+        : m.week_label
+      if (!weeks[key]) weeks[key] = []
+      weeks[key].push(m)
     }
 
     html += '<div class="card"><div class="card-title">Match History</div>'
@@ -275,7 +347,7 @@
       for (const m of weekMatches) {
         const onTeam1 = m.team1_player1 === memberId || m.team1_player2 === memberId
 
-        const myPartnerId   = onTeam1
+        const myPartnerId = onTeam1
           ? (m.team1_player1 === memberId ? m.team1_player2 : m.team1_player1)
           : (m.team2_player1 === memberId ? m.team2_player2 : m.team2_player1)
         const opp1Id = onTeam1 ? m.team2_player1 : m.team1_player1
@@ -292,7 +364,6 @@
           ? matchScore(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
           : matchScore(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
 
-        // Set scores from player's team perspective
         const [ms1, ms2, ms3, os1, os2, os3] = onTeam1
           ? [m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3]
           : [m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3]

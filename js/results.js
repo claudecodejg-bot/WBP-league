@@ -9,9 +9,15 @@ export async function loadResults(season = '2025-26') {
   const container = document.getElementById('results-container')
   container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading results…</div>'
 
+  let matchQuery = supabase.from('matches').select('*')
+  if (season !== 'all') {
+    matchQuery = matchQuery.eq('season', season)
+  }
+  matchQuery = matchQuery.order('played_on', { ascending: false })
+
   const [membersRes, matchesRes] = await Promise.all([
     supabase.from('members').select('id, full_name'),
-    supabase.from('matches').select('*').eq('season', season).order('played_on', { ascending: false })
+    matchQuery
   ])
 
   if (membersRes.error || matchesRes.error) {
@@ -27,11 +33,12 @@ export async function loadResults(season = '2025-26') {
     return
   }
 
-  // Group by week_label
+  // Group by key — include season prefix when viewing Entire History
   const weeks = {}
   for (const m of matches) {
-    if (!weeks[m.week_label]) weeks[m.week_label] = []
-    weeks[m.week_label].push(m)
+    const key = season === 'all' ? `${m.season} — ${m.week_label}` : m.week_label
+    if (!weeks[key]) weeks[key] = []
+    weeks[key].push(m)
   }
 
   let html = ''

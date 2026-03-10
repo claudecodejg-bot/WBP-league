@@ -243,10 +243,12 @@
     const { data } = await supabase.from('matches').select('season')
     if (!data) return
     const seasons = [...new Set(data.map(m => m.season))].sort().reverse()
-    seasonSelect.innerHTML = seasons.map(s =>
-      `<option value="${s}"${s === _activeSeason ? ' selected' : ''}>${s}${s === CURRENT_SEASON ? ' (Current)' : ''}</option>`
-    ).join('')
-    if (!seasons.includes(_activeSeason)) {
+    const options = [seasons[0], 'all', ...seasons.slice(1)]
+    seasonSelect.innerHTML = options.map(s => {
+      if (s === 'all') return `<option value="all"${_activeSeason === 'all' ? ' selected' : ''}>Entire History</option>`
+      return `<option value="${s}"${s === _activeSeason ? ' selected' : ''}>${s}${s === CURRENT_SEASON ? ' (Current)' : ''}</option>`
+    }).join('')
+    if (!seasons.includes(_activeSeason) && _activeSeason !== 'all') {
       _activeSeason = seasons[0] || CURRENT_SEASON
       seasonSelect.value = _activeSeason
     }
@@ -261,10 +263,9 @@
 
   // ── Load season data + rebuild player dropdown ─────────────────────────
   async function loadSeasonData() {
-    const matchesRes = await supabase
-      .from('matches').select('*')
-      .eq('season', _activeSeason)
-      .order('played_on', { ascending: false })
+    let matchQuery = supabase.from('matches').select('*')
+    if (_activeSeason !== 'all') matchQuery = matchQuery.eq('season', _activeSeason)
+    const matchesRes = await matchQuery.order('played_on', { ascending: false })
 
     if (matchesRes.error) {
       document.getElementById('matchups-container').innerHTML =

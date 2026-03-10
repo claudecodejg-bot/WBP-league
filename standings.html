@@ -88,15 +88,17 @@
   let _memberStats = []
   let _guestStats = []
 
-  const COLS = [
-    { key: null,            label: '#'           },
-    { key: 'name',          label: 'Player'      },
-    { key: 'matchesPlayed', label: 'Played'      },
-    { key: 'wins',          label: 'Won'         },
-    { key: 'losses',        label: 'Lost'        },
-    { key: 'seasonAvg',     label: 'Season Avg'  },
-    { key: 'lastPlayed',    label: 'Last Played' },
-  ]
+  function getCols() {
+    return [
+      { key: null,            label: '#'           },
+      { key: 'name',          label: 'Player'      },
+      { key: 'matchesPlayed', label: 'Played'      },
+      { key: 'wins',          label: 'Won'         },
+      { key: 'losses',        label: 'Lost'        },
+      { key: 'seasonAvg',     label: _activeSeason === 'all' ? 'Overall Avg' : 'Season Avg' },
+      { key: 'lastPlayed',    label: 'Last Played' },
+    ]
+  }
 
   function calcStreak(memberId, matches) {
     const played = matches
@@ -146,7 +148,7 @@
   function buildTable(stats, { podium = false } = {}) {
     const isDefault = _sortCol === 'seasonAvg' && _sortDir === 'desc'
 
-    const headerCells = COLS.map(col => {
+    const headerCells = getCols().map(col => {
       if (!col.key) return '<th>#</th>'
       const active = col.key === _sortCol
       const arrow = active ? (_sortDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅'
@@ -224,11 +226,14 @@
     const { data } = await supabase.from('matches').select('season')
     if (!data) return
     const seasons = [...new Set(data.map(m => m.season))].sort().reverse()
-    seasonSelect.innerHTML = seasons.map(s =>
-      `<option value="${s}"${s === _activeSeason ? ' selected' : ''}>${s}${s === CURRENT_SEASON ? ' (Current)' : ''}</option>`
-    ).join('')
+    // Current season first, then Entire History, then older seasons
+    const options = [seasons[0], 'all', ...seasons.slice(1)]
+    seasonSelect.innerHTML = options.map(s => {
+      if (s === 'all') return `<option value="all"${_activeSeason === 'all' ? ' selected' : ''}>Entire History</option>`
+      return `<option value="${s}"${s === _activeSeason ? ' selected' : ''}>${s}${s === CURRENT_SEASON ? ' (Current)' : ''}</option>`
+    }).join('')
     // If saved season no longer exists, fall back to current
-    if (!seasons.includes(_activeSeason)) {
+    if (!seasons.includes(_activeSeason) && _activeSeason !== 'all') {
       _activeSeason = seasons[0] || CURRENT_SEASON
       seasonSelect.value = _activeSeason
     }
@@ -243,10 +248,13 @@
   async function loadStandings() {
     container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading standings…</div>'
 
+    let matchQuery = supabase.from('matches').select('*')
+    if (_activeSeason !== 'all') matchQuery = matchQuery.eq('season', _activeSeason)
+
     const [membersRes, guestsRes, matchesRes] = await Promise.all([
       supabase.from('members').select('id, full_name').eq('is_guest', false).order('full_name'),
       supabase.from('members').select('id, full_name').eq('is_guest', true).order('full_name'),
-      supabase.from('matches').select('*').eq('season', _activeSeason)
+      matchQuery
     ])
 
     if (membersRes.error || guestsRes.error || matchesRes.error) {
@@ -255,7 +263,7 @@
     }
 
     const matches = matchesRes.data
-    const seasonLabel = _activeSeason === CURRENT_SEASON ? 'this season' : `the ${_activeSeason} season`
+    const seasonLabel = _activeSeason === 'all' ? 'across all seasons' : (_activeSeason === CURRENT_SEASON ? 'this season' : `the ${_activeSeason} season`)
 
     document.getElementById('standings-subtitle').textContent =
       `${matches.length} match${matches.length !== 1 ? 'es' : ''} played ${seasonLabel}.`
