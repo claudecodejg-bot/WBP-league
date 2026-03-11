@@ -67,7 +67,7 @@
 <script type="module">
   import { initNav } from './js/auth.js'
   import { supabase } from './js/supabase-client.js'
-  import { computeMemberStats, isWinner, matchScore, seasonAverage, fmt } from './js/scoring.js'
+  import { computeMemberStats, computeCurrentSeasonStats, isWinner, matchScore, seasonAverage, fmt } from './js/scoring.js'
 
   document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('player')
@@ -78,6 +78,7 @@
 
   let allMembers       = []
   let allMatches       = []
+  let allMatchesData   = []   // full unfiltered match list (all seasons)
   let allMemberSeasons = []   // [{ member_id, season }] — from member_seasons table
 
   // ── Season dropdown ─────────────────────────────────────────────────────
@@ -105,11 +106,7 @@
 
   // ── Load season-filtered matches + rebuild player dropdown ───────────────
   async function loadSeasonData() {
-    let matchQuery = supabase.from('matches').select('*')
-    if (_activeSeason !== 'all') {
-      matchQuery = matchQuery.eq('season', _activeSeason)
-    }
-    const matchesRes = await matchQuery.order('played_on', { ascending: false })
+    const matchesRes = await supabase.from('matches').select('*').order('played_on', { ascending: false })
 
     if (matchesRes.error) {
       document.getElementById('player-container').innerHTML =
@@ -117,7 +114,10 @@
       return
     }
 
-    allMatches = matchesRes.data
+    allMatchesData = matchesRes.data
+    allMatches = _activeSeason === 'all'
+      ? allMatchesData
+      : allMatchesData.filter(m => m.season === _activeSeason)
 
     // Determine which season to use as the membership reference:
     //   - specific season → that season's member_seasons rows
@@ -288,7 +288,10 @@
   function showPlayer(memberId) {
     const container  = document.getElementById('player-container')
     const memberMap  = Object.fromEntries(allMembers.map(m => [m.id, m.full_name]))
-    const stats      = computeMemberStats(memberId, allMatches)
+    const priorMatches = allMatchesData.filter(m => m.season !== CURRENT_SEASON)
+    const stats = _activeSeason === CURRENT_SEASON
+      ? computeCurrentSeasonStats(memberId, allMatches, priorMatches)
+      : computeMemberStats(memberId, allMatches)
     const avgLabel   = _activeSeason === 'all' ? 'Overall Avg' : 'Season Avg'
 
     const playerMatches = allMatches.filter(m =>

@@ -71,6 +71,64 @@ export function fmt(value) {
 }
 
 /**
+ * Internal helper: returns scored match entries for a member sorted by
+ * played_on date ascending. Each entry: { score, won, played_on }.
+ */
+function getPlayerMatchEntries(memberId, matches) {
+  const entries = []
+  for (const m of matches) {
+    const onTeam1 = m.team1_player1 === memberId || m.team1_player2 === memberId
+    const onTeam2 = m.team2_player1 === memberId || m.team2_player2 === memberId
+    if (!onTeam1 && !onTeam2) continue
+    let score, won
+    if (onTeam1) {
+      score = matchScore(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
+      won   = isWinner(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
+    } else {
+      score = matchScore(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
+      won   = isWinner(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
+    }
+    if (score == null) continue
+    entries.push({ score, won, played_on: m.played_on })
+  }
+  return entries.sort((a, b) => (a.played_on < b.played_on ? -1 : 1))
+}
+
+/**
+ * Computes current-season stats using a rolling-4 average.
+ *
+ * If a player has fewer than 4 matches in currentSeasonMatches, their season
+ * average is padded with the most recent scores from priorMatches to reach 4
+ * total (matching the spreadsheet's early-season convention).
+ *
+ * matchesPlayed / wins / losses always reflect the current season only.
+ */
+export function computeCurrentSeasonStats(memberId, currentSeasonMatches, priorMatches) {
+  const cur       = getPlayerMatchEntries(memberId, currentSeasonMatches)
+  const wins      = cur.filter(e => e.won).length
+  const losses    = cur.filter(e => !e.won).length
+  const curScores = cur.map(e => e.score)
+
+  let avgScores = curScores
+  if (curScores.length < 4) {
+    const needed = 4 - curScores.length
+    const prior  = getPlayerMatchEntries(memberId, priorMatches)
+    const pad    = prior.slice(-needed).map(e => e.score)
+    avgScores    = [...pad, ...curScores]
+  }
+
+  return {
+    memberId,
+    matchesPlayed: curScores.length,
+    wins,
+    losses,
+    matchScores:   curScores,
+    seasonAvg:     seasonAverage(avgScores),
+    usingRolling4: curScores.length < 4
+  }
+}
+
+/**
  * Given all matches and a member id, computes that member's stats.
  */
 export function computeMemberStats(memberId, matches) {

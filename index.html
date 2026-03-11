@@ -190,7 +190,7 @@
 <script type="module">
   import { initNav } from './js/auth.js'
   import { supabase } from './js/supabase-client.js'
-  import { computeMemberStats } from './js/scoring.js'
+  import { computeCurrentSeasonStats } from './js/scoring.js'
 
   document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('home')
@@ -202,17 +202,19 @@
     ])
     if (membersRes.error || matchesRes.error) return
 
-    const members = membersRes.data
-    const matches = matchesRes.data
+    const members       = membersRes.data
+    const allMatchesData = matchesRes.data
+    const currentMatches = allMatchesData.filter(m => m.season === '2025-26')
+    const priorMatches   = allMatchesData.filter(m => m.season !== '2025-26')
 
-    // Animate match count
-    animateHome(document.getElementById('stat-matches'), matches.length, false)
+    // Animate match count (current season only)
+    animateHome(document.getElementById('stat-matches'), currentMatches.length, false)
     animateHome(document.getElementById('stat-players'), members.length, false)
 
-    // Find season leader (most matches played as tie-break)
+    // Find season leader using rolling-4 average (most matches played as tie-break)
     let leader = null, bestAvg = -Infinity, bestPlayed = 0
     for (const m of members) {
-      const s = computeMemberStats(m.id, matches)
+      const s = computeCurrentSeasonStats(m.id, currentMatches, priorMatches)
       if (s.matchesPlayed > 0 && (s.seasonAvg > bestAvg || (s.seasonAvg === bestAvg && s.matchesPlayed > bestPlayed))) {
         bestAvg = s.seasonAvg
         bestPlayed = s.matchesPlayed

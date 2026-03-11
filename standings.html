@@ -71,7 +71,7 @@
 <script type="module">
   import { initNav } from './js/auth.js'
   import { supabase } from './js/supabase-client.js'
-  import { computeMemberStats, isWinner, fmt } from './js/scoring.js'
+  import { computeMemberStats, computeCurrentSeasonStats, isWinner, fmt } from './js/scoring.js'
 
   document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('standings')
@@ -279,13 +279,10 @@
     _sortCol = _activeSeason === 'all' ? 'name'      : 'seasonAvg'
     _sortDir = _activeSeason === 'all' ? 'asc'       : 'desc'
 
-    let matchQuery = supabase.from('matches').select('*')
-    if (_activeSeason !== 'all') matchQuery = matchQuery.eq('season', _activeSeason)
-
     const [membersRes, guestsRes, matchesRes, seasonsRes] = await Promise.all([
       supabase.from('members').select('id, full_name').eq('is_guest', false).order('full_name'),
       supabase.from('members').select('id, full_name').eq('is_guest', true).order('full_name'),
-      matchQuery,
+      supabase.from('matches').select('*'),
       supabase.from('member_seasons').select('member_id, season')
     ])
 
@@ -294,7 +291,11 @@
       return
     }
 
-    const matches = matchesRes.data
+    const allMatchesData = matchesRes.data
+    const matches = _activeSeason === 'all'
+      ? allMatchesData
+      : allMatchesData.filter(m => m.season === _activeSeason)
+    const priorMatches = allMatchesData.filter(m => m.season !== CURRENT_SEASON)
     const memberSeasons = seasonsRes.data || []
 
     // Determine which season to use as membership reference
@@ -323,7 +324,9 @@
     }
 
     const allNonGuestStats = membersRes.data.map(m => {
-      const stats = computeMemberStats(m.id, matches)
+      const stats = _activeSeason === CURRENT_SEASON
+        ? computeCurrentSeasonStats(m.id, matches, priorMatches)
+        : computeMemberStats(m.id, matches)
       return {
         id: m.id,
         ...stats,
@@ -339,7 +342,9 @@
     _formerMemberStats = defaultSort(allNonGuestStats.filter(s => !activeMemberIds.has(s.id) && everMemberIds.has(s.id)))
 
     _guestStats = defaultSort(guestsRes.data.filter(m => m.full_name !== 'Forfeit').map(m => {
-      const stats = computeMemberStats(m.id, matches)
+      const stats = _activeSeason === CURRENT_SEASON
+        ? computeCurrentSeasonStats(m.id, matches, priorMatches)
+        : computeMemberStats(m.id, matches)
       return {
         id: m.id,
         ...stats,
