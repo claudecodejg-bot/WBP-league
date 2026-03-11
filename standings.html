@@ -90,16 +90,22 @@
   let _guestStats        = []
 
   function getCols() {
-    return [
+    const cols = [
       { key: null,            label: '#'           },
       { key: 'name',          label: 'Player'      },
+    ]
+    if (_activeSeason === 'all') {
+      cols.push({ key: 'activeSeasons', label: 'Years' })
+    }
+    cols.push(
       { key: 'matchesPlayed', label: 'Played'      },
       { key: 'wins',          label: 'Won'         },
       { key: 'losses',        label: 'Lost'        },
       { key: 'winPct',        label: 'Win%'        },
       { key: 'seasonAvg',     label: _activeSeason === 'all' ? 'Overall Avg' : 'Season Avg' },
       { key: 'lastPlayed',    label: 'Last Played' },
-    ]
+    )
+    return cols
   }
 
   function calcStreak(memberId, matches) {
@@ -179,10 +185,14 @@
         : ''
 
       const winPctDisplay = s.matchesPlayed > 0 ? Math.round(s.wins / s.matchesPlayed * 100) + '%' : '—'
+      const yearsCell = _activeSeason === 'all'
+        ? `<td style="text-align:center">${s.activeSeasons > 0 ? s.activeSeasons : '—'}</td>`
+        : ''
       html += `
         <tr class="${rowClass}">
           <td class="rank">${rankDisplay}</td>
           <td class="player-name"><a href="player.html?id=${s.id}" class="player-link">${s.name}</a> ${streakBadge}</td>
+          ${yearsCell}
           <td>${s.matchesPlayed}</td>
           <td>${s.wins}</td>
           <td>${s.losses}</td>
@@ -256,6 +266,10 @@
   async function loadStandings() {
     container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading standings…</div>'
 
+    // Reset default sort based on view
+    _sortCol = _activeSeason === 'all' ? 'name'      : 'seasonAvg'
+    _sortDir = _activeSeason === 'all' ? 'asc'       : 'desc'
+
     let matchQuery = supabase.from('matches').select('*')
     if (_activeSeason !== 'all') matchQuery = matchQuery.eq('season', _activeSeason)
 
@@ -280,6 +294,12 @@
       memberSeasons.filter(ms => ms.season === refSeason).map(ms => ms.member_id)
     )
     const everMemberIds = new Set(memberSeasons.map(ms => ms.member_id))
+
+    // Count active seasons per member (for the Years column in Entire History view)
+    const seasonCountById = {}
+    memberSeasons.forEach(ms => {
+      seasonCountById[ms.member_id] = (seasonCountById[ms.member_id] || 0) + 1
+    })
     const seasonLabel = _activeSeason === 'all' ? 'across all seasons' : (_activeSeason === CURRENT_SEASON ? 'this season' : `the ${_activeSeason} season`)
 
     document.getElementById('standings-subtitle').textContent =
@@ -301,7 +321,8 @@
         winPct: stats.matchesPlayed > 0 ? stats.wins / stats.matchesPlayed : null,
         name: m.full_name,
         lastPlayed: lastPlayedDate(m.id),
-        streak: calcStreak(m.id, matches)
+        streak: calcStreak(m.id, matches),
+        activeSeasons: seasonCountById[m.id] || 0
       }
     }).filter(s => s.matchesPlayed > 0)
 
