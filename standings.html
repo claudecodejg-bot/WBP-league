@@ -208,10 +208,19 @@
   function renderTables() {
 
     const isDefault = _sortCol === 'seasonAvg' && _sortDir === 'desc'
-    let html = '<h2 class="section-title">Members</h2>' + buildTable(sortData(_memberStats), { podium: isDefault })
-    if (_formerMemberStats.length > 0) {
-      html += '<h2 class="section-title" style="margin-top:2rem;">Former Members</h2>' + buildTable(sortData(_formerMemberStats))
+    let html = ''
+
+    if (_activeSeason === 'all') {
+      // Entire History: merge Members + Former Members into one table
+      const combined = sortData([..._memberStats, ..._formerMemberStats])
+      html += '<h2 class="section-title">Members</h2>' + buildTable(combined, { podium: isDefault })
+    } else {
+      html += '<h2 class="section-title">Members</h2>' + buildTable(sortData(_memberStats), { podium: isDefault })
+      if (_formerMemberStats.length > 0) {
+        html += '<h2 class="section-title" style="margin-top:2rem;">Former Members</h2>' + buildTable(sortData(_formerMemberStats))
+      }
     }
+
     if (_guestStats.length > 0) {
       html += '<h2 class="section-title" style="margin-top:2rem;">Guests</h2>' + buildTable(sortData(_guestStats))
     }
