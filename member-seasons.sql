@@ -335,3 +335,34 @@ INSERT INTO member_seasons (member_id, season) SELECT id, '2025-26' FROM members
 INSERT INTO member_seasons (member_id, season) SELECT id, '2025-26' FROM members WHERE LOWER(full_name) = LOWER('Walsh') LIMIT 1 ON CONFLICT DO NOTHING;
 
 -- 285 member-season records across 20 seasons.
+
+-- ── Pre-2006-07 adjustments (missing historical files) ────────────────────────
+-- 3 seasons of data unavailable prior to 2006-07.
+-- The following players are known to have been active members during those years.
+-- Grills, Smith, Johnson S., Richards, Cortellesi: +3 seasons (2003-04, 2004-05, 2005-06)
+-- Laird: +2 seasons (2004-05, 2005-06)
+
+-- === Season 2003-04 ===
+INSERT INTO member_seasons (member_id, season) SELECT id, '2003-04' FROM members WHERE LOWER(full_name) = LOWER('Grills')      LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2003-04' FROM members WHERE LOWER(full_name) = LOWER('Smith')       LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2003-04' FROM members WHERE LOWER(full_name) = LOWER('Johnson, S.') LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2003-04' FROM members WHERE LOWER(full_name) = LOWER('Richards')    LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2003-04' FROM members WHERE LOWER(full_name) = LOWER('Cortellesi')  LIMIT 1 ON CONFLICT DO NOTHING;
+
+-- === Season 2004-05 ===
+INSERT INTO member_seasons (member_id, season) SELECT id, '2004-05' FROM members WHERE LOWER(full_name) = LOWER('Grills')      LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2004-05' FROM members WHERE LOWER(full_name) = LOWER('Smith')       LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2004-05' FROM members WHERE LOWER(full_name) = LOWER('Johnson, S.') LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2004-05' FROM members WHERE LOWER(full_name) = LOWER('Richards')    LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2004-05' FROM members WHERE LOWER(full_name) = LOWER('Cortellesi')  LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2004-05' FROM members WHERE LOWER(full_name) = LOWER('Laird')       LIMIT 1 ON CONFLICT DO NOTHING;
+
+-- === Season 2005-06 ===
+INSERT INTO member_seasons (member_id, season) SELECT id, '2005-06' FROM members WHERE LOWER(full_name) = LOWER('Grills')      LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2005-06' FROM members WHERE LOWER(full_name) = LOWER('Smith')       LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2005-06' FROM members WHERE LOWER(full_name) = LOWER('Johnson, S.') LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2005-06' FROM members WHERE LOWER(full_name) = LOWER('Richards')    LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2005-06' FROM members WHERE LOWER(full_name) = LOWER('Cortellesi')  LIMIT 1 ON CONFLICT DO NOTHING;
+INSERT INTO member_seasons (member_id, season) SELECT id, '2005-06' FROM members WHERE LOWER(full_name) = LOWER('Laird')       LIMIT 1 ON CONFLICT DO NOTHING;
+
+-- 308 member-season records across 23 seasons (incl. 3 pre-data seasons).
