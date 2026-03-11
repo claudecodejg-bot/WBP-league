@@ -19,7 +19,7 @@ SET played_on = CASE week_label
   WHEN 'Week 15' THEN '2026-02-02'::date
   WHEN 'Week 16' THEN '2026-02-09'::date
   WHEN 'Week 18' THEN '2026-02-23'::date
-  WHEN 'Week 19' THEN '2026-03-03'::date
-  WHEN 'Week 20' THEN '2026-03-10'::date
+  WHEN 'Week 19' THEN '2026-03-02'::date
+  WHEN 'Week 20' THEN '2026-03-09'::date
 END
 WHERE season = '2025-26';
