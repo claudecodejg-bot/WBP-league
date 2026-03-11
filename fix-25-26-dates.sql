@@ -1,5 +1,5 @@
 -- Fix 2025-26 season match dates — sets exact dates per week (idempotent)
--- Week 1 = Oct 27 2025, weekly from there. Week 17 was skipped (no matches).
+-- Week 1 = Oct 27 2025, weekly from there.
 UPDATE matches
 SET played_on = CASE week_label
   WHEN 'Week 1'  THEN '2025-10-27'::date
@@ -18,6 +18,7 @@ SET played_on = CASE week_label
   WHEN 'Week 14' THEN '2026-01-26'::date
   WHEN 'Week 15' THEN '2026-02-02'::date
   WHEN 'Week 16' THEN '2026-02-09'::date
+  WHEN 'Week 17' THEN '2026-02-16'::date
   WHEN 'Week 18' THEN '2026-02-23'::date
   WHEN 'Week 19' THEN '2026-03-02'::date
   WHEN 'Week 20' THEN '2026-03-09'::date
