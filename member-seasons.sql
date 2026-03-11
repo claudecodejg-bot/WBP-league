@@ -1,25 +1,11 @@
 -- =============================================
 -- member-seasons.sql
--- Run AFTER merge-players.sql.
--- Creates the member_seasons table and populates it from
--- the 'Current Rank - Full Year' scoring tab of each season,
--- counting only players who actually played (outings > 0).
+-- Run AFTER add-member-seasons-table.sql and merge-players.sql.
+-- Populates member_seasons from the 'Current Rank - Full Year'
+-- scoring tab of each season (outings > 0 = active member).
+-- Safe to re-run: TRUNCATE clears previous data first.
 -- =============================================
 
--- 1. Create table
-CREATE TABLE IF NOT EXISTS member_seasons (
-  id        UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-  season    TEXT NOT NULL,
-  UNIQUE(member_id, season)
-);
-
-ALTER TABLE member_seasons ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Anyone can read member_seasons"
-  ON member_seasons FOR SELECT USING (true);
-
--- 2. Clear any previous data
 TRUNCATE member_seasons;
 
 -- === Season 06-07 (12 active members) ===
