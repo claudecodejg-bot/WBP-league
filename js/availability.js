@@ -190,10 +190,52 @@ export async function loadAvailability(memberId, isAdmin) {
 }
 
 /**
+ * Tally view: shown to all members — aggregate counts per week.
+ */
+export async function loadAvailabilityTally(container) {
+  const weeks = upcomingWeeks(2)
+  const weekKeys = weeks.map(toISO)
+
+  const [countRes, availRes] = await Promise.all([
+    supabase.from('member_seasons').select('id', { count: 'exact', head: true }).eq('season', '2025-26'),
+    supabase.from('availability').select('week_start, is_available').in('week_start', weekKeys)
+  ])
+
+  if (countRes.error || availRes.error) {
+    container.innerHTML = '<div class="alert alert-error">Failed to load tally.</div>'
+    return
+  }
+
+  const totalMembers = countRes.count || 0
+  const avail = availRes.data || []
+
+  let html = '<h2 class="tally-title">League Availability</h2>'
+  for (const monday of weeks) {
+    const key = toISO(monday)
+    const weekAvail = avail.filter(a => a.week_start === key)
+    const yesCount = weekAvail.filter(a => a.is_available).length
+    const noCount  = weekAvail.filter(a => !a.is_available).length
+    const pending  = Math.max(0, totalMembers - yesCount - noCount)
+
+    html += `
+      <div class="tally-week card">
+        <div class="tally-week-label">${weekLabel(monday)}</div>
+        <div class="tally-counts">
+          <span class="tally-yes">✓ ${yesCount} available</span>
+          <span class="tally-no">✗ ${noCount} not available</span>
+          <span class="tally-pending">? ${pending} no response</span>
+        </div>
+      </div>
+    `
+  }
+  container.innerHTML = html
+}
+
+/**
  * Admin view: loads all members' availability for upcoming weeks.
  */
-export async function loadAdminAvailability(container) {
-  const weeks = upcomingWeeks(2)
+export async function loadAdminAvailability(container, weekCount = 2) {
+  const weeks = upcomingWeeks(weekCount)
   const weekKeys = weeks.map(toISO)
 
   const [membersRes, availRes] = await Promise.all([
@@ -240,5 +282,5 @@ export async function loadAdminAvailability(container) {
   }
 
   html += '</tbody></table>'
-  container.innerHTML = html
+  container.innerHTML += html
 }
