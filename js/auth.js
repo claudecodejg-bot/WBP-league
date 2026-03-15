@@ -17,7 +17,7 @@ export async function getSession() {
 export async function requireLogin() {
   const session = await getSession()
   if (!session) {
-    window.location.href = '/login.html'
+    window.location.href = 'login.html'
     return null
   }
   return session
@@ -39,7 +39,7 @@ export async function requireAdmin() {
     .single()
 
   if (error || !member?.is_admin) {
-    window.location.href = '/standings.html'
+    window.location.href = 'standings.html'
     return null
   }
   return member
@@ -88,6 +88,6 @@ export async function initNav(activePage) {
     authBtn.addEventListener('click', signOut)
   } else {
     authBtn.textContent = 'Sign In'
-    authBtn.addEventListener('click', () => { window.location.href = '/login.html' })
+    authBtn.addEventListener('click', () => { window.location.href = 'login.html' })
   }
 }

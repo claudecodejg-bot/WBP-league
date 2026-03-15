@@ -43,13 +43,45 @@
 
 <main>
   <h1 class="page-title">Availability</h1>
-  <p class="page-subtitle">Under Construction</p>
+  <p class="page-subtitle" id="avail-subtitle">Loading…</p>
+
+  <div style="max-width:560px;margin:0 auto;">
+    <div id="availability-container">
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Loading…</p>
+      </div>
+    </div>
+  </div>
 </main>
 
 <footer>WBP League &copy; <span id="footer-year"></span></footer>
 
 <script>
   document.getElementById('footer-year').textContent = new Date().getFullYear()
+</script>
+
+<script type="module">
+  import { requireLogin, getCurrentMember, initNav } from './js/auth.js'
+  import { loadAvailability } from './js/availability.js'
+
+  initNav('availability')
+
+  const session = await requireLogin()
+  if (!session) return // redirect handled inside requireLogin
+
+  const member = await getCurrentMember()
+  if (!member) {
+    document.getElementById('availability-container').innerHTML =
+      '<div class="alert alert-error">Could not load your member profile. Please try signing out and back in.</div>'
+    return
+  }
+
+  const firstName = member.full_name.split(',')[0].trim()
+  document.getElementById('avail-subtitle').textContent =
+    `Hi, ${firstName}! Mark your availability for upcoming match weeks.`
+
+  await loadAvailability(member.id)
 </script>
 </body>
 </html>

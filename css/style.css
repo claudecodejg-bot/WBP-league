@@ -572,6 +572,26 @@ main {
 .save-btn:hover { background: var(--green-dark); }
 .save-btn:disabled { background: var(--gray-400); cursor: not-allowed; }
 
+.avail-actions {
+  margin-bottom: 1.25rem;
+}
+
+.btn-mark-all {
+  padding: 0.55rem 1.5rem;
+  border-radius: var(--radius);
+  border: 2px solid #2b7a3d;
+  background: var(--white);
+  color: #2b7a3d;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-mark-all:hover {
+  background: #2b7a3d;
+  color: var(--white);
+}
+
 /* Admin availability grid */
 .avail-grid {
   width: 100%;

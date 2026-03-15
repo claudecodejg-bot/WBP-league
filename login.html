@@ -56,7 +56,7 @@
 
   // If already logged in, redirect
   getSession().then(session => {
-    if (session) window.location.href = '/availability.html'
+    if (session) window.location.href = 'availability.html'
   })
 
   const form    = document.getElementById('login-form')
@@ -86,7 +86,7 @@
       return
     }
 
-    window.location.href = '/availability.html'
+    window.location.href = 'availability.html'
   })
 </script>
 </body>

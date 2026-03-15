@@ -35,18 +35,14 @@ function weekLabel(monday) {
 }
 
 /**
- * Builds the next N upcoming Mondays (starting from this coming Monday or next).
+ * Builds the next N upcoming Mondays, always starting from next week's Monday.
+ * This ensures availability is always shown for future weeks, not the current week.
  */
 function upcomingWeeks(count = 2) {
   const today = new Date()
   const thisMonday = getMonday(today)
-  // If today is Monday, start from next week too so there's always a future week
   const startMonday = new Date(thisMonday)
-  if (today.getDay() !== 0 && today.getDay() !== 6) {
-    // Weekday — current week is valid
-  } else {
-    startMonday.setDate(startMonday.getDate() + 7)
-  }
+  startMonday.setDate(startMonday.getDate() + 7) // always next week
 
   const weeks = []
   for (let i = 0; i < count; i++) {
@@ -78,7 +74,11 @@ export async function loadAvailability(memberId, isAdmin) {
     (existing || []).map(r => [r.week_start, r])
   )
 
-  let html = ''
+  let html = `
+    <div class="avail-actions">
+      <button class="btn-mark-all" id="mark-all-btn">✓ Mark All Available</button>
+    </div>
+  `
   for (const monday of weeks) {
     const key = toISO(monday)
     const current = existingMap[key]
@@ -131,6 +131,11 @@ export async function loadAvailability(memberId, isAdmin) {
     if (btn.dataset.val === 'yes' && btn.classList.contains('selected-yes')) {
       document.getElementById(`note-${btn.dataset.week}`)?.classList.remove('hidden')
     }
+  })
+
+  // Mark All Available button
+  document.getElementById('mark-all-btn').addEventListener('click', () => {
+    container.querySelectorAll('.avail-btn[data-val="yes"]').forEach(btn => btn.click())
   })
 
   // Save button
