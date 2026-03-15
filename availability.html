@@ -65,23 +65,25 @@
   import { requireLogin, getCurrentMember, initNav } from './js/auth.js'
   import { loadAvailability } from './js/availability.js'
 
-  initNav('availability')
+  ;(async () => {
+    initNav('availability')
 
-  const session = await requireLogin()
-  if (!session) return // redirect handled inside requireLogin
+    const session = await requireLogin()
+    if (!session) return // redirect handled inside requireLogin
 
-  const member = await getCurrentMember()
-  if (!member) {
-    document.getElementById('availability-container').innerHTML =
-      '<div class="alert alert-error">Could not load your member profile. Please try signing out and back in.</div>'
-    return
-  }
+    const member = await getCurrentMember()
+    if (!member) {
+      document.getElementById('availability-container').innerHTML =
+        '<div class="alert alert-error">Could not load your member profile. Please try signing out and back in.</div>'
+      return
+    }
 
-  const firstName = member.full_name.split(',')[0].trim()
-  document.getElementById('avail-subtitle').textContent =
-    `Hi, ${firstName}! Mark your availability for upcoming match weeks.`
+    const firstName = member.full_name.split(',')[0].trim()
+    document.getElementById('avail-subtitle').textContent =
+      `Hi, ${firstName}! Mark your availability for upcoming match weeks.`
 
-  await loadAvailability(member.id)
+    await loadAvailability(member.id)
+  })()
 </script>
 </body>
 </html>
