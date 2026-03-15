@@ -65,7 +65,7 @@ export async function getCurrentMember() {
 /** Signs the user out and redirects to login.html. */
 export async function signOut() {
   await supabase.auth.signOut()
-  window.location.href = '/login.html'
+  window.location.href = 'login.html'
 }
 
 /**
