@@ -190,40 +190,60 @@ export async function loadAvailability(memberId, isAdmin) {
 }
 
 /**
- * Tally view: shown to all members — aggregate counts per week.
+ * Returns current season members: those in member_seasons for 2025-26
+ * plus any members explicitly included (e.g. Rockman with 0 outings).
+ */
+async function getCurrentSeasonMembers() {
+  const [seasonRes, extraRes] = await Promise.all([
+    supabase.from('member_seasons').select('member_id').eq('season', '2025-26'),
+    supabase.from('members').select('id').eq('full_name', 'Rockman')
+  ])
+  const ids = [
+    ...(seasonRes.data || []).map(r => r.member_id),
+    ...(extraRes.data || []).map(r => r.id)
+  ]
+  const { data } = await supabase
+    .from('members').select('id, full_name').in('id', ids).order('full_name')
+  return data || []
+}
+
+/**
+ * Tally view: shown to all members — aggregate counts + names per week.
  */
 export async function loadAvailabilityTally(container) {
   const weeks = upcomingWeeks(2)
   const weekKeys = weeks.map(toISO)
 
-  const [countRes, availRes] = await Promise.all([
-    supabase.from('member_seasons').select('id', { count: 'exact', head: true }).eq('season', '2025-26'),
-    supabase.from('availability').select('week_start, is_available').in('week_start', weekKeys)
-  ])
+  const members = await getCurrentSeasonMembers()
+  const memberMap = Object.fromEntries(members.map(m => [m.id, m.full_name]))
 
-  if (countRes.error || availRes.error) {
+  const { data: avail, error } = await supabase
+    .from('availability')
+    .select('member_id, week_start, is_available')
+    .in('week_start', weekKeys)
+    .in('member_id', members.map(m => m.id))
+
+  if (error) {
     container.innerHTML = '<div class="alert alert-error">Failed to load tally.</div>'
     return
   }
 
-  const totalMembers = countRes.count || 0
-  const avail = availRes.data || []
-
   let html = '<h2 class="tally-title">League Availability</h2>'
   for (const monday of weeks) {
     const key = toISO(monday)
-    const weekAvail = avail.filter(a => a.week_start === key)
-    const yesCount = weekAvail.filter(a => a.is_available).length
-    const noCount  = weekAvail.filter(a => !a.is_available).length
-    const pending  = Math.max(0, totalMembers - yesCount - noCount)
+    const weekAvail = (avail || []).filter(a => a.week_start === key)
+    const yesNames = weekAvail.filter(a => a.is_available).map(a => memberMap[a.member_id]).filter(Boolean)
+    const noNames  = weekAvail.filter(a => !a.is_available).map(a => memberMap[a.member_id]).filter(Boolean)
+    const respondedIds = new Set(weekAvail.map(a => a.member_id))
+    const pending = members.filter(m => !respondedIds.has(m.id)).length
 
     html += `
       <div class="tally-week card">
         <div class="tally-week-label">${weekLabel(monday)}</div>
-        <div class="tally-counts">
-          <span class="tally-yes">✓ ${yesCount} available</span>
-          <span class="tally-no">✗ ${noCount} not available</span>
-          <span class="tally-pending">? ${pending} no response</span>
+        <div class="tally-rows">
+          <div class="tally-yes">✓ ${yesNames.length} available${yesNames.length ? ': ' + yesNames.join(', ') : ''}</div>
+          ${noNames.length ? `<div class="tally-no">✗ ${noNames.length} not available: ${noNames.join(', ')}</div>` : ''}
+          <div class="tally-pending">? ${pending} no response</div>
         </div>
       </div>
     `
@@ -238,17 +258,16 @@ export async function loadAdminAvailability(container, weekCount = 2) {
   const weeks = upcomingWeeks(weekCount)
   const weekKeys = weeks.map(toISO)
 
-  const [membersRes, availRes] = await Promise.all([
-    supabase.from('members').select('id, full_name').order('full_name'),
+  const [members, availRes] = await Promise.all([
+    getCurrentSeasonMembers(),
     supabase.from('availability').select('member_id, week_start, is_available, note').in('week_start', weekKeys)
   ])
 
-  if (membersRes.error || availRes.error) {
-    container.innerHTML = '<div class="alert alert-error">Failed to load availability data.</div>'
+  if (availRes.error) {
+    container.innerHTML += '<div class="alert alert-error">Failed to load availability data.</div>'
     return
   }
 
-  const members = membersRes.data
   const availMap = {}
   for (const a of availRes.data) {
     availMap[`${a.member_id}_${a.week_start}`] = a
