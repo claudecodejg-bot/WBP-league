@@ -22,11 +22,12 @@
     <div class="login-card">
       <div class="login-logo">
         <h1>🎾 WBP League</h1>
-        <p>Sign in to submit your availability</p>
+        <p id="login-subtitle">Sign in to submit your availability</p>
       </div>
 
-      <div id="login-alert" class="alert alert-error hidden"></div>
+      <div id="login-alert" class="alert hidden"></div>
 
+      <!-- Sign-in form -->
       <form id="login-form">
         <div class="form-group">
           <label for="email">Email address</label>
@@ -37,6 +38,26 @@
           <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
         </div>
         <button type="submit" class="btn btn-primary btn-full" id="login-btn">Sign In</button>
+      </form>
+
+      <p style="margin-top:0.75rem;text-align:center;">
+        <button id="forgot-btn" style="background:none;border:none;color:var(--accent);font-size:0.85rem;cursor:pointer;text-decoration:underline;padding:0;">
+          Forgot password?
+        </button>
+      </p>
+
+      <!-- Forgot-password form (hidden by default) -->
+      <form id="reset-form" class="hidden" style="margin-top:1rem;">
+        <div class="form-group">
+          <label for="reset-email">Your email address</label>
+          <input type="email" id="reset-email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="reset-btn">Send Reset Email</button>
+        <p style="margin-top:0.5rem;text-align:center;">
+          <button id="back-btn" type="button" style="background:none;border:none;color:var(--gray-600);font-size:0.85rem;cursor:pointer;text-decoration:underline;padding:0;">
+            Back to sign in
+          </button>
+        </p>
       </form>
 
       <p style="margin-top:1rem;font-size:0.82rem;color:var(--gray-600);text-align:center;">
@@ -59,34 +80,80 @@
     if (session) window.location.href = 'availability.html'
   })
 
-  const form    = document.getElementById('login-form')
-  const alertEl = document.getElementById('login-alert')
-  const btn     = document.getElementById('login-btn')
+  const alertEl   = document.getElementById('login-alert')
+  const loginForm = document.getElementById('login-form')
+  const resetForm = document.getElementById('reset-form')
 
-  function showError(msg) {
+  function showAlert(msg, type = 'error') {
     alertEl.textContent = msg
+    alertEl.className = `alert alert-${type}`
     alertEl.classList.remove('hidden')
   }
 
-  form.addEventListener('submit', async (e) => {
+  // Toggle forgot-password form
+  document.getElementById('forgot-btn').addEventListener('click', () => {
+    loginForm.classList.add('hidden')
+    resetForm.classList.remove('hidden')
+    alertEl.classList.add('hidden')
+    document.getElementById('login-subtitle').textContent = 'Reset your password'
+  })
+
+  document.getElementById('back-btn').addEventListener('click', () => {
+    resetForm.classList.add('hidden')
+    loginForm.classList.remove('hidden')
+    alertEl.classList.add('hidden')
+    document.getElementById('login-subtitle').textContent = 'Sign in to submit your availability'
+  })
+
+  // Sign-in
+  loginForm.addEventListener('submit', async (e) => {
     e.preventDefault()
     alertEl.classList.add('hidden')
+    const btn = document.getElementById('login-btn')
     btn.disabled = true
     btn.textContent = 'Signing in…'
 
     const email    = document.getElementById('email').value.trim()
     const password = document.getElementById('password').value
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      showError('Incorrect email or password. Please try again.')
+      showAlert('Incorrect email or password. Please try again.')
       btn.disabled = false
       btn.textContent = 'Sign In'
       return
     }
 
+    // If user needs to change their password, redirect to set-password page
+    if (data.user?.user_metadata?.needs_password_change) {
+      window.location.href = 'set-password.html'
+      return
+    }
+
     window.location.href = 'availability.html'
+  })
+
+  // Forgot password
+  resetForm.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const btn = document.getElementById('reset-btn')
+    btn.disabled = true
+    btn.textContent = 'Sending…'
+
+    const email = document.getElementById('reset-email').value.trim()
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname.replace('login.html', '') + 'set-password.html'
+    })
+
+    if (error) {
+      showAlert('Could not send reset email. Please try again.')
+    } else {
+      showAlert('Reset email sent! Check your inbox and click the link to set a new password.', 'success')
+    }
+    btn.disabled = false
+    btn.textContent = 'Send Reset Email'
   })
 </script>
 </body>
