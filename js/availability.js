@@ -38,7 +38,7 @@ function weekLabel(monday) {
  * Builds the next N upcoming Mondays, always starting from next week's Monday.
  * This ensures availability is always shown for future weeks, not the current week.
  */
-function upcomingWeeks(count = 2) {
+function upcomingWeeks(count = 4) {
   const today = new Date()
   const thisMonday = getMonday(today)
   const startMonday = new Date(thisMonday)
@@ -55,7 +55,7 @@ function upcomingWeeks(count = 2) {
 
 export async function loadAvailability(memberId, isAdmin) {
   const container = document.getElementById('availability-container')
-  const weeks = upcomingWeeks(2)
+  const weeks = upcomingWeeks(4)
   const weekKeys = weeks.map(toISO)
 
   // Load existing availability responses for this member
@@ -211,7 +211,7 @@ async function getCurrentSeasonMembers() {
  * Tally view: shown to all members — aggregate counts + names per week.
  */
 export async function loadAvailabilityTally(container) {
-  const weeks = upcomingWeeks(2)
+  const weeks = upcomingWeeks(4)
   const weekKeys = weeks.map(toISO)
 
   const members = await getCurrentSeasonMembers()
@@ -254,7 +254,7 @@ export async function loadAvailabilityTally(container) {
 /**
  * Admin view: loads all members' availability for upcoming weeks.
  */
-export async function loadAdminAvailability(container, weekCount = 2) {
+export async function loadAdminAvailability(container, weekCount = 4) {
   const weeks = upcomingWeeks(weekCount)
   const weekKeys = weeks.map(toISO)
 
