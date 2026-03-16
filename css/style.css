@@ -643,6 +643,131 @@ main {
 .tally-rows .tally-no      { color: #dc3545; font-weight: 600; }
 .tally-rows .tally-pending { color: var(--gray-500); }
 
+/* ----- Scheduler ----- */
+.scheduler-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.scheduler-week-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 180px;
+}
+.scheduler-label { font-weight: 600; font-size: 0.875rem; color: var(--gray-800); }
+.scheduler-select { margin: 0; }
+.scheduler-generate-btn { white-space: nowrap; padding: 0.6rem 1.5rem; }
+.scheduler-loading {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--gray-600);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+.scheduler-results-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  color: var(--gray-800);
+}
+
+/* Summary bar */
+.sched-summary {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.sched-stat {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  flex: 1;
+}
+.sched-stat-val  { font-size: 1.5rem; font-weight: 700; color: var(--gray-800); }
+.sched-stat-lbl  { font-size: 0.75rem; color: var(--gray-600); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.sched-stat-out  .sched-stat-val { color: #c0392b; }
+
+/* Sit-out card */
+.sitout-card {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.25rem;
+  border-left: 4px solid #e67e22;
+}
+.sitout-header {
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #e67e22;
+  margin-bottom: 0.75rem;
+}
+.sitout-players { display: flex; flex-direction: column; gap: 0.4rem; }
+.sitout-player  { display: flex; align-items: center; gap: 0.75rem; }
+.sitout-name    { font-weight: 600; }
+.sitout-outings { font-size: 0.8rem; color: var(--gray-600); }
+.tiebreak-note  {
+  margin-top: 0.75rem;
+  font-size: 0.82rem;
+  color: var(--gray-600);
+  font-style: italic;
+  border-top: 1px solid var(--gray-200);
+  padding-top: 0.6rem;
+}
+
+/* Pairing option cards */
+.pairing-option {
+  margin-bottom: 1rem;
+  padding: 1.1rem 1.25rem;
+  border-left: 4px solid var(--gray-200);
+}
+.pairing-top {
+  border-left-color: var(--accent);
+  background: linear-gradient(135deg, #fffaf8 0%, var(--white) 100%);
+}
+.pairing-option-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-600);
+  margin-bottom: 0.85rem;
+}
+.pairing-top .pairing-option-label { color: var(--accent); }
+.courts-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.court-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.court-num {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 52px;
+}
+.court-match {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.team-pair { font-weight: 600; color: var(--gray-800); }
+.court-vs  { font-size: 0.8rem; color: var(--gray-600); font-weight: 400; }
+
 /* ----- Login Page ----- */
 .login-wrapper {
   max-width: 420px;
@@ -1203,4 +1328,9 @@ footer {
 
   .standings-table { font-size: 0.82rem; }
   .standings-table td, .standings-table th { padding: 0.55rem 0.6rem; }
+
+  .sched-summary { flex-wrap: wrap; gap: 0.75rem; }
+  .court-row { flex-direction: column; gap: 0.25rem; }
+  .court-match { flex-direction: column; gap: 0.15rem; align-items: flex-start; }
+  .court-vs { margin: 0; font-size: 0.8rem; }
 }

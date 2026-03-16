@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Match Scheduler — WBP League</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-brand"><img src="wbp-logo.png" alt="WBP"><span>WBP</span> League</a>
+  <ul class="nav-links">
+    <li><a href="standings.html"    data-page="standings">Standings</a></li>
+    <li><a href="results.html"      data-page="results">Results</a></li>
+    <li><a href="player.html"       data-page="player">Players</a></li>
+    <li><a href="matchups.html"     data-page="matchups">Matchups</a></li>
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+    <li><a href="scheduler.html"    data-page="scheduler">Scheduler</a></li>
+  </ul>
+  <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
+  <button id="nav-auth-btn">Sign In</button>
+</nav>
+<script>
+  (function () {
+    var btn = document.getElementById('nav-hamburger')
+    btn.addEventListener('click', function () {
+      var open = btn.closest('nav').classList.toggle('nav-open')
+      btn.textContent = open ? '\u2715' : '\u2630'
+      btn.setAttribute('aria-expanded', open)
+    })
+    document.querySelectorAll('.nav-links a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        btn.closest('nav').classList.remove('nav-open')
+        btn.textContent = '\u2630'
+        btn.setAttribute('aria-expanded', 'false')
+      })
+    })
+  })()
+</script>
+
+<main>
+  <h1 class="page-title">Match Scheduler</h1>
+  <p class="page-subtitle">Generate optimal court pairings from availability &amp; 19 seasons of match history.</p>
+
+  <div style="max-width:720px;margin:0 auto;padding:0 1rem 3rem;">
+
+    <div class="scheduler-controls card">
+      <div class="scheduler-week-row">
+        <label for="week-select" class="scheduler-label">Match Night</label>
+        <select id="week-select" class="form-input scheduler-select"></select>
+      </div>
+      <button id="generate-btn" class="btn btn-primary scheduler-generate-btn">Generate Pairings</button>
+    </div>
+
+    <div id="scheduler-results"></div>
+
+  </div>
+</main>
+
+<footer>WBP League &copy; <span id="footer-year"></span></footer>
+<script>document.getElementById('footer-year').textContent = new Date().getFullYear()</script>
+
+<script type="module">
+  import { requireLogin, getCurrentMember, initNav } from './js/auth.js'
+  import { generateSchedule, getUpcomingWeeks, formatWeekLabel } from './js/scheduler.js'
+
+  ;(async () => {
+    initNav('scheduler')
+
+    const session = await requireLogin()
+    if (!session) return
+
+    const member = await getCurrentMember()
+    if (!member || !member.is_admin) {
+      window.location.href = 'standings.html'
+      return
+    }
+
+    // Populate week selector
+    const weeks  = getUpcomingWeeks()
+    const select = document.getElementById('week-select')
+
+    if (weeks.length === 0) {
+      select.innerHTML = '<option>Season complete — no upcoming weeks</option>'
+      document.getElementById('generate-btn').disabled = true
+    } else {
+      weeks.forEach(week => {
+        const opt       = document.createElement('option')
+        opt.value       = week.toISOString().split('T')[0]
+        opt.textContent = formatWeekLabel(week)
+        select.appendChild(opt)
+      })
+    }
+
+    document.getElementById('generate-btn').addEventListener('click', async () => {
+      const btn        = document.getElementById('generate-btn')
+      const resultsDiv = document.getElementById('scheduler-results')
+
+      btn.disabled    = true
+      btn.textContent = 'Generating…'
+      resultsDiv.innerHTML = `
+        <div class="scheduler-loading">
+          <div class="loading-spinner"></div>
+          <p>Analyzing 19 seasons of match history…</p>
+        </div>`
+
+      try {
+        const weekStart = new Date(select.value + 'T12:00:00')
+        const result    = await generateSchedule(weekStart)
+
+        if (result.error) {
+          resultsDiv.innerHTML = `<div class="alert alert-error">${result.error}</div>`
+          return
+        }
+
+        renderResults(result, resultsDiv)
+      } catch (e) {
+        resultsDiv.innerHTML = `<div class="alert alert-error">Error: ${e.message}</div>`
+      } finally {
+        btn.disabled    = false
+        btn.textContent = 'Generate Pairings'
+      }
+    })
+  })()
+
+  function renderResults(result, container) {
+    const { weekStart, available, playing, sittingOut, tiebreakUsed, outings, options } = result
+    const label = new Date(weekStart).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
+    let html = `<h2 class="scheduler-results-title">${label}</h2>`
+
+    // Summary bar
+    html += `
+      <div class="sched-summary">
+        <div class="sched-stat"><span class="sched-stat-val">${available.length}</span><span class="sched-stat-lbl">Available</span></div>
+        <div class="sched-stat"><span class="sched-stat-val">${Math.floor(playing.length / 4)}</span><span class="sched-stat-lbl">Courts</span></div>
+        <div class="sched-stat"><span class="sched-stat-val">${playing.length}</span><span class="sched-stat-lbl">Playing</span></div>
+        ${sittingOut.length > 0 ? `<div class="sched-stat sched-stat-out"><span class="sched-stat-val">${sittingOut.length}</span><span class="sched-stat-lbl">Sitting Out</span></div>` : ''}
+      </div>`
+
+    // Sitting out section
+    if (sittingOut.length > 0) {
+      html += `<div class="sitout-card card">`
+      html += `<div class="sitout-header">Sitting Out This Week</div>`
+      html += `<div class="sitout-players">`
+      sittingOut.forEach(p => {
+        const o = outings[p.name] || 0
+        html += `<div class="sitout-player"><span class="sitout-name">${p.name}</span><span class="sitout-outings">${o} outing${o !== 1 ? 's' : ''} this season</span></div>`
+      })
+      html += `</div>`
+      if (tiebreakUsed) {
+        html += `<div class="tiebreak-note">🎲 Tiebreaker applied — random draw among players with equal outings this season</div>`
+      }
+      html += `</div>`
+    }
+
+    // Pairing options
+    if (options.length === 0) {
+      html += `<div class="alert alert-error">Could not generate valid pairings. Try again.</div>`
+    } else {
+      const labels = ['⭐ Best Variety', 'Option 2', 'Option 3']
+      options.forEach((opt, i) => {
+        const isTop = i === 0
+        html += `
+          <div class="pairing-option card ${isTop ? 'pairing-top' : ''}">
+            <div class="pairing-option-label">${labels[i]}</div>
+            <div class="courts-list">`
+
+        opt.courts.forEach(([[a, b], [c, d]], ci) => {
+          html += `
+              <div class="court-row">
+                <span class="court-num">Court ${ci + 1}</span>
+                <span class="court-match">
+                  <span class="team-pair">${a} &amp; ${b}</span>
+                  <span class="court-vs">vs</span>
+                  <span class="team-pair">${c} &amp; ${d}</span>
+                </span>
+              </div>`
+        })
+
+        html += `</div></div>`
+      })
+    }
+
+    container.innerHTML = html
+  }
+</script>
+</body>
+</html>
