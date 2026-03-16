@@ -28,10 +28,8 @@ function toISO(date) {
  * e.g. "Week of Mar 3 – Mar 9"
  */
 function weekLabel(monday) {
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  const opts = { month: 'short', day: 'numeric' }
-  return `Week of ${monday.toLocaleDateString('en-US', opts)} – ${sunday.toLocaleDateString('en-US', opts)}`
+  const opts = { month: 'long', day: 'numeric' }
+  return monday.toLocaleDateString('en-US', opts)
 }
 
 /**
@@ -43,6 +41,8 @@ function upcomingWeeks(count = 4) {
   const thisMonday = getMonday(today)
   const startMonday = new Date(thisMonday)
   startMonday.setDate(startMonday.getDate() + 7) // always next week
+  // On Sundays the "next Monday" is only 1 day away — skip an extra week
+  if (today.getDay() === 0) startMonday.setDate(startMonday.getDate() + 7)
 
   const weeks = []
   for (let i = 0; i < count; i++) {
