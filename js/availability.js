@@ -36,6 +36,8 @@ function weekLabel(monday) {
  * Builds the next N upcoming Mondays, always starting from next week's Monday.
  * This ensures availability is always shown for future weeks, not the current week.
  */
+const SEASON_END = new Date('2026-03-30T23:59:59')
+
 function upcomingWeeks(count = 4) {
   const today = new Date()
   const thisMonday = getMonday(today)
@@ -48,6 +50,7 @@ function upcomingWeeks(count = 4) {
   for (let i = 0; i < count; i++) {
     const d = new Date(startMonday)
     d.setDate(d.getDate() + i * 7)
+    if (d > SEASON_END) break
     weeks.push(d)
   }
   return weeks
