@@ -185,6 +185,9 @@ export async function loadAvailability(memberId, isAdmin) {
     } else {
       statusEl.textContent = 'Availability saved!'
       statusEl.className = 'alert alert-success'
+      // Refresh the tally below
+      const tallyContainer = document.getElementById('tally-container')
+      if (tallyContainer) await loadAvailabilityTally(tallyContainer)
     }
     statusEl.classList.remove('hidden')
     saveBtn.disabled = false
