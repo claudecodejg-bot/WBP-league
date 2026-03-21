@@ -161,11 +161,20 @@ function get(matrix, a, b) {
   return (matrix[a] && matrix[a][b]) || 0
 }
 
+// Win-rate bonus for a partner pair using all-time record (min 3 matches)
+function winRateBonus(partnerRecord, a, b) {
+  const rec   = partnerRecord[a]?.[b]
+  if (!rec) return 0
+  const total = rec.wins + rec.losses
+  if (total < 3) return 0
+  return (rec.wins / total - 0.5) * 4  // +2 at 100%, -2 at 0%
+}
+
 // Score a full list of courts — higher is better (more variety + better balance)
-function scoreAssignment(courts, partnerCount, oppCount, scores) {
+function scoreAssignment(courts, partnerCount, oppCount, scores, partnerRecord) {
   let score = 0
   for (const [[a, b], [c, d]] of courts) {
-    // Variety: penalise familiar partners (3×) and familiar opponents (1×)
+    // Variety: penalise familiar partners (current season, 3×) and opponents (1×)
     score -= get(partnerCount, a, b) * 3
     score -= get(partnerCount, c, d) * 3
     score -= get(oppCount, a, c)
@@ -178,12 +187,16 @@ function scoreAssignment(courts, partnerCount, oppCount, scores) {
     const sc = scores[c] ?? 5, sd = scores[d] ?? 5
     const diff = Math.abs((sa + sb) - (sc + sd))
     score -= diff * BALANCE_WEIGHT
+
+    // Win rate: reward pairings with strong all-time W/L record together
+    score += winRateBonus(partnerRecord, a, b)
+    score += winRateBonus(partnerRecord, c, d)
   }
   return score
 }
 
 // For 4 players, choose the best of the 3 possible pairings
-function bestPairing(players, partnerCount, oppCount, scores) {
+function bestPairing(players, partnerCount, oppCount, scores, partnerRecord) {
   const [a, b, c, d] = players
   const options = [
     [[a, b], [c, d]],
@@ -192,7 +205,7 @@ function bestPairing(players, partnerCount, oppCount, scores) {
   ]
   let best = null, bestScore = -Infinity
   for (const opt of options) {
-    const s = scoreAssignment([opt], partnerCount, oppCount, scores)
+    const s = scoreAssignment([opt], partnerCount, oppCount, scores, partnerRecord)
     if (s > bestScore) { bestScore = s; best = opt }
   }
   return { pairing: best, score: bestScore }
@@ -220,7 +233,7 @@ function assignmentKey(courts) {
     .join(' | ')
 }
 
-function generateOptions(playerIds, partnerCount, oppCount, scores) {
+function generateOptions(playerIds, partnerCount, oppCount, scores, partnerRecord) {
   const numCourts = Math.floor(playerIds.length / 4)
   const seen      = new Set()
   const results   = []
@@ -232,7 +245,7 @@ function generateOptions(playerIds, partnerCount, oppCount, scores) {
 
     for (let i = 0; i < numCourts; i++) {
       const group              = shuffled.slice(i * 4, i * 4 + 4)
-      const { pairing, score } = bestPairing(group, partnerCount, oppCount, scores)
+      const { pairing, score } = bestPairing(group, partnerCount, oppCount, scores, partnerRecord)
       courts.push(pairing)
       totalScore += score
     }
@@ -299,7 +312,7 @@ export async function generateSchedule(weekStart) {
   const { partnerCount, oppCount, partnerRecord, scores } =
     await buildHistoryAndScores(playerIds)
 
-  const options = generateOptions(playerIds, partnerCount, oppCount, scores)
+  const options = generateOptions(playerIds, partnerCount, oppCount, scores, partnerRecord)
 
   const idToName = Object.fromEntries(available.map(m => [m.id, m.name]))
 

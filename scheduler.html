@@ -234,10 +234,11 @@
                   <div class="court-team-total">
                     <span>Team total</span><span>${t1Total.toFixed(2)}</span>
                   </div>
+                  <div class="court-team-record">Together this season: ${pct1}×</div>
                   <div class="court-team-record">
-                    ${pct1 === 0
-                      ? 'Never partnered'
-                      : `Together: ${pct1}× &nbsp;&#8226;&nbsp; ${rec1.wins}-${rec1.losses}`}
+                    ${rec1.wins + rec1.losses === 0
+                      ? 'No all-time history'
+                      : `All-time: ${rec1.wins + rec1.losses}× &nbsp;&#8226;&nbsp; ${rec1.wins}-${rec1.losses}`}
                   </div>
                 </div>
 
@@ -256,10 +257,11 @@
                   <div class="court-team-total">
                     <span>Team total</span><span>${t2Total.toFixed(2)}</span>
                   </div>
+                  <div class="court-team-record">Together this season: ${pct2}×</div>
                   <div class="court-team-record">
-                    ${pct2 === 0
-                      ? 'Never partnered'
-                      : `Together: ${pct2}× &nbsp;&#8226;&nbsp; ${rec2.wins}-${rec2.losses}`}
+                    ${rec2.wins + rec2.losses === 0
+                      ? 'No all-time history'
+                      : `All-time: ${rec2.wins + rec2.losses}× &nbsp;&#8226;&nbsp; ${rec2.wins}-${rec2.losses}`}
                   </div>
                 </div>
               </div>
