@@ -133,11 +133,16 @@ async function buildHistoryAndScores(playerIds) {
       m.team2_set1, m.team2_set2, m.team2_set3
     )
 
-    incMatrix(partnerCount, t1[0], t1[1])
-    incMatrix(partnerCount, t2[0], t2[1])
+    // partnerCount / oppCount: current season only (drives the pairing algorithm)
+    if (isCurrent) {
+      incMatrix(partnerCount, t1[0], t1[1])
+      incMatrix(partnerCount, t2[0], t2[1])
+      for (const a of t1) for (const b of t2) incMatrix(oppCount, a, b)
+    }
+
+    // partnerRecord: all-time history (drives the W/L display)
     incRecord(partnerRecord, t1[0], t1[1],  t1Won)
     incRecord(partnerRecord, t2[0], t2[1], !t1Won)
-    for (const a of t1) for (const b of t2) incMatrix(oppCount, a, b)
   }
 
   // Season averages via the shared scoring module
