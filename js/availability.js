@@ -238,10 +238,10 @@ export async function loadAvailabilityTally(container) {
   for (const monday of weeks) {
     const key = toISO(monday)
     const weekAvail = (avail || []).filter(a => a.week_start === key)
-    const yesNames = weekAvail.filter(a => a.is_available).map(a => memberMap[a.member_id]).filter(Boolean)
-    const noNames  = weekAvail.filter(a => !a.is_available).map(a => memberMap[a.member_id]).filter(Boolean)
+    const yesNames     = weekAvail.filter(a =>  a.is_available).map(a => memberMap[a.member_id]).filter(Boolean).sort()
+    const noNames      = weekAvail.filter(a => !a.is_available).map(a => memberMap[a.member_id]).filter(Boolean).sort()
     const respondedIds = new Set(weekAvail.map(a => a.member_id))
-    const pending = members.filter(m => !respondedIds.has(m.id)).length
+    const pendingNames = members.filter(m => !respondedIds.has(m.id)).map(m => m.full_name).sort()
 
     html += `
       <div class="tally-week card">
@@ -249,7 +249,7 @@ export async function loadAvailabilityTally(container) {
         <div class="tally-rows">
           <div class="tally-yes">✓ ${yesNames.length} available${yesNames.length ? ': ' + yesNames.join(', ') : ''}</div>
           ${noNames.length ? `<div class="tally-no">✗ ${noNames.length} not available: ${noNames.join(', ')}</div>` : ''}
-          <div class="tally-pending">? ${pending} no response</div>
+          ${pendingNames.length ? `<div class="tally-pending">? ${pendingNames.length} no response: ${pendingNames.join(', ')}</div>` : ''}
         </div>
       </div>
     `
