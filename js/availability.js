@@ -258,7 +258,8 @@ export async function loadAvailabilityTally(container) {
 }
 
 /**
- * Admin view: loads all members' availability for upcoming weeks.
+ * Admin view: loads all members' availability for upcoming weeks,
+ * with editable dropdowns so admin can set availability on behalf of members.
  */
 export async function loadAdminAvailability(container, weekCount = 4) {
   const weeks = upcomingWeeks(weekCount)
@@ -275,7 +276,7 @@ export async function loadAdminAvailability(container, weekCount = 4) {
   }
 
   const availMap = {}
-  for (const a of availRes.data) {
+  for (const a of (availRes.data || [])) {
     availMap[`${a.member_id}_${a.week_start}`] = a
   }
 
@@ -291,21 +292,109 @@ export async function loadAdminAvailability(container, weekCount = 4) {
   `
 
   for (const m of members) {
-    html += `<tr><td>${m.full_name}</td>`
+    html += `<tr><td class="avail-grid-name">${m.full_name}</td>`
     for (const monday of weeks) {
-      const key = `${m.id}_${toISO(monday)}`
-      const a = availMap[key]
-      if (!a) {
-        html += `<td class="avail-pending">No response</td>`
-      } else if (a.is_available) {
-        html += `<td class="avail-yes">✓ Yes${a.note ? ` <span style="color:var(--gray-600);font-weight:400">— ${a.note}</span>` : ''}</td>`
-      } else {
-        html += `<td class="avail-no">✗ No</td>`
-      }
+      const wk  = toISO(monday)
+      const key = `${m.id}_${wk}`
+      const a   = availMap[key]
+      const val = !a ? '' : (a.is_available ? 'yes' : 'no')
+      html += `
+        <td>
+          <select class="admin-avail-select"
+                  data-member="${m.id}"
+                  data-week="${wk}"
+                  data-original="${val}">
+            <option value=""   ${val === ''    ? 'selected' : ''}>—</option>
+            <option value="yes" ${val === 'yes' ? 'selected' : ''}>✓ Yes</option>
+            <option value="no"  ${val === 'no'  ? 'selected' : ''}>✗ No</option>
+          </select>
+        </td>`
     }
     html += '</tr>'
   }
 
-  html += '</tbody></table>'
+  html += `</tbody></table>
+    <div style="margin-top:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="admin-avail-save">Save Changes</button>
+      <span id="admin-avail-status" class="alert hidden" style="margin:0;padding:0.35rem 0.75rem;"></span>
+    </div>`
+
   container.innerHTML += html
+
+  document.getElementById('admin-avail-save').addEventListener('click', async () => {
+    const btn    = document.getElementById('admin-avail-save')
+    const status = document.getElementById('admin-avail-status')
+    btn.disabled    = true
+    btn.textContent = 'Saving…'
+    status.classList.add('hidden')
+
+    const selects = container.querySelectorAll('.admin-avail-select')
+    const upserts = []
+    const deletes = []  // { member_id, week_start } rows to remove
+
+    for (const sel of selects) {
+      const memberId  = sel.dataset.member
+      const weekStart = sel.dataset.week
+      const original  = sel.dataset.original
+      const current   = sel.value
+
+      if (current === original) continue  // no change
+
+      if (current === '') {
+        deletes.push({ memberId, weekStart })
+      } else {
+        upserts.push({
+          member_id:    memberId,
+          week_start:   weekStart,
+          is_available: current === 'yes',
+          note:         null
+        })
+      }
+    }
+
+    if (upserts.length === 0 && deletes.length === 0) {
+      status.textContent = 'No changes to save.'
+      status.className   = 'alert alert-info'
+      status.classList.remove('hidden')
+      btn.disabled    = false
+      btn.textContent = 'Save Changes'
+      return
+    }
+
+    let err = null
+
+    if (upserts.length > 0) {
+      const { error } = await supabase
+        .from('availability')
+        .upsert(upserts, { onConflict: 'member_id,week_start' })
+      if (error) err = error
+    }
+
+    for (const d of deletes) {
+      if (err) break
+      const { error } = await supabase
+        .from('availability')
+        .delete()
+        .eq('member_id', d.memberId)
+        .eq('week_start', d.weekStart)
+      if (error) err = error
+    }
+
+    if (err) {
+      status.textContent = 'Error saving: ' + err.message
+      status.className   = 'alert alert-error'
+    } else {
+      // Update original values so re-saving doesn't re-send
+      selects.forEach(sel => { sel.dataset.original = sel.value })
+      status.textContent = `Saved ${upserts.length + deletes.length} change${upserts.length + deletes.length !== 1 ? 's' : ''}.`
+      status.className   = 'alert alert-success'
+      // Refresh the tally
+      const tallyContainer = document.getElementById('tally-container')
+      if (tallyContainer) await loadAvailabilityTally(tallyContainer)
+    }
+
+    status.classList.remove('hidden')
+    btn.disabled    = false
+    btn.textContent = 'Save Changes'
+  })
 }

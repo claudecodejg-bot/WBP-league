@@ -41,9 +41,9 @@
 
 <main>
   <h1 class="page-title">Match Scheduler</h1>
-  <p class="page-subtitle">Generate optimal court pairings from availability &amp; 19 seasons of match history.</p>
+  <p class="page-subtitle">Generate optimal court pairings from availability &amp; match history.</p>
 
-  <div style="max-width:720px;margin:0 auto;padding:0 1rem 3rem;">
+  <div style="max-width:760px;margin:0 auto;padding:0 1rem 3rem;">
 
     <div class="scheduler-controls card">
       <div class="scheduler-week-row">
@@ -102,7 +102,7 @@
       resultsDiv.innerHTML = `
         <div class="scheduler-loading">
           <div class="loading-spinner"></div>
-          <p>Analyzing 19 seasons of match history…</p>
+          <p>Analyzing match history &amp; computing pairings…</p>
         </div>`
 
       try {
@@ -124,9 +124,31 @@
     })
   })()
 
+  // ── Helpers ──────────────────────────────────────────────
+
+  const matGet = (m, a, b) => (m[a] && m[a][b]) || 0
+  const recGet = (m, a, b) => (m[a] && m[a][b]) || { wins: 0, losses: 0 }
+
+  function fmtScore(val) {
+    return val != null ? Number(val).toFixed(2) : 'N/A'
+  }
+
+  function diffClass(diff) {
+    if (diff < 0.75)  return 'court-diff-low'
+    if (diff < 1.75)  return 'court-diff-mid'
+    return 'court-diff-high'
+  }
+
+  // ── Main render ──────────────────────────────────────────
+
   function renderResults(result, container) {
-    const { weekStart, available, playing, sittingOut, tiebreakUsed, outings, options } = result
-    const label = new Date(weekStart).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+    const {
+      weekStart, available, playing, sittingOut, tiebreakUsed,
+      outings, options, idToName, scores, partnerCount, oppCount, partnerRecord
+    } = result
+
+    const label = new Date(weekStart).toLocaleDateString('en-US',
+      { weekday: 'long', month: 'long', day: 'numeric' })
 
     let html = `<h2 class="scheduler-results-title">${label}</h2>`
 
@@ -139,18 +161,21 @@
         ${sittingOut.length > 0 ? `<div class="sched-stat sched-stat-out"><span class="sched-stat-val">${sittingOut.length}</span><span class="sched-stat-lbl">Sitting Out</span></div>` : ''}
       </div>`
 
-    // Sitting out section
+    // Sitting out
     if (sittingOut.length > 0) {
       html += `<div class="sitout-card card">`
       html += `<div class="sitout-header">Sitting Out This Week</div>`
       html += `<div class="sitout-players">`
       sittingOut.forEach(p => {
-        const o = outings[p.name] || 0
-        html += `<div class="sitout-player"><span class="sitout-name">${p.name}</span><span class="sitout-outings">${o} outing${o !== 1 ? 's' : ''} this season</span></div>`
+        const o = outings[p.id] || 0
+        html += `<div class="sitout-player">
+          <span class="sitout-name">${p.name}</span>
+          <span class="sitout-outings">${o} outing${o !== 1 ? 's' : ''} this season</span>
+        </div>`
       })
       html += `</div>`
       if (tiebreakUsed) {
-        html += `<div class="tiebreak-note">🎲 Tiebreaker applied — random draw among players with equal outings this season</div>`
+        html += `<div class="tiebreak-note">Tiebreaker applied — random draw among players with equal outings</div>`
       }
       html += `</div>`
     }
@@ -159,24 +184,94 @@
     if (options.length === 0) {
       html += `<div class="alert alert-error">Could not generate valid pairings. Try again.</div>`
     } else {
-      const labels = ['⭐ Best Variety', 'Option 2', 'Option 3']
+      const labels = ['Best Overall', 'Option 2', 'Option 3']
       options.forEach((opt, i) => {
         const isTop = i === 0
         html += `
           <div class="pairing-option card ${isTop ? 'pairing-top' : ''}">
-            <div class="pairing-option-label">${labels[i]}</div>
+            <div class="pairing-option-label">${isTop ? '&#9733; ' : ''}${labels[i]}</div>
             <div class="courts-list">`
 
         opt.courts.forEach(([[a, b], [c, d]], ci) => {
+          const nameA = idToName[a], nameB = idToName[b]
+          const nameC = idToName[c], nameD = idToName[d]
+
+          const sA = scores[a] ?? null, sB = scores[b] ?? null
+          const sC = scores[c] ?? null, sD = scores[d] ?? null
+
+          const t1Total = (sA ?? 5) + (sB ?? 5)
+          const t2Total = (sC ?? 5) + (sD ?? 5)
+          const diff    = Math.abs(t1Total - t2Total)
+
+          const pct1 = matGet(partnerCount, a, b)
+          const pct2 = matGet(partnerCount, c, d)
+          const rec1 = recGet(partnerRecord, a, b)
+          const rec2 = recGet(partnerRecord, c, d)
+
+          const oAC = matGet(oppCount, a, c)
+          const oAD = matGet(oppCount, a, d)
+          const oBC = matGet(oppCount, b, c)
+          const oBD = matGet(oppCount, b, d)
+
           html += `
-              <div class="court-row">
-                <span class="court-num">Court ${ci + 1}</span>
-                <span class="court-match">
-                  <span class="team-pair">${a} &amp; ${b}</span>
-                  <span class="court-vs">vs</span>
-                  <span class="team-pair">${c} &amp; ${d}</span>
-                </span>
-              </div>`
+            <div class="court-card">
+              <div class="court-card-header">
+                <span class="court-card-num">Court ${ci + 1}</span>
+                <span class="court-diff ${diffClass(diff)}">Diff: ${diff.toFixed(2)}</span>
+              </div>
+
+              <div class="court-teams">
+                <div class="court-team">
+                  <div class="court-team-player">
+                    <span class="ctp-name">${nameA}</span>
+                    <span class="ctp-score">${fmtScore(sA)}</span>
+                  </div>
+                  <div class="court-team-player">
+                    <span class="ctp-name">${nameB}</span>
+                    <span class="ctp-score">${fmtScore(sB)}</span>
+                  </div>
+                  <div class="court-team-divider"></div>
+                  <div class="court-team-total">
+                    <span>Team total</span><span>${t1Total.toFixed(2)}</span>
+                  </div>
+                  <div class="court-team-record">
+                    ${pct1 === 0
+                      ? 'Never partnered'
+                      : `Together: ${pct1}× &nbsp;&#8226;&nbsp; ${rec1.wins}-${rec1.losses}`}
+                  </div>
+                </div>
+
+                <div class="court-vs-col">vs</div>
+
+                <div class="court-team">
+                  <div class="court-team-player">
+                    <span class="ctp-name">${nameC}</span>
+                    <span class="ctp-score">${fmtScore(sC)}</span>
+                  </div>
+                  <div class="court-team-player">
+                    <span class="ctp-name">${nameD}</span>
+                    <span class="ctp-score">${fmtScore(sD)}</span>
+                  </div>
+                  <div class="court-team-divider"></div>
+                  <div class="court-team-total">
+                    <span>Team total</span><span>${t2Total.toFixed(2)}</span>
+                  </div>
+                  <div class="court-team-record">
+                    ${pct2 === 0
+                      ? 'Never partnered'
+                      : `Together: ${pct2}× &nbsp;&#8226;&nbsp; ${rec2.wins}-${rec2.losses}`}
+                  </div>
+                </div>
+              </div>
+
+              <div class="court-matchup-history">
+                <span class="cmh-label">vs history:</span>
+                <span class="cmh-pair">${nameA} &amp; ${nameC}: ${oAC}×</span>
+                <span class="cmh-pair">${nameA} &amp; ${nameD}: ${oAD}×</span>
+                <span class="cmh-pair">${nameB} &amp; ${nameC}: ${oBC}×</span>
+                <span class="cmh-pair">${nameB} &amp; ${nameD}: ${oBD}×</span>
+              </div>
+            </div>`
         })
 
         html += `</div></div>`
