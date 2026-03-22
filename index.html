@@ -189,17 +189,37 @@
     animateHome(document.getElementById('stat-matches'), currentMatches.length, false)
     animateHome(document.getElementById('stat-players'), members.length, false)
 
-    // Find season leader using rolling-4 average (most matches played as tie-break)
-    let leader = null, bestAvg = -Infinity, bestPlayed = 0
-    for (const m of members) {
-      const s = computeCurrentSeasonStats(m.id, currentMatches, priorMatches)
-      if (s.matchesPlayed > 0 && (s.seasonAvg > bestAvg || (s.seasonAvg === bestAvg && s.matchesPlayed > bestPlayed))) {
-        bestAvg = s.seasonAvg
-        bestPlayed = s.matchesPlayed
-        leader = m.full_name.split(' ')[0]
-      }
+    // Find season leader — same eligibility rules as standings:
+    // must have played >= 4 matches AND played within the past 6 weeks
+    const sixWeeksAgo = new Date()
+    sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42)
+
+    function lastPlayed(memberId) {
+      const dates = currentMatches
+        .filter(m => m.team1_player1 === memberId || m.team1_player2 === memberId ||
+                     m.team2_player1 === memberId || m.team2_player2 === memberId)
+        .map(m => m.played_on)
+      return dates.length ? dates.reduce((a, b) => a > b ? a : b) : null
     }
-    if (leader) document.getElementById('stat-leader').textContent = leader
+
+    function isEligible(s, lastDate) {
+      if (s.matchesPlayed < 4) return false
+      if (!lastDate) return false
+      return new Date(lastDate + 'T00:00:00') >= sixWeeksAgo
+    }
+
+    // Build sorted list, find first eligible player
+    const ranked = members
+      .map(m => {
+        const s  = computeCurrentSeasonStats(m.id, currentMatches, priorMatches)
+        const lp = lastPlayed(m.id)
+        return { name: m.full_name, s, lp }
+      })
+      .filter(r => r.s.matchesPlayed > 0)
+      .sort((a, b) => (b.s.seasonAvg ?? -Infinity) - (a.s.seasonAvg ?? -Infinity))
+
+    const leader = ranked.find(r => isEligible(r.s, r.lp))
+    if (leader) document.getElementById('stat-leader').textContent = leader.name.split(' ')[0]
   }
 
   function animateHome(el, target, isDecimal) {
