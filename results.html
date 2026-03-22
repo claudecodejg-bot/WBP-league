@@ -341,7 +341,14 @@
         <div style="color:var(--gray-500);font-size:0.88rem;margin-top:0.25rem;">${_weekLabel}</div>
       </div>`,
     `<button id="done-close" class="btn btn-primary" style="width:100%;">Done</button>`)
-    document.getElementById('done-close').addEventListener('click', () => { closeModal(); loadResults(_activeSeason) })
+    document.getElementById('done-close').addEventListener('click', async () => {
+      // Clear the scheduled match so the landing page upcoming section is removed
+      if (_schedule?.id) {
+        await supabase.from('scheduled_matches').delete().eq('id', _schedule.id)
+      }
+      closeModal()
+      loadResults(_activeSeason)
+    })
   }
 
   // ── Manual form (no schedule found) ──────────────────────
