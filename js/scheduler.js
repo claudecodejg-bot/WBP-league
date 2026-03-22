@@ -34,7 +34,6 @@ export function getUpcomingWeeks() {
   const thisMonday = getMonday(today)
   const start      = new Date(thisMonday)
   start.setDate(start.getDate() + 7)
-  if (today.getDay() === 0) start.setDate(start.getDate() + 7)
 
   const weeks = []
   for (let i = 0; i < 4; i++) {

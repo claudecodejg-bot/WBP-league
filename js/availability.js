@@ -43,8 +43,6 @@ function upcomingWeeks(count = 4) {
   const thisMonday = getMonday(today)
   const startMonday = new Date(thisMonday)
   startMonday.setDate(startMonday.getDate() + 7) // always next week
-  // On Sundays the "next Monday" is only 1 day away — skip an extra week
-  if (today.getDay() === 0) startMonday.setDate(startMonday.getDate() + 7)
 
   const weeks = []
   for (let i = 0; i < count; i++) {
