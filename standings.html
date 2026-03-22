@@ -183,6 +183,7 @@
       const streakBadge = isDefault && streak && streak.type === 'W' && streak.count >= 2
         ? `<span class="streak-badge streak-win">🔥 ${streak.count}W</span>`
         : ''
+      const ineligBadge = s.ineligibleFirst ? `<span class="inelig-asterisk" title="See footnote below">*</span>` : ''
 
       const winPctDisplay = s.matchesPlayed > 0 ? Math.round(s.wins / s.matchesPlayed * 100) + '%' : '—'
       const yearsCell = _activeSeason === 'all'
@@ -191,7 +192,7 @@
       html += `
         <tr class="${rowClass}">
           <td class="rank">${rankDisplay}</td>
-          <td class="player-name"><a href="player.html?id=${s.id}" class="player-link">${s.name}</a> ${streakBadge}</td>
+          <td class="player-name"><a href="player.html?id=${s.id}" class="player-link">${s.name}</a>${ineligBadge} ${streakBadge}</td>
           ${yearsCell}
           <td>${s.matchesPlayed}</td>
           <td>${s.wins}</td>
@@ -205,17 +206,51 @@
     return html
   }
 
+  // ── First-place eligibility rule ─────────────────────────
+  // Only for current season in default sort.
+  // Returns null if eligible, or { name, reasons[] } if not.
+  function firstPlaceIneligibility(player) {
+    const reasons = []
+    if (player.matchesPlayed < 4) {
+      reasons.push(`has only played ${player.matchesPlayed} match${player.matchesPlayed !== 1 ? 'es' : ''} this season (minimum 4 required)`)
+    }
+    const sixWeeksAgo = new Date()
+    sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42)
+    const lastDate = player.lastPlayed ? new Date(player.lastPlayed + 'T00:00:00') : null
+    if (!lastDate || lastDate < sixWeeksAgo) {
+      const weeksAgo = lastDate ? Math.floor((Date.now() - lastDate.getTime()) / (7 * 86400000)) : null
+      reasons.push(weeksAgo != null
+        ? `last played ${weeksAgo} week${weeksAgo !== 1 ? 's' : ''} ago (must have played within the past 6 weeks)`
+        : `has not played this season`)
+    }
+    return reasons.length === 0 ? null : { name: player.name, reasons }
+  }
+
   function renderTables() {
 
     const isDefault = _sortCol === 'seasonAvg' && _sortDir === 'desc'
     let html = ''
+    let footnote = ''
 
     if (_activeSeason === 'all') {
       // Entire History: merge Members + Former Members into one table
       const combined = sortData([..._memberStats, ..._formerMemberStats])
       html += '<h2 class="section-title">Members</h2>' + buildTable(combined, { podium: isDefault })
     } else {
-      html += '<h2 class="section-title">Members</h2>' + buildTable(sortData(_memberStats), { podium: isDefault })
+      let memberData = sortData(_memberStats)
+
+      // Apply first-place eligibility rule for current season default sort
+      if (isDefault && _activeSeason === CURRENT_SEASON && memberData.length >= 2) {
+        const inelig = firstPlaceIneligibility(memberData[0])
+        if (inelig) {
+          // Demote #1 to #2, promote #2 to #1
+          memberData = [memberData[1], { ...memberData[0], ineligibleFirst: true }, ...memberData.slice(2)]
+          footnote = `<div class="standings-footnote">* ${inelig.name} ${inelig.reasons.join(' and ')}.</div>`
+        }
+      }
+
+      html += '<h2 class="section-title">Members</h2>' + buildTable(memberData, { podium: isDefault })
+      html += footnote
       if (_formerMemberStats.length > 0) {
         html += '<h2 class="section-title" style="margin-top:2rem;">Former Members</h2>' + buildTable(sortData(_formerMemberStats))
       }
