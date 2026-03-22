@@ -30,10 +30,16 @@ export function formatWeekLabel(monday) {
 }
 
 export function getUpcomingWeeks() {
-  const today      = new Date()
-  const thisMonday = getMonday(today)
-  const start      = new Date(thisMonday)
-  start.setDate(start.getDate() + 7)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Start from the Monday on or after today
+  const day   = today.getDay()
+  const start = new Date(today)
+  if (day !== 1) {
+    const daysUntilMonday = day === 0 ? 1 : (8 - day)
+    start.setDate(start.getDate() + daysUntilMonday)
+  }
 
   const weeks = []
   for (let i = 0; i < 4; i++) {

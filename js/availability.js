@@ -40,9 +40,15 @@ const SEASON_END = new Date('2026-03-30T23:59:59')
 
 function upcomingWeeks(count = 4) {
   const today = new Date()
-  const thisMonday = getMonday(today)
-  const startMonday = new Date(thisMonday)
-  startMonday.setDate(startMonday.getDate() + 7) // always next week
+  today.setHours(0, 0, 0, 0)
+
+  // Start from the Monday on or after today
+  const day = today.getDay()
+  const startMonday = new Date(today)
+  if (day !== 1) {
+    const daysUntilMonday = day === 0 ? 1 : (8 - day)
+    startMonday.setDate(startMonday.getDate() + daysUntilMonday)
+  }
 
   const weeks = []
   for (let i = 0; i < count; i++) {
