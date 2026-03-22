@@ -58,6 +58,24 @@
   </div>
 </main>
 
+<!-- Schedule Details Modal -->
+<div id="schedule-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Schedule Details</span>
+      <button id="modal-close" class="modal-close-btn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-subtitle">Set the location and time for each court.</p>
+      <div id="modal-courts"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
+      <button id="modal-save" class="btn btn-primary">Save Schedule</button>
+    </div>
+  </div>
+</div>
+
 <footer>WBP League &copy; <span id="footer-year"></span></footer>
 <script>document.getElementById('footer-year').textContent = new Date().getFullYear()</script>
 
@@ -126,35 +144,91 @@
   })()
 
   // ── Stored result for "Select" button ────────────────────
-  let currentResult = null
+  let currentResult  = null
+  let pendingOptIdx  = null
 
-  async function selectOption(idx) {
+  function selectOption(idx) {
+    const { options, idToName } = currentResult
+    const opt = options[idx]
+    pendingOptIdx = idx
+
+    // Build modal court rows
+    const courtsDiv = document.getElementById('modal-courts')
+    courtsDiv.innerHTML = opt.courts.map(([[a, b], [c, d]], ci) => {
+      const nameA = idToName[a], nameB = idToName[b]
+      const nameC = idToName[c], nameD = idToName[d]
+      return `
+        <div class="modal-court-row">
+          <div class="modal-court-label">Court ${ci + 1}</div>
+          <div class="modal-court-matchup">${nameA} &amp; ${nameB} vs ${nameC} &amp; ${nameD}</div>
+          <div class="modal-court-fields">
+            <div class="modal-field">
+              <label>Location</label>
+              <input type="text" class="form-input court-location" data-court="${ci}" value="Woodway CC" placeholder="e.g. Woodway CC">
+            </div>
+            <div class="modal-field">
+              <label>Time</label>
+              <input type="text" class="form-input court-time" data-court="${ci}" value="7:00 PM" placeholder="e.g. 7:00 PM">
+            </div>
+          </div>
+        </div>`
+    }).join('')
+
+    document.getElementById('schedule-modal').style.display = 'flex'
+  }
+
+  async function saveSchedule() {
     const { weekStart, options, idToName } = currentResult
-    const opt    = options[idx]
-    const courts = opt.courts.map(([[a, b], [c, d]]) => ({
-      team1: [idToName[a], idToName[b]],
-      team2: [idToName[c], idToName[d]]
+    const opt = options[pendingOptIdx]
+
+    const locationInputs = document.querySelectorAll('.court-location')
+    const timeInputs     = document.querySelectorAll('.court-time')
+
+    const courts = opt.courts.map(([[a, b], [c, d]], ci) => ({
+      team1:    [idToName[a], idToName[b]],
+      team2:    [idToName[c], idToName[d]],
+      location: locationInputs[ci].value.trim() || 'Woodway CC',
+      time:     timeInputs[ci].value.trim()     || '7:00 PM'
     }))
+
     const playedOn  = new Date(weekStart).toISOString().split('T')[0]
     const weekLabel = new Date(weekStart).toLocaleDateString('en-US',
       { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
+    const saveBtn = document.getElementById('modal-save')
+    saveBtn.disabled    = true
+    saveBtn.textContent = 'Saving…'
+
     const { error } = await supabase
       .from('scheduled_matches')
       .upsert({ week_label: weekLabel, played_on: playedOn, courts }, { onConflict: 'played_on' })
+
+    saveBtn.disabled    = false
+    saveBtn.textContent = 'Save Schedule'
 
     if (error) {
       alert('Error saving schedule: ' + error.message)
       return
     }
 
+    document.getElementById('schedule-modal').style.display = 'none'
+
     // Update buttons to reflect saved state
+    const selIdx = pendingOptIdx
     document.querySelectorAll('.select-option-btn').forEach((b, i) => {
       b.disabled    = true
-      b.textContent = i === idx ? '✓ Scheduled' : 'Select This Option'
-      if (i === idx) b.classList.add('btn-success')
+      b.textContent = i === selIdx ? '✓ Scheduled' : 'Select This Option'
+      if (i === selIdx) b.classList.add('btn-success')
     })
   }
+
+  // Modal wiring (runs once)
+  document.getElementById('modal-close').addEventListener('click',  () => { document.getElementById('schedule-modal').style.display = 'none' })
+  document.getElementById('modal-cancel').addEventListener('click', () => { document.getElementById('schedule-modal').style.display = 'none' })
+  document.getElementById('modal-save').addEventListener('click', saveSchedule)
+  document.getElementById('schedule-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('schedule-modal')) document.getElementById('schedule-modal').style.display = 'none'
+  })
 
   // ── Helpers ──────────────────────────────────────────────
 
