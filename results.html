@@ -130,10 +130,11 @@
     setTitle('Add Match Result')
     setScreen('<div class="loading-state"><div class="spinner"></div> Loading schedule…</div>', '')
 
-    const [membersRes, seasonMembersRes, schedRes] = await Promise.all([
+    const [membersRes, seasonMembersRes, schedRes, lastMatchRes] = await Promise.all([
       supabase.from('members').select('id, full_name').order('full_name'),
       supabase.from('member_seasons').select('member_id').eq('season', CURRENT_SEASON),
-      supabase.from('scheduled_matches').select('*').order('played_on', { ascending: false }).limit(1).maybeSingle()
+      supabase.from('scheduled_matches').select('*').order('played_on', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('matches').select('week_label').eq('season', CURRENT_SEASON).order('played_on', { ascending: false }).limit(1).maybeSingle()
     ])
 
     // Filter to current-season active members only
@@ -142,6 +143,11 @@
     _memberNameToId = Object.fromEntries((membersRes.data || []).map(m => [m.full_name, m.id]))
     _schedule  = schedRes.data || null
     _courtIdx  = 0
+
+    // Auto-suggest next week label by incrementing the last one
+    const lastLabel = lastMatchRes.data?.week_label || ''
+    const match = lastLabel.match(/\d+/)
+    _weekLabel = match ? `Week ${parseInt(match[0], 10) + 1}` : ''
 
     if (_schedule?.courts?.length > 0) {
       renderSetupStep()
@@ -172,7 +178,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
         <div class="form-group" style="margin:0;">
           <label for="s-week-label">Week Label</label>
-          <input type="text" id="s-week-label" class="form-input" placeholder="e.g. Week 20">
+          <input type="text" id="s-week-label" class="form-input" value="${_weekLabel}" placeholder="e.g. Week 20">
         </div>
         <div class="form-group" style="margin:0;">
           <label for="s-played-on">Date Played</label>
@@ -347,7 +353,7 @@
       <div id="manual-alert" class="alert hidden"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
         <div class="form-group" style="margin:0;"><label for="m-week-label">Week Label</label>
-          <input type="text" id="m-week-label" class="form-input" placeholder="e.g. Week 20"></div>
+          <input type="text" id="m-week-label" class="form-input" value="${_weekLabel}" placeholder="e.g. Week 20"></div>
         <div class="form-group" style="margin:0;"><label for="m-played-on">Date Played</label>
           <input type="date" id="m-played-on" class="form-input" value="${new Date().toISOString().split('T')[0]}"></div>
       </div>
