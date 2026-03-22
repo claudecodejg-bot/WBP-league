@@ -98,14 +98,16 @@
 <footer>WBP League &copy; <span id="footer-year"></span></footer>
 
 <script type="module">
-  import { initNav } from './js/auth.js'
+  import { initNav, getCurrentMember } from './js/auth.js'
   import { supabase } from './js/supabase-client.js'
   import { computeCurrentSeasonStats } from './js/scoring.js'
 
   document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('home')
 
-  async function loadUpcoming() {
+  let scheduledId = null
+
+  async function loadUpcoming(isAdmin) {
     const today = new Date().toISOString().split('T')[0]
     const { data, error } = await supabase
       .from('scheduled_matches')
@@ -117,6 +119,8 @@
 
     if (error || !data) return
 
+    scheduledId = data.id
+
     const courts    = data.courts
     const numCourts = courts.length
     let html = `
@@ -124,6 +128,7 @@
         <div class="upcoming-header">
           <span class="upcoming-pill">Upcoming</span>
           <span class="upcoming-title">${data.week_label}</span>
+          ${isAdmin ? `<button id="undo-schedule-btn" class="btn btn-secondary" style="margin-left:auto;font-size:0.75rem;padding:0.3rem 0.75rem;">Undo Schedule</button>` : ''}
         </div>`
 
     courts.forEach((court, i) => {
@@ -147,6 +152,25 @@
 
     html += `</div>`
     document.getElementById('upcoming-container').innerHTML = html
+
+    if (isAdmin) {
+      document.getElementById('undo-schedule-btn').addEventListener('click', undoSchedule)
+    }
+  }
+
+  async function undoSchedule() {
+    if (!confirm('Remove this scheduled match? You can re-run the scheduler to pick new pairings.')) return
+    const btn = document.getElementById('undo-schedule-btn')
+    btn.disabled    = true
+    btn.textContent = 'Removing…'
+    const { error } = await supabase.from('scheduled_matches').delete().eq('id', scheduledId)
+    if (error) {
+      alert('Error: ' + error.message)
+      btn.disabled    = false
+      btn.textContent = 'Undo Schedule'
+      return
+    }
+    document.getElementById('upcoming-container').innerHTML = ''
   }
 
   async function loadHomeStats() {
@@ -190,7 +214,7 @@
     requestAnimationFrame(step)
   }
 
-  loadUpcoming()
+  getCurrentMember().then(member => loadUpcoming(member?.is_admin === true))
   loadHomeStats()
 </script>
 </body>
