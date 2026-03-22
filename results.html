@@ -64,93 +64,13 @@
 
 <!-- Add Result Modal -->
 <div id="result-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-box" style="max-width:640px;">
+  <div class="modal-box" style="max-width:560px;">
     <div class="modal-header">
-      <span class="modal-title">Add Match Result</span>
+      <span id="result-modal-title" class="modal-title">Add Match Result</span>
       <button id="result-modal-close" class="modal-close-btn">&times;</button>
     </div>
-    <div class="modal-body">
-      <div id="result-form-alert" class="alert hidden"></div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
-        <div class="form-group" style="margin:0;">
-          <label for="r-week-label">Week Label</label>
-          <input type="text" id="r-week-label" class="form-input" placeholder="e.g. Week 20">
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label for="r-played-on">Date Played</label>
-          <input type="date" id="r-played-on" class="form-input">
-        </div>
-      </div>
-
-      <div class="admin-grid">
-        <!-- Team 1 -->
-        <div class="team-block">
-          <div class="team-block-title">Team 1</div>
-          <div class="form-group">
-            <label>Player 1</label>
-            <select id="r-t1p1" class="form-input"><option value="">— select —</option></select>
-          </div>
-          <div class="form-group">
-            <label>Player 2</label>
-            <select id="r-t1p2" class="form-input"><option value="">— select —</option></select>
-          </div>
-          <div class="form-group">
-            <label>Set Scores</label>
-            <div class="set-scores-group">
-              <div>
-                <label style="font-size:0.75rem;color:var(--gray-600);">Set 1</label>
-                <input type="number" id="r-t1s1" class="form-input" min="0" max="7" placeholder="0–7">
-              </div>
-              <div>
-                <label style="font-size:0.75rem;color:var(--gray-600);">Set 2</label>
-                <input type="number" id="r-t1s2" class="form-input" min="0" max="7" placeholder="0–7">
-              </div>
-              <div>
-                <label style="font-size:0.75rem;color:var(--gray-600);">Set 3</label>
-                <input type="number" id="r-t1s3" class="form-input" min="0" max="7" placeholder="opt.">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Team 2 -->
-        <div class="team-block">
-          <div class="team-block-title">Team 2</div>
-          <div class="form-group">
-            <label>Player 1</label>
-            <select id="r-t2p1" class="form-input"><option value="">— select —</option></select>
-          </div>
-          <div class="form-group">
-            <label>Player 2</label>
-            <select id="r-t2p2" class="form-input"><option value="">— select —</option></select>
-          </div>
-          <div class="form-group">
-            <label>Set Scores</label>
-            <div class="set-scores-group">
-              <div>
-                <label style="font-size:0.75rem;color:var(--gray-600);">Set 1</label>
-                <input type="number" id="r-t2s1" class="form-input" min="0" max="7" placeholder="0–7">
-              </div>
-              <div>
-                <label style="font-size:0.75rem;color:var(--gray-600);">Set 2</label>
-                <input type="number" id="r-t2s2" class="form-input" min="0" max="7" placeholder="0–7">
-              </div>
-              <div>
-                <label style="font-size:0.75rem;color:var(--gray-600);">Set 3</label>
-                <input type="number" id="r-t2s3" class="form-input" min="0" max="7" placeholder="opt.">
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="r-score-preview" class="alert alert-info hidden" style="margin-top:0.5rem;"></div>
-    </div>
-    <div class="modal-footer">
-      <button id="result-modal-cancel" class="btn btn-secondary">Cancel</button>
-      <button id="result-modal-save" class="btn btn-primary">Save Result</button>
-    </div>
+    <div id="result-modal-body" class="modal-body"></div>
+    <div id="result-modal-footer" class="modal-footer"></div>
   </div>
 </div>
 
@@ -178,14 +98,24 @@
     }
   })
 
-  // ── Modal logic ───────────────────────────────────────────
+  // ── Modal state ───────────────────────────────────────────
+  let _schedule        = null   // scheduled_matches row
+  let _courtIdx        = 0
+  let _members         = []     // current-season members only
+  let _memberNameToId  = {}
+  let _weekLabel       = ''
+  let _playedOn        = ''
+
   const modal = document.getElementById('result-modal')
-
-  document.getElementById('result-modal-close').addEventListener('click',  closeModal)
-  document.getElementById('result-modal-cancel').addEventListener('click', closeModal)
+  document.getElementById('result-modal-close').addEventListener('click', closeModal)
   modal.addEventListener('click', e => { if (e.target === modal) closeModal() })
-
   function closeModal() { modal.style.display = 'none' }
+
+  function setScreen(bodyHtml, footerHtml) {
+    document.getElementById('result-modal-body').innerHTML   = bodyHtml
+    document.getElementById('result-modal-footer').innerHTML = footerHtml
+  }
+  function setTitle(t) { document.getElementById('result-modal-title').textContent = t }
 
   function getNum(id) {
     const val = document.getElementById(id)?.value
@@ -194,94 +124,302 @@
     return isNaN(n) ? null : n
   }
 
-  function updatePreview() {
-    const t1s1 = getNum('r-t1s1'), t1s2 = getNum('r-t1s2'), t1s3 = getNum('r-t1s3')
-    const t2s1 = getNum('r-t2s1'), t2s2 = getNum('r-t2s2'), t2s3 = getNum('r-t2s3')
-    const preview = document.getElementById('r-score-preview')
-    if (t1s1 === null || t1s2 === null || t2s1 === null || t2s2 === null) {
-      preview.classList.add('hidden')
-      return
+  // ── Open modal: fetch schedule + current-season members ───
+  async function openResultModal() {
+    modal.style.display = 'flex'
+    setTitle('Add Match Result')
+    setScreen('<div class="loading-state"><div class="spinner"></div> Loading schedule…</div>', '')
+
+    const [membersRes, seasonMembersRes, schedRes] = await Promise.all([
+      supabase.from('members').select('id, full_name').order('full_name'),
+      supabase.from('member_seasons').select('member_id').eq('season', CURRENT_SEASON),
+      supabase.from('scheduled_matches').select('*').order('played_on', { ascending: false }).limit(1).maybeSingle()
+    ])
+
+    // Filter to current-season active members only
+    const activeIds = new Set((seasonMembersRes.data || []).map(r => r.member_id))
+    _members = (membersRes.data || []).filter(m => activeIds.has(m.id))
+    _memberNameToId = Object.fromEntries((membersRes.data || []).map(m => [m.full_name, m.id]))
+    _schedule  = schedRes.data || null
+    _courtIdx  = 0
+
+    if (_schedule?.courts?.length > 0) {
+      renderSetupStep()
+    } else {
+      renderManualForm()
     }
+  }
+
+  // ── Step 1: confirm week label + date ─────────────────────
+  function renderSetupStep() {
+    setTitle('Add Match Result')
+    const courts = _schedule.courts
+    const summary = courts.map((c, i) => `
+      <div style="padding:0.35rem 0;border-bottom:1px solid var(--gray-100);font-size:0.85rem;">
+        <strong>Court ${i + 1}</strong>${c.location ? ' — ' + c.location : ''}
+        <span style="color:var(--gray-500);margin:0 0.4rem;">·</span>
+        ${c.team1.join(' & ')} <span style="color:var(--gray-400);">vs</span> ${c.team2.join(' & ')}
+      </div>`).join('')
+
+    setScreen(`
+      <div id="setup-alert" class="alert hidden"></div>
+      <div style="background:var(--gray-100);border-radius:var(--radius);padding:0.75rem 1rem;margin-bottom:1rem;">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">
+          Scheduled — ${courts.length} Court${courts.length > 1 ? 's' : ''}
+        </div>
+        ${summary}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+        <div class="form-group" style="margin:0;">
+          <label for="s-week-label">Week Label</label>
+          <input type="text" id="s-week-label" class="form-input" placeholder="e.g. Week 20">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label for="s-played-on">Date Played</label>
+          <input type="date" id="s-played-on" class="form-input" value="${_schedule.played_on}">
+        </div>
+      </div>`,
+    `<button id="setup-cancel" class="btn btn-secondary">Cancel</button>
+     <button id="setup-start"  class="btn btn-primary">Start Court 1 →</button>`)
+
+    document.getElementById('setup-cancel').addEventListener('click', closeModal)
+    document.getElementById('setup-start').addEventListener('click', () => {
+      const wl = document.getElementById('s-week-label').value.trim()
+      if (!wl) {
+        const a = document.getElementById('setup-alert')
+        a.textContent = 'Please enter a week label (e.g. Week 20).'
+        a.className = 'alert alert-error'
+        a.classList.remove('hidden')
+        return
+      }
+      _weekLabel = wl
+      _playedOn  = document.getElementById('s-played-on').value
+      renderCourtStep()
+    })
+  }
+
+  // ── Step 2+: enter scores for each court ──────────────────
+  function renderCourtStep() {
+    const court  = _schedule.courts[_courtIdx]
+    const total  = _schedule.courts.length
+    const isLast = _courtIdx === total - 1
+    const [p1, p2] = court.team1
+    const [p3, p4] = court.team2
+    const loc = court.location || 'Woodway CC'
+
+    // Build player dropdowns — pre-selected from schedule, but changeable
+    const memberOpts = _members.map(m =>
+      `<option value="${m.id}">${m.full_name}</option>`).join('')
+
+    function selectOpts(preselectedName) {
+      return _members.map(m =>
+        `<option value="${m.id}"${m.full_name === preselectedName ? ' selected' : ''}>${m.full_name}</option>`
+      ).join('')
+    }
+
+    setTitle(`Court ${_courtIdx + 1} of ${total}`)
+    setScreen(`
+      <div id="court-alert" class="alert hidden"></div>
+      <div style="background:var(--gray-100);border-radius:var(--radius);padding:0.6rem 1rem;margin-bottom:1rem;font-size:0.85rem;">
+        <span style="font-weight:700;color:var(--accent);">${_weekLabel}</span>
+        <span style="color:var(--gray-400);margin:0 0.35rem;">·</span>${loc}
+      </div>
+
+      <div class="admin-grid">
+        <div class="team-block">
+          <div class="team-block-title">Team 1</div>
+          <div class="form-group">
+            <label>Player 1</label>
+            <select id="c-t1p1" class="form-input"><option value="">— select —</option>${selectOpts(p1)}</select>
+          </div>
+          <div class="form-group">
+            <label>Player 2</label>
+            <select id="c-t1p2" class="form-input"><option value="">— select —</option>${selectOpts(p2)}</select>
+          </div>
+          <div class="form-group">
+            <label>Set Scores</label>
+            <div class="set-scores-group">
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 1</label><input type="number" id="c-t1s1" class="form-input" min="0" max="7" placeholder="0–7"></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 2</label><input type="number" id="c-t1s2" class="form-input" min="0" max="7" placeholder="0–7"></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 3</label><input type="number" id="c-t1s3" class="form-input" min="0" max="7" placeholder="opt."></div>
+            </div>
+          </div>
+        </div>
+        <div class="team-block">
+          <div class="team-block-title">Team 2</div>
+          <div class="form-group">
+            <label>Player 1</label>
+            <select id="c-t2p1" class="form-input"><option value="">— select —</option>${selectOpts(p3)}</select>
+          </div>
+          <div class="form-group">
+            <label>Player 2</label>
+            <select id="c-t2p2" class="form-input"><option value="">— select —</option>${selectOpts(p4)}</select>
+          </div>
+          <div class="form-group">
+            <label>Set Scores</label>
+            <div class="set-scores-group">
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 1</label><input type="number" id="c-t2s1" class="form-input" min="0" max="7" placeholder="0–7"></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 2</label><input type="number" id="c-t2s2" class="form-input" min="0" max="7" placeholder="0–7"></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 3</label><input type="number" id="c-t2s3" class="form-input" min="0" max="7" placeholder="opt."></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="c-preview" class="alert alert-info hidden" style="margin-top:0.5rem;font-size:0.85rem;"></div>`,
+    `<button id="court-skip" class="btn btn-secondary">Skip Court</button>
+     <button id="court-save" class="btn btn-primary">${isLast ? 'Save & Finish ✓' : 'Save & Next Court →'}</button>`)
+
+    ;['c-t1s1','c-t1s2','c-t1s3','c-t2s1','c-t2s2','c-t2s3'].forEach(id =>
+      document.getElementById(id)?.addEventListener('input', updateCourtPreview))
+
+    document.getElementById('court-skip').addEventListener('click', () => { _courtIdx++; advanceCourt() })
+    document.getElementById('court-save').addEventListener('click', saveCourtResult)
+  }
+
+  function updateCourtPreview() {
+    const t1s1 = getNum('c-t1s1'), t1s2 = getNum('c-t1s2'), t1s3 = getNum('c-t1s3')
+    const t2s1 = getNum('c-t2s1'), t2s2 = getNum('c-t2s2'), t2s3 = getNum('c-t2s3')
+    const preview = document.getElementById('c-preview')
+    if (!preview || t1s1 === null || t1s2 === null || t2s1 === null || t2s2 === null) { preview?.classList.add('hidden'); return }
     const t1score = matchScore(t1s1, t1s2, t1s3, t2s1, t2s2, t2s3)
     const t2score = matchScore(t2s1, t2s2, t2s3, t1s1, t1s2, t1s3)
     const t1won   = isWinner(t1s1, t1s2, t1s3, t2s1, t2s2, t2s3)
+    const t1p1name = _members.find(m => m.id === document.getElementById('c-t1p1').value)?.full_name || 'Team 1'
+    const t2p1name = _members.find(m => m.id === document.getElementById('c-t2p1').value)?.full_name || 'Team 2'
     preview.classList.remove('hidden')
-    preview.innerHTML = `<strong>Preview:</strong> Team 1 → <strong>${fmt(t1score)}</strong> ${t1won ? '(WIN ✓)' : '(loss)'} &nbsp;|&nbsp; Team 2 → <strong>${fmt(t2score)}</strong> ${!t1won ? '(WIN ✓)' : '(loss)'}`
+    preview.innerHTML = `<strong>${t1p1name}'s team:</strong> ${fmt(t1score)} ${t1won ? '✓ WIN' : 'loss'} &nbsp;|&nbsp; <strong>${t2p1name}'s team:</strong> ${fmt(t2score)} ${!t1won ? '✓ WIN' : 'loss'}`
   }
 
-  async function openResultModal() {
-    // Reset form
-    document.getElementById('result-form-alert').classList.add('hidden')
-    document.getElementById('r-score-preview').classList.add('hidden')
-    document.getElementById('r-played-on').value = new Date().toISOString().split('T')[0]
-    document.getElementById('r-week-label').value = ''
-    ;['r-t1s1','r-t1s2','r-t1s3','r-t2s1','r-t2s2','r-t2s3'].forEach(id => {
-      document.getElementById(id).value = ''
-    })
+  async function saveCourtResult() {
+    const alertEl = document.getElementById('court-alert')
+    const t1p1 = document.getElementById('c-t1p1').value
+    const t1p2 = document.getElementById('c-t1p2').value
+    const t2p1 = document.getElementById('c-t2p1').value
+    const t2p2 = document.getElementById('c-t2p2').value
+    const t1s1 = getNum('c-t1s1'), t1s2 = getNum('c-t1s2'), t1s3 = getNum('c-t1s3')
+    const t2s1 = getNum('c-t2s1'), t2s2 = getNum('c-t2s2'), t2s3 = getNum('c-t2s3')
 
-    // Load members into dropdowns
-    const { data: members } = await supabase.from('members').select('id, full_name').order('full_name')
-    if (members) {
-      const opts = members.map(m => `<option value="${m.id}">${m.full_name}</option>`).join('')
-      ;['r-t1p1','r-t1p2','r-t2p1','r-t2p2'].forEach(id => {
-        document.getElementById(id).innerHTML = '<option value="">— select —</option>' + opts
-      })
-    }
+    const showErr = msg => { alertEl.textContent = msg; alertEl.className = 'alert alert-error'; alertEl.classList.remove('hidden') }
+    if (!t1p1 || !t1p2) return showErr('Please select both players for Team 1.')
+    if (!t2p1 || !t2p2) return showErr('Please select both players for Team 2.')
+    if (new Set([t1p1,t1p2,t2p1,t2p2]).size !== 4) return showErr('Each player can only appear once.')
+    if (t1s1 === null || t1s2 === null || t2s1 === null || t2s2 === null) return showErr('Please enter Set 1 and Set 2 for both teams.')
 
-    // Wire up score preview
-    ;['r-t1s1','r-t1s2','r-t1s3','r-t2s1','r-t2s2','r-t2s3'].forEach(id => {
-      document.getElementById(id).addEventListener('input', updatePreview)
-    })
-
-    modal.style.display = 'flex'
-  }
-
-  document.getElementById('result-modal-save').addEventListener('click', async () => {
-    const alertEl   = document.getElementById('result-form-alert')
-    const weekLabel = document.getElementById('r-week-label').value.trim()
-    const playedOn  = document.getElementById('r-played-on').value
-    const t1p1 = document.getElementById('r-t1p1').value
-    const t1p2 = document.getElementById('r-t1p2').value
-    const t2p1 = document.getElementById('r-t2p1').value
-    const t2p2 = document.getElementById('r-t2p2').value
-    const t1s1 = getNum('r-t1s1'), t1s2 = getNum('r-t1s2'), t1s3 = getNum('r-t1s3')
-    const t2s1 = getNum('r-t2s1'), t2s2 = getNum('r-t2s2'), t2s3 = getNum('r-t2s3')
-
-    const showError = msg => {
-      alertEl.textContent = msg
-      alertEl.className = 'alert alert-error'
-      alertEl.classList.remove('hidden')
-    }
-
-    if (!weekLabel)  return showError('Please enter a week label.')
-    if (!playedOn)   return showError('Please enter the date played.')
-    if (!t1p1 || !t1p2) return showError('Please select both players for Team 1.')
-    if (!t2p1 || !t2p2) return showError('Please select both players for Team 2.')
-    if (new Set([t1p1, t1p2, t2p1, t2p2]).size !== 4)
-      return showError('Each player can only appear once per match.')
-    if (t1s1 === null || t1s2 === null || t2s1 === null || t2s2 === null)
-      return showError('Please enter Set 1 and Set 2 scores for both teams.')
-
-    const saveBtn = document.getElementById('result-modal-save')
-    saveBtn.disabled    = true
-    saveBtn.textContent = 'Saving…'
+    const saveBtn = document.getElementById('court-save')
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…'
 
     const { error } = await supabase.from('matches').insert({
-      week_label: weekLabel, played_on: playedOn, season: CURRENT_SEASON,
+      week_label: _weekLabel, played_on: _playedOn, season: CURRENT_SEASON,
       team1_player1: t1p1, team1_player2: t1p2,
       team2_player1: t2p1, team2_player2: t2p2,
       team1_set1: t1s1, team1_set2: t1s2, team1_set3: t1s3,
       team2_set1: t2s1, team2_set2: t2s2, team2_set3: t2s3
     })
 
-    saveBtn.disabled    = false
-    saveBtn.textContent = 'Save Result'
+    saveBtn.disabled = false
+    if (error) return showErr('Error saving: ' + error.message)
+    _courtIdx++
+    advanceCourt()
+  }
 
-    if (error) return showError('Error saving match: ' + error.message)
+  function advanceCourt() {
+    _courtIdx < _schedule.courts.length ? renderCourtStep() : renderDoneScreen()
+  }
 
-    closeModal()
-    loadResults(_activeSeason)
-  })
+  function renderDoneScreen() {
+    setTitle('Results Saved')
+    setScreen(`
+      <div style="text-align:center;padding:1.5rem 0;">
+        <div style="font-size:2.5rem;margin-bottom:0.75rem;">✓</div>
+        <div style="font-weight:700;font-size:1rem;">All courts entered</div>
+        <div style="color:var(--gray-500);font-size:0.88rem;margin-top:0.25rem;">${_weekLabel}</div>
+      </div>`,
+    `<button id="done-close" class="btn btn-primary" style="width:100%;">Done</button>`)
+    document.getElementById('done-close').addEventListener('click', () => { closeModal(); loadResults(_activeSeason) })
+  }
+
+  // ── Manual form (no schedule found) ──────────────────────
+  function renderManualForm() {
+    setTitle('Add Match Result')
+    const opts = _members.map(m => `<option value="${m.id}">${m.full_name}</option>`).join('')
+    setScreen(`
+      <div class="alert alert-info" style="margin-bottom:1rem;font-size:0.83rem;">No upcoming schedule found — enter manually.</div>
+      <div id="manual-alert" class="alert hidden"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+        <div class="form-group" style="margin:0;"><label for="m-week-label">Week Label</label>
+          <input type="text" id="m-week-label" class="form-input" placeholder="e.g. Week 20"></div>
+        <div class="form-group" style="margin:0;"><label for="m-played-on">Date Played</label>
+          <input type="date" id="m-played-on" class="form-input" value="${new Date().toISOString().split('T')[0]}"></div>
+      </div>
+      <div class="admin-grid">
+        <div class="team-block">
+          <div class="team-block-title">Team 1</div>
+          <div class="form-group"><label>Player 1</label><select id="m-t1p1" class="form-input"><option value="">— select —</option>${opts}</select></div>
+          <div class="form-group"><label>Player 2</label><select id="m-t1p2" class="form-input"><option value="">— select —</option>${opts}</select></div>
+          <div class="form-group"><label>Set Scores</label>
+            <div class="set-scores-group">
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 1</label><input type="number" id="m-t1s1" class="form-input" min="0" max="7" placeholder="0–7"></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 2</label><input type="number" id="m-t1s2" class="form-input" min="0" max="7" placeholder="0–7"></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 3</label><input type="number" id="m-t1s3" class="form-input" min="0" max="7" placeholder="opt."></div>
+            </div>
+          </div>
+        </div>
+        <div class="team-block">
+          <div class="team-block-title">Team 2</div>
+          <div class="form-group"><label>Player 1</label><select id="m-t2p1" class="form-input"><option value="">— select —</option>${opts}</select></div>
+          <div class="form-group"><label>Player 2</label><select id="m-t2p2" class="form-input"><option value="">— select —</option>${opts}</select></div>
+          <div class="form-group"><label>Set Scores</label>
+            <div class="set-scores-group">
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 1</label><input type="number" id="m-t2s1" class="form-input" min="0" max="7" placeholder="0–7"></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 2</label><input type="number" id="m-t2s2" class="form-input" min="0" max="7" placeholder="0–7"></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 3</label><input type="number" id="m-t2s3" class="form-input" min="0" max="7" placeholder="opt."></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="m-preview" class="alert alert-info hidden" style="margin-top:0.5rem;font-size:0.85rem;"></div>`,
+    `<button id="manual-cancel" class="btn btn-secondary">Cancel</button>
+     <button id="manual-save"   class="btn btn-primary">Save Result</button>`)
+
+    ;['m-t1s1','m-t1s2','m-t1s3','m-t2s1','m-t2s2','m-t2s3'].forEach(id =>
+      document.getElementById(id)?.addEventListener('input', () => {
+        const t1s1=getNum('m-t1s1'),t1s2=getNum('m-t1s2'),t1s3=getNum('m-t1s3')
+        const t2s1=getNum('m-t2s1'),t2s2=getNum('m-t2s2'),t2s3=getNum('m-t2s3')
+        const p = document.getElementById('m-preview')
+        if (t1s1===null||t1s2===null||t2s1===null||t2s2===null){p.classList.add('hidden');return}
+        const t1won = isWinner(t1s1,t1s2,t1s3,t2s1,t2s2,t2s3)
+        p.classList.remove('hidden')
+        p.innerHTML=`<strong>Team 1:</strong> ${fmt(matchScore(t1s1,t1s2,t1s3,t2s1,t2s2,t2s3))} ${t1won?'✓ WIN':'loss'} &nbsp;|&nbsp; <strong>Team 2:</strong> ${fmt(matchScore(t2s1,t2s2,t2s3,t1s1,t1s2,t1s3))} ${!t1won?'✓ WIN':'loss'}`
+      }))
+
+    document.getElementById('manual-cancel').addEventListener('click', closeModal)
+    document.getElementById('manual-save').addEventListener('click', async () => {
+      const alertEl = document.getElementById('manual-alert')
+      const wl = document.getElementById('m-week-label').value.trim()
+      const po = document.getElementById('m-played-on').value
+      const t1p1=document.getElementById('m-t1p1').value, t1p2=document.getElementById('m-t1p2').value
+      const t2p1=document.getElementById('m-t2p1').value, t2p2=document.getElementById('m-t2p2').value
+      const t1s1=getNum('m-t1s1'),t1s2=getNum('m-t1s2'),t1s3=getNum('m-t1s3')
+      const t2s1=getNum('m-t2s1'),t2s2=getNum('m-t2s2'),t2s3=getNum('m-t2s3')
+      const showErr = msg => { alertEl.textContent=msg; alertEl.className='alert alert-error'; alertEl.classList.remove('hidden') }
+      if (!wl) return showErr('Please enter a week label.')
+      if (!po) return showErr('Please enter the date.')
+      if (!t1p1||!t1p2) return showErr('Please select both players for Team 1.')
+      if (!t2p1||!t2p2) return showErr('Please select both players for Team 2.')
+      if (new Set([t1p1,t1p2,t2p1,t2p2]).size!==4) return showErr('Each player can only appear once.')
+      if (t1s1===null||t1s2===null||t2s1===null||t2s2===null) return showErr('Please enter Set 1 and Set 2 for both teams.')
+      const btn = document.getElementById('manual-save')
+      btn.disabled=true; btn.textContent='Saving…'
+      const { error } = await supabase.from('matches').insert({
+        week_label:wl, played_on:po, season:CURRENT_SEASON,
+        team1_player1:t1p1, team1_player2:t1p2, team2_player1:t2p1, team2_player2:t2p2,
+        team1_set1:t1s1, team1_set2:t1s2, team1_set3:t1s3, team2_set1:t2s1, team2_set2:t2s2, team2_set3:t2s3
+      })
+      btn.disabled=false; btn.textContent='Save Result'
+      if (error) return showErr('Error: ' + error.message)
+      closeModal(); loadResults(_activeSeason)
+    })
+  }
 
   // ── Season dropdown & results ─────────────────────────────
   async function populateSeasonDropdown() {
