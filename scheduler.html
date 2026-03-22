@@ -64,6 +64,7 @@
 <script type="module">
   import { requireLogin, getCurrentMember, initNav } from './js/auth.js'
   import { generateSchedule, getUpcomingWeeks, formatWeekLabel } from './js/scheduler.js'
+  import { supabase } from './js/supabase-client.js'
 
   ;(async () => {
     initNav('scheduler')
@@ -124,6 +125,37 @@
     })
   })()
 
+  // ── Stored result for "Select" button ────────────────────
+  let currentResult = null
+
+  async function selectOption(idx) {
+    const { weekStart, options, idToName } = currentResult
+    const opt    = options[idx]
+    const courts = opt.courts.map(([[a, b], [c, d]]) => ({
+      team1: [idToName[a], idToName[b]],
+      team2: [idToName[c], idToName[d]]
+    }))
+    const playedOn  = new Date(weekStart).toISOString().split('T')[0]
+    const weekLabel = new Date(weekStart).toLocaleDateString('en-US',
+      { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+
+    const { error } = await supabase
+      .from('scheduled_matches')
+      .upsert({ week_label: weekLabel, played_on: playedOn, courts }, { onConflict: 'played_on' })
+
+    if (error) {
+      alert('Error saving schedule: ' + error.message)
+      return
+    }
+
+    // Update buttons to reflect saved state
+    document.querySelectorAll('.select-option-btn').forEach((b, i) => {
+      b.disabled    = true
+      b.textContent = i === idx ? '✓ Scheduled' : 'Select This Option'
+      if (i === idx) b.classList.add('btn-success')
+    })
+  }
+
   // ── Helpers ──────────────────────────────────────────────
 
   const matGet = (m, a, b) => (m[a] && m[a][b]) || 0
@@ -142,6 +174,7 @@
   // ── Main render ──────────────────────────────────────────
 
   function renderResults(result, container) {
+    currentResult = result
     const {
       weekStart, available, playing, sittingOut, tiebreakUsed,
       outings, options, idToName, scores, partnerCount, oppCount, partnerRecord
@@ -276,11 +309,20 @@
             </div>`
         })
 
+        html += `
+          <div class="pairing-select-row">
+            <button class="btn btn-primary select-option-btn" data-opt-idx="${i}">Select This Option</button>
+          </div>`
+
         html += `</div></div>`
       })
     }
 
     container.innerHTML = html
+
+    container.querySelectorAll('.select-option-btn').forEach(btn => {
+      btn.addEventListener('click', () => selectOption(parseInt(btn.dataset.optIdx)))
+    })
   }
 </script>
 </body>
