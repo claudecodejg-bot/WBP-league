@@ -1520,6 +1520,12 @@ footer {
   text-align: center;
   margin: 0 0 0.25rem;
 }
+.bracket-info {
+  font-size: 0.82rem;
+  color: var(--gray-600);
+  text-align: center;
+  margin: 0.15rem 0 0;
+}
 .bracket-subtitle {
   font-size: 0.75rem;
   font-weight: 700;
