@@ -48,6 +48,46 @@
     <h2 class="bracket-title">2026 WBP Team Tournament</h2>
     <p class="bracket-info">Wee Burn Country Club &mdash; Arrive 6:00&ndash;6:15 PM, Matches Start 6:30 PM</p>
 
+    <!-- Collapsible Odds Section -->
+    <details class="odds-section" id="odds-section">
+      <summary class="odds-toggle">Match Summary / Odds</summary>
+      <div class="odds-content">
+
+        <h3 class="odds-table-title">🏆 2026 WBP Playoff Odds</h3>
+        <div class="odds-table-wrap">
+          <table class="odds-table">
+            <thead>
+              <tr><th>Rank</th><th>Seed</th><th>Team</th><th>Win %</th><th>Odds</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>#1</td><td><strong>D'Acunto / McGurren</strong></td><td>15.1%</td><td>~6.6:1</td></tr>
+              <tr><td>2</td><td>#4</td><td><strong>Grills / Rayhill</strong></td><td>14.4%</td><td>~6.9:1</td></tr>
+              <tr><td>3</td><td>#2</td><td><strong>Baum / Moyers</strong></td><td>13.8%</td><td>~7.2:1</td></tr>
+              <tr><td>4</td><td>#6</td><td><strong>Adams / Brown</strong></td><td>13.1%</td><td>~7.6:1</td></tr>
+              <tr><td>5</td><td>#7</td><td><strong>Ridder / Dolcetti</strong></td><td>11.8%</td><td>~8.5:1</td></tr>
+              <tr><td>6</td><td>#5</td><td><strong>Dolan / Napolitano</strong></td><td>11.1%</td><td>~9.0:1</td></tr>
+              <tr><td>7</td><td>#8</td><td><strong>Jonson / Luecke</strong></td><td>11.1%</td><td>~9.0:1</td></tr>
+              <tr><td>8</td><td>#3</td><td><strong>Smith / Walsh</strong></td><td>9.6%</td><td>~10.4:1</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="odds-storylines-title">Key Storylines</h3>
+        <ul class="odds-storylines">
+          <li><strong>D'Acunto / McGurren (#1)</strong> earned the top seed with the strongest combined season &mdash; D'Acunto leads the field at 67% this year (4-2), and McGurren's 172 career matches make him one of the most battle-tested players in the bracket.</li>
+          <li><strong>Baum / Moyers (#2)</strong> are the defending champions looking to go back-to-back. Baum carries a 57% career win rate over 89 matches and is undefeated this season (only playing 1 match!). Moyers is a grizzled DPC player looking for a twopeat. They know what it takes to win it all, and that championship experience is something no other team can match.</li>
+          <li><strong>Smith / Walsh (#3)</strong> bring the most combined experience of any team in the field. Smith is rolling at 53% this season &mdash; he is the OG of the group with the most experience of anyone. Walsh adds veteran savvy. Seeds don't matter once the ball is in play.</li>
+          <li><strong>Grills / Rayhill (#4)</strong> are the hottest duo in the bracket with a perfect 2-0 record as partners this year. Grills' 236 career matches are the most of any player in the tournament. Don't sleep on this team.</li>
+          <li><strong>Dolan / Napolitano (#5)</strong> pair Dolan's impressive career win rate with Napolitano's big-game experience. A fresh partnership that could gel at just the right time.</li>
+          <li><strong>Adams / Brown (#6)</strong> are the most balanced team in the tournament &mdash; steady and dangerous with no glaring weakness. Adams with the Ginsu, Downtown with the best drive of the league. They're a tough out for anyone.</li>
+          <li><strong>Ridder / Dolcetti (#7)</strong> feature one of the season's most active players in Ridder, who's played a bracket-high 15 matches at a 60% clip (9-6) with 157 career matches. Dolcetti adds 92 career matches of experience. If they click, watch out.</li>
+          <li><strong>Jonson / Luecke (#8)</strong> pack serious experience &mdash; Jonson's 225 career matches are the second-most in the tournament, with a 60% season rate (6-4) and 54% career mark. Luecke adds grit to a team that could make noise as an 8-seed.</li>
+        </ul>
+        <p class="odds-bottom-line"><strong>Bottom line: this is anyone's tournament.</strong> Just 5.5 points separate the favorite from the longest shot. Every team has a legitimate path to the title.</p>
+
+      </div>
+    </details>
+
     <!-- Winner's Bracket -->
     <h3 class="bracket-subtitle">Winner's Bracket</h3>
     <div class="bracket bracket-winners">
@@ -420,6 +460,12 @@
   // getCurrentMember().then(member => loadUpcoming(member?.is_admin === true))
   // loadLatestResult()
   loadHomeStats()
+
+  // Open odds section if ?odds=open in URL
+  if (new URLSearchParams(window.location.search).get('odds') === 'open') {
+    const el = document.getElementById('odds-section')
+    if (el) { el.open = true; el.scrollIntoView({ behavior: 'smooth' }) }
+  }
 </script>
 </body>
 </html>

@@ -1526,6 +1526,81 @@ footer {
   text-align: center;
   margin: 0.15rem 0 0;
 }
+
+/* ---- Odds / Storylines collapsible ---- */
+.odds-section {
+  margin: 1.2rem 0 1.5rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 0.5rem;
+  background: var(--white);
+  overflow: hidden;
+}
+.odds-toggle {
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--gray-800);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.odds-toggle::-webkit-details-marker { display: none; }
+.odds-toggle::before {
+  content: '\25B6';
+  font-size: 0.65rem;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.odds-section[open] > .odds-toggle::before {
+  transform: rotate(90deg);
+}
+.odds-content {
+  padding: 0 1rem 1.25rem;
+}
+.odds-table-title, .odds-storylines-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0.75rem 0 0.5rem;
+}
+.odds-table-wrap { overflow-x: auto; }
+.odds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-bottom: 1rem;
+}
+.odds-table th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 2px solid var(--gray-300);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.odds-table td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+.odds-table tbody tr:hover { background: var(--gray-50); }
+.odds-storylines {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.odds-storylines li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.odds-storylines li:last-child { border-bottom: none; }
+.odds-bottom-line {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--accent);
+}
 .bracket-subtitle {
   font-size: 0.75rem;
   font-weight: 700;
