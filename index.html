@@ -43,11 +43,130 @@
 
 <main>
 
-  <!-- Upcoming scheduled match (loaded dynamically) -->
-  <div id="upcoming-container"></div>
+  <!-- 2026 Playoff Bracket -->
+  <div class="bracket-wrapper">
+    <h2 class="bracket-title">2026 WBP Team Tournament</h2>
 
-  <!-- Latest result (loaded dynamically) -->
-  <div id="latest-result-container"></div>
+    <!-- Winner's Bracket -->
+    <h3 class="bracket-subtitle">Winner's Bracket</h3>
+    <div class="bracket bracket-winners">
+
+      <!-- Quarterfinals -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">Quarterfinals</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top"><span class="bracket-seed">1</span> D'Acunto / McGurren</div>
+          <div class="bracket-team bracket-team-bot"><span class="bracket-seed">8</span> Jonson / Luecke</div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top"><span class="bracket-seed">4</span> Grills / Rayhill</div>
+          <div class="bracket-team bracket-team-bot"><span class="bracket-seed">5</span> Dolan / Napolitano</div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top"><span class="bracket-seed">2</span> Baum / Moyers</div>
+          <div class="bracket-team bracket-team-bot"><span class="bracket-seed">7</span> Ridder / Dolcetti</div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top"><span class="bracket-seed">3</span> Smith / Walsh</div>
+          <div class="bracket-team bracket-team-bot"><span class="bracket-seed">6</span> Adams / Brown</div>
+        </div>
+      </div>
+
+      <!-- Connector: QF → SF -->
+      <div class="bracket-connector">
+        <div class="bracket-connector-pair"></div>
+        <div class="bracket-connector-pair"></div>
+      </div>
+
+      <!-- Semifinals -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">Semifinals</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-tbd">TBD</div>
+          <div class="bracket-team bracket-team-bot bracket-tbd">TBD</div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-tbd">TBD</div>
+          <div class="bracket-team bracket-team-bot bracket-tbd">TBD</div>
+        </div>
+      </div>
+
+      <!-- Connector: SF → Finals -->
+      <div class="bracket-connector">
+        <div class="bracket-connector-pair"></div>
+      </div>
+
+      <!-- Finals -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">Finals</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-tbd">TBD</div>
+          <div class="bracket-team bracket-team-bot bracket-tbd">TBD</div>
+        </div>
+      </div>
+
+      <!-- Champion -->
+      <div class="bracket-round bracket-champion-round">
+        <div class="bracket-champion bracket-tbd">
+          <span class="bracket-label">Champion</span>
+          TBD
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Consolation Bracket -->
+    <h3 class="bracket-subtitle">Consolation Bracket</h3>
+    <div class="bracket bracket-consolation">
+
+      <!-- Consolation Rd 1 -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">Consolation Rd 1</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-tbd">Loser QF 1</div>
+          <div class="bracket-team bracket-team-bot bracket-tbd">Loser QF 4</div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-tbd">Loser QF 2</div>
+          <div class="bracket-team bracket-team-bot bracket-tbd">Loser QF 3</div>
+        </div>
+      </div>
+
+      <!-- Connector -->
+      <div class="bracket-connector">
+        <div class="bracket-connector-pair"></div>
+        <div class="bracket-connector-pair"></div>
+      </div>
+
+      <!-- Consolation Rd 2 -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">Consolation Rd 2</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-tbd">Loser SF 1</div>
+          <div class="bracket-team bracket-team-bot bracket-tbd">Winner C1-A</div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-tbd">Loser SF 2</div>
+          <div class="bracket-team bracket-team-bot bracket-tbd">Winner C1-B</div>
+        </div>
+      </div>
+
+      <!-- Connector -->
+      <div class="bracket-connector">
+        <div class="bracket-connector-pair"></div>
+      </div>
+
+      <!-- 3rd Place -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">3rd Place</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-tbd">TBD</div>
+          <div class="bracket-team bracket-team-bot bracket-tbd">TBD</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <!-- Hero -->
   <div class="home-hero">
@@ -297,8 +416,8 @@
     document.getElementById('latest-result-container').innerHTML = html
   }
 
-  getCurrentMember().then(member => loadUpcoming(member?.is_admin === true))
-  loadLatestResult()
+  // getCurrentMember().then(member => loadUpcoming(member?.is_admin === true))
+  // loadLatestResult()
   loadHomeStats()
 </script>
 </body>

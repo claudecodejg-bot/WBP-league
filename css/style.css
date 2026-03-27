@@ -635,7 +635,7 @@ main {
 .admin-avail-select {
   font-size: 0.8rem;
   padding: 0.2rem 0.35rem;
-  border: 1px solid var(--gray-300);
+  border: 1px solid var(--gray-400);
   border-radius: 4px;
   background: var(--white);
   cursor: pointer;
@@ -1503,4 +1503,174 @@ footer {
 }
 @media (max-width: 480px) {
   .modal-court-fields { grid-template-columns: 1fr; }
+}
+
+/* ----- Playoff Bracket ----- */
+.bracket-wrapper {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.bracket-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  text-align: center;
+  margin: 0 0 0.25rem;
+}
+.bracket-subtitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--gray-600);
+  margin: 1.25rem 0 0.5rem;
+  padding-left: 0.25rem;
+}
+.bracket {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+}
+.bracket-round {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  flex-shrink: 0;
+}
+.bracket-round-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--gray-400);
+  text-align: center;
+  margin-bottom: 0.4rem;
+}
+.bracket-matchup {
+  display: flex;
+  flex-direction: column;
+  margin: 0.35rem 0.4rem;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.bracket-team {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  padding: 0.3rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green-dark);
+  white-space: nowrap;
+}
+.bracket-team-top {
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.bracket-team-bot {
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.bracket-seed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--white);
+  background: var(--accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.bracket-tbd {
+  color: var(--gray-400);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Connector lines between rounds */
+.bracket-connector {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 1.5rem;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+.bracket-connector-pair {
+  flex: 1;
+  position: relative;
+}
+/* Right-side bracket shape: top and bottom horizontal lines merging into vertical */
+.bracket-connector-pair::before {
+  content: '';
+  position: absolute;
+  top: 25%;
+  right: 0;
+  width: 50%;
+  height: 50%;
+  border: 2px solid var(--gray-400);
+  border-left: none;
+}
+/* Horizontal output line from the merge point */
+.bracket-connector-pair::after {
+  content: '';
+  position: absolute;
+  top: calc(50% - 1px);
+  left: 0;
+  width: 50%;
+  border-top: 2px solid var(--gray-400);
+}
+
+/* Champion slot */
+.bracket-champion-round {
+  justify-content: center;
+}
+.bracket-champion {
+  background: var(--white);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--green-dark);
+  margin: 0 0.4rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+.bracket-champion .bracket-label {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+}
+
+/* Consolation bracket styling */
+.bracket-consolation .bracket-round { min-width: 140px; }
+.bracket-consolation .bracket-team { font-size: 0.72rem; padding: 0.3rem 0.45rem; }
+
+/* Responsive: mobile stacked */
+@media (max-width: 640px) {
+  .bracket-wrapper { padding: 1rem 0.75rem; }
+  .bracket {
+    flex-direction: column;
+    align-items: stretch;
+    overflow-x: visible;
+  }
+  .bracket-round { min-width: 0; width: 100%; }
+  .bracket-team { white-space: normal; min-width: 0; }
+  .bracket-connector { display: none; }
+  .bracket-matchup { margin: 0.3rem 0; }
+  .bracket-champion { margin: 0.3rem 0; }
 }
