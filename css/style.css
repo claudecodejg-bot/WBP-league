@@ -1526,6 +1526,34 @@ footer {
   text-align: center;
   margin: 0.15rem 0 0;
 }
+.bracket-rules {
+  max-width: 700px;
+  margin: 1rem auto 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--gray-50, #f9fafb);
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--gray-700, #374151);
+}
+.bracket-rules h3 {
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  color: var(--gray-800, #1f2937);
+}
+.bracket-rules ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+.bracket-rules ul ul {
+  margin-top: 0.25rem;
+  padding-left: 1.25rem;
+}
+.bracket-rules li {
+  margin-bottom: 0.35rem;
+  line-height: 1.45;
+}
 
 /* ---- Odds / Storylines collapsible ---- */
 .odds-section {
