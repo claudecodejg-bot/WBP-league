@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026 Championship — WBP League</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-brand"><img src="wbp-logo.png" alt="WBP"><span>WBP</span> League</a>
+  <ul class="nav-links">
+    <li><a href="championship.html" data-page="championship">Championship</a></li>
+    <li><a href="standings.html"    data-page="standings">Standings</a></li>
+    <li><a href="results.html"      data-page="results">Results</a></li>
+    <li><a href="player.html"       data-page="player">Players</a></li>
+    <li><a href="matchups.html"     data-page="matchups">Matchups</a></li>
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+    <li><a href="suggestions.html"  data-page="suggestions">Suggestions</a></li>
+    <li><a href="photos.html"       data-page="photos">Photos</a></li>
+    <li><a href="golf.html?v=2"     data-page="golf">Golf</a></li>
+  </ul>
+  <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
+  <button id="nav-auth-btn">Sign In</button>
+</nav>
+<script>
+  (function () {
+    var btn = document.getElementById('nav-hamburger')
+    btn.addEventListener('click', function () {
+      var open = btn.closest('nav').classList.toggle('nav-open')
+      btn.textContent = open ? '\u2715' : '\u2630'
+      btn.setAttribute('aria-expanded', open)
+    })
+    document.querySelectorAll('.nav-links a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        btn.closest('nav').classList.remove('nav-open')
+        btn.textContent = '\u2630'
+        btn.setAttribute('aria-expanded', 'false')
+      })
+    })
+  })()
+</script>
+
+<main>
+
+  <!-- Champion Hero -->
+  <div class="champ-hero">
+    <div class="champ-hero-icon">&#127942;</div>
+    <div class="champ-hero-title">2026 WBP Champions</div>
+    <div class="champ-hero-names">Dolan / Napolitano</div>
+    <div class="champ-hero-tagline">#5 seed &middot; ~9:1 odds &middot; Champions.</div>
+  </div>
+
+  <div class="bracket-wrapper">
+    <h2 class="bracket-title">2026 WBP Team Tournament</h2>
+    <p class="bracket-info">Wee Burn Country Club &mdash; March 2026</p>
+
+    <!-- Winner's Bracket -->
+    <h3 class="bracket-subtitle">Winner's Bracket</h3>
+    <div class="bracket bracket-winners">
+
+      <!-- Quarterfinals -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">Quarterfinals</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-winner"><span class="bracket-seed">1</span> D'Acunto / McGurren <span class="bracket-score">6-4, 6-2</span></div>
+          <div class="bracket-team bracket-team-bot bracket-loser"><span class="bracket-seed">8</span> Jonson / Luecke</div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-loser"><span class="bracket-seed">4</span> Grills / Rayhill</div>
+          <div class="bracket-team bracket-team-bot bracket-winner"><span class="bracket-seed">5</span> Dolan / Napolitano <span class="bracket-score">6-4, 3-5, 10-8</span></div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-winner"><span class="bracket-seed">2</span> Baum / Moyers <span class="bracket-score">6-2, 4-4(8-6)</span></div>
+          <div class="bracket-team bracket-team-bot bracket-loser"><span class="bracket-seed">7</span> Ridder / Dolcetti</div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-loser"><span class="bracket-seed">3</span> Smith / Walsh</div>
+          <div class="bracket-team bracket-team-bot bracket-winner"><span class="bracket-seed">6</span> Adams / Brown <span class="bracket-score">6-2, 6-0</span></div>
+        </div>
+      </div>
+
+      <!-- Connector: QF → SF -->
+      <div class="bracket-connector">
+        <div class="bracket-connector-pair"></div>
+        <div class="bracket-connector-pair"></div>
+      </div>
+
+      <!-- Semifinals -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">Semifinals</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-loser"><span class="bracket-seed">1</span> D'Acunto / McGurren</div>
+          <div class="bracket-team bracket-team-bot bracket-winner"><span class="bracket-seed">5</span> Dolan / Napolitano <span class="bracket-score">6-2, 4-6, 10-8</span></div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-winner"><span class="bracket-seed">2</span> Baum / Moyers <span class="bracket-score">6-3, 6-4</span></div>
+          <div class="bracket-team bracket-team-bot bracket-loser"><span class="bracket-seed">6</span> Adams / Brown</div>
+        </div>
+      </div>
+
+      <!-- Connector: SF → Finals -->
+      <div class="bracket-connector">
+        <div class="bracket-connector-pair"></div>
+      </div>
+
+      <!-- Finals -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">Finals</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-winner"><span class="bracket-seed">5</span> Dolan / Napolitano <span class="bracket-score">5-5(7-5), 5-5(7-5)</span></div>
+          <div class="bracket-team bracket-team-bot bracket-loser"><span class="bracket-seed">2</span> Baum / Moyers</div>
+        </div>
+      </div>
+
+      <!-- Champion -->
+      <div class="bracket-round bracket-champion-round">
+        <div class="bracket-champion bracket-champion-won">
+          <span class="bracket-label">Champion</span>
+          Dolan / Napolitano
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Consolation Bracket -->
+    <h3 class="bracket-subtitle">Consolation Bracket</h3>
+    <div class="bracket bracket-consolation">
+
+      <!-- Consolation Rd 1 -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">Consolation Rd 1</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-loser">Jonson / Luecke</div>
+          <div class="bracket-team bracket-team-bot bracket-winner">Grills / Rayhill <span class="bracket-score">6-2, 6-1</span></div>
+        </div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-loser">Smith / Walsh</div>
+          <div class="bracket-team bracket-team-bot bracket-winner">Ridder / Dolcetti <span class="bracket-score">5-5(7-5), 5-2</span></div>
+        </div>
+      </div>
+
+      <!-- Connector -->
+      <div class="bracket-connector">
+        <div class="bracket-connector-pair"></div>
+      </div>
+
+      <!-- 5th Place -->
+      <div class="bracket-round">
+        <div class="bracket-round-label">5th Place</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top bracket-winner">Grills / Rayhill <span class="bracket-score">2-6, 6-2, 7-4</span></div>
+          <div class="bracket-team bracket-team-bot bracket-loser">Ridder / Dolcetti</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3rd / 7th Place -->
+    <h3 class="bracket-subtitle">Placement Matches</h3>
+    <div class="bracket bracket-consolation">
+      <div class="bracket-round">
+        <div class="bracket-round-label">3rd Place</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top">D'Acunto / McGurren</div>
+          <div class="bracket-team bracket-team-bot">Adams / Brown</div>
+        </div>
+      </div>
+      <div class="bracket-round" style="margin-left: 2rem;">
+        <div class="bracket-round-label">7th Place</div>
+        <div class="bracket-matchup">
+          <div class="bracket-team bracket-team-top">Jonson / Luecke</div>
+          <div class="bracket-team bracket-team-bot">Smith / Walsh</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collapsible Odds Section (pre-tournament) -->
+    <details class="odds-section" id="odds-section">
+      <summary class="odds-toggle">Pre-Tournament Odds &amp; Storylines</summary>
+      <div class="odds-content">
+
+        <h3 class="odds-table-title">&#127942; 2026 WBP Playoff Odds</h3>
+        <div class="odds-table-wrap">
+          <table class="odds-table">
+            <thead>
+              <tr><th>Rank</th><th>Seed</th><th>Team</th><th>Win %</th><th>Odds</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>#1</td><td><strong>D'Acunto / McGurren</strong></td><td>15.1%</td><td>~6.6:1</td></tr>
+              <tr><td>2</td><td>#4</td><td><strong>Grills / Rayhill</strong></td><td>14.4%</td><td>~6.9:1</td></tr>
+              <tr><td>3</td><td>#2</td><td><strong>Baum / Moyers</strong></td><td>13.8%</td><td>~7.2:1</td></tr>
+              <tr><td>4</td><td>#6</td><td><strong>Adams / Brown</strong></td><td>13.1%</td><td>~7.6:1</td></tr>
+              <tr><td>5</td><td>#7</td><td><strong>Ridder / Dolcetti</strong></td><td>11.8%</td><td>~8.5:1</td></tr>
+              <tr><td>6</td><td>#5</td><td><strong>Dolan / Napolitano</strong></td><td>11.1%</td><td>~9.0:1</td></tr>
+              <tr><td>7</td><td>#8</td><td><strong>Jonson / Luecke</strong></td><td>11.1%</td><td>~9.0:1</td></tr>
+              <tr><td>8</td><td>#3</td><td><strong>Smith / Walsh</strong></td><td>9.6%</td><td>~10.4:1</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="odds-storylines-title">Key Storylines</h3>
+        <ul class="odds-storylines">
+          <li><strong>D'Acunto / McGurren (#1)</strong> earned the top seed with the strongest combined season &mdash; D'Acunto leads the field at 67% this year (4-2), and McGurren's 161 career matches make him one of the most battle-tested players in the bracket.</li>
+          <li><strong>Baum / Moyers (#2)</strong> are the defending champions looking to go back-to-back. Baum carries a 57% career win rate over 83 matches and is undefeated this season (only playing 1 match!). Moyers is a grizzled DPC player looking for a twopeat. They know what it takes to win it all, and that championship experience is something no other team can match.</li>
+          <li><strong>Smith / Walsh (#3)</strong> bring the most combined experience of any team in the field. Smith is rolling at 60% this season &mdash; he is the OG of the group with the most experience of anyone. Walsh adds veteran savvy. Seeds don't matter once the ball is in play.</li>
+          <li><strong>Grills / Rayhill (#4)</strong> are the hottest duo in the bracket with a perfect 2-0 record as partners this year. Grills' 228 career matches are the most of any player in the tournament. Don't sleep on this team.</li>
+          <li><strong>Dolan / Napolitano (#5)</strong> pair Dolan's impressive career win rate with Napolitano's big-game experience. Dolan has a 70% career win rate, impressive! A fresh partnership that could gel at just the right time.</li>
+          <li><strong>Adams / Brown (#6)</strong> are the most balanced team in the tournament &mdash; steady and dangerous with no glaring weakness. Adams with the Ginsu, Downtown with the best drive of the league. They're a tough out for anyone.</li>
+          <li><strong>Ridder / Dolcetti (#7)</strong> feature one of the season's most active players in Ridder, who's played a bracket-high 15 matches at a 60% clip (9-6) with 150 career matches. Dolcetti adds 87 career matches of experience. If they click, watch out.</li>
+          <li><strong>Jonson / Luecke (#8)</strong> pack serious experience &mdash; Jonson's 225 career matches are the second-most in the tournament, with a 60% season rate (6-4) and 54% career mark. Luecke adds grit to a team that could make noise as an 8-seed.</li>
+        </ul>
+        <p class="odds-bottom-line"><strong>Bottom line: this is anyone's tournament.</strong> Just 5.5 points separate the favorite from the longest shot. Every team has a legitimate path to the title.</p>
+
+      </div>
+    </details>
+
+    <!-- Collapsible Format & Rules -->
+    <details class="odds-section">
+      <summary class="odds-toggle">Format &amp; Rules</summary>
+      <div class="odds-content">
+        <ul>
+          <li><strong>Sets:</strong> 2 sets, 1-ad scoring, tiebreak at 5-5</li>
+          <li><strong>Third set (non-finals):</strong> If the match is tied after 2 sets, a 10-point tiebreaker decides the winner</li>
+          <li><strong>Circuit breaker (first two rounds only):</strong>
+            <ul>
+              <li>Matches have a 45-minute time limit</li>
+              <li>At the 45-minute mark, if there is a 2-game difference, the set is awarded to the leader</li>
+              <li>If games are even, stop and play a 7-point tiebreaker</li>
+              <li>If there is a 1-game lead (e.g. 4-3), finish the game in progress &mdash; if the leader then has a 2-game edge, they win the set; if not, play a 7-point tiebreaker</li>
+              <li>If split sets after the circuit breaker, a 10-point tiebreaker decides the match</li>
+            </ul>
+          </li>
+          <li><strong>Finals:</strong> Full sets, no circuit breaker</li>
+          <li><strong>Food &amp; Drink:</strong> Pizza and wings provided &mdash; BYOB</li>
+        </ul>
+      </div>
+    </details>
+
+  </div>
+
+</main>
+
+<footer>WBP League &copy; <span id="footer-year"></span></footer>
+
+<script type="module">
+  import { initNav } from './js/auth.js'
+  document.getElementById('footer-year').textContent = new Date().getFullYear()
+  initNav('championship')
+</script>
+</body>
+</html>

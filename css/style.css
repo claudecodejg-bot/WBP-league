@@ -1769,6 +1769,83 @@ footer {
 .bracket-consolation .bracket-round { min-width: 140px; }
 .bracket-consolation .bracket-team { font-size: 0.72rem; padding: 0.3rem 0.45rem; }
 
+/* Winner highlight in completed brackets */
+.bracket-winner {
+  background: var(--green-pale, #edfaf1);
+  font-weight: 700;
+  border-color: var(--accent);
+}
+.bracket-loser {
+  opacity: 0.55;
+}
+.bracket-score {
+  margin-left: auto;
+  font-size: 0.6rem;
+  font-weight: 400;
+  color: var(--gray-600);
+  white-space: nowrap;
+  padding-left: 0.5rem;
+}
+.bracket-winner .bracket-score { font-weight: 600; color: var(--gray-700); }
+
+/* Champion banner on landing page */
+.champion-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--green-light) 100%);
+  border-radius: var(--radius);
+  padding: 1.5rem 2rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-lg);
+  text-decoration: none;
+  color: #fff;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.champion-banner:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+.champion-banner-trophy { font-size: 3rem; line-height: 1; }
+.champion-banner-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+.champion-banner-names { font-size: 1.6rem; font-weight: 800; }
+.champion-banner-cta { font-size: 0.8rem; margin-top: 0.25rem; opacity: 0.85; }
+
+/* Championship page hero */
+.champ-hero {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--green-light) 100%);
+  text-align: center;
+  padding: 2.5rem 1rem 2rem;
+  border-radius: var(--radius);
+  margin-bottom: 1.5rem;
+  color: #fff;
+}
+.champ-hero-icon { font-size: 4rem; margin-bottom: 0.5rem; }
+.champ-hero-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+.champ-hero-names { font-size: 2.2rem; font-weight: 800; margin: 0.5rem 0; }
+.champ-hero-tagline { font-size: 1rem; opacity: 0.85; font-weight: 500; }
+
+/* Completed champion slot */
+.bracket-champion.bracket-champion-won {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--green-light) 100%);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.bracket-champion.bracket-champion-won .bracket-label { color: rgba(255,255,255,0.85); }
+
 /* Responsive: mobile stacked */
 @media (max-width: 640px) {
   .bracket-wrapper { padding: 1rem 0.75rem; }
@@ -1782,4 +1859,7 @@ footer {
   .bracket-connector { display: none; }
   .bracket-matchup { margin: 0.3rem 0; }
   .bracket-champion { margin: 0.3rem 0; }
+  .champion-banner { flex-direction: column; text-align: center; padding: 1.25rem 1rem; }
+  .champion-banner-names { font-size: 1.3rem; }
+  .champ-hero-names { font-size: 1.6rem; }
 }
