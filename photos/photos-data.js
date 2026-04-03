@@ -5,27 +5,32 @@ export const PHOTO_CATEGORIES = [
     label: 'Championship Award',
     open: true,
     photos: [
-      { file: 'photos/25-26/20260330-wbp-champs-1.jpg', caption: '2026 Dolan Napolitano WBP Champs' },
+      // 2026
       { file: 'photos/25-26/20260330-wbp-champs-2.jpg', caption: '2026 Dolan Napolitano WBP Champs' },
-      { file: 'photos/25-26/20260330-awards-3.jpg', caption: '2026 Dolan Napolitano Champs with Awards' },
       { file: 'photos/25-26/20260330-awards-10.jpg', caption: '2026 Dolan Napolitano Champs with Awards' },
       { file: 'photos/25-26/20260330-champs-at-play-1.jpg', caption: '2026 Champs at Play' },
       { file: 'photos/25-26/20260330-finalists.jpg', caption: '2026 Championship Finalists' },
-      { file: 'photos/champion-award/20190318-champs-and-runnerup.jpg', caption: '2019 Champs Rockamn Adam and Runnerups Jonson Smith' },
-      { file: 'photos/champion-award/20190318-rockman-adams-champs.jpg', caption: '2019 Rockman Adams Champs' },
-      { file: 'photos/champion-award/20210329-ridder-dacunto-paddle-champs.jpg', caption: '2021 Ridder Dacunto Paddle Champs' },
+      // 2023
       { file: 'photos/champion-award/20230330-220115.jpg', caption: '2023 Champs Jonson Baum Rayhill Romano' },
       { file: 'photos/champion-award/20230330-221532.jpg', caption: '2023 Jonson Baum Champs' },
+      // 2022
       { file: 'photos/champion-award/img-20220322-napolitano-rayhill-champs-2.jpg', caption: '2022 Napolitano Rayhill Champs' },
       { file: 'photos/champion-award/img-20220322-napolitano-rayhill-champs.jpg', caption: '2022 Napolitano Rayhill Champs' },
-      { file: 'photos/champion-award/img-20220322-rayhill-rookie-award.jpg', caption: '2022 Rayhill Rookie Award' },
+      // 2021
+      { file: 'photos/champion-award/20210329-ridder-dacunto-paddle-champs.jpg', caption: '2021 Ridder Dacunto Paddle Champs' },
+      // 2019
+      { file: 'photos/champion-award/20190318-champs-and-runnerup.jpg', caption: '2019 Champs Rockamn Adam and Runnerups Jonson Smith' },
+      { file: 'photos/champion-award/20190318-rockman-adams-champs.jpg', caption: '2019 Rockman Adams Champs' },
     ],
   },
   {
     id: 'wbp-awards',
     label: 'WBP Awards',
     open: true,
+    // Photos from 2025+ shown by default; older ones collapsed
+    collapseOlderThan: 2025,
     photos: [
+      // 2026
       { file: 'photos/25-26/20260330-award-1.jpg', caption: '2026 WBP Award Trophies' },
       { file: 'photos/25-26/20260330-award-2.jpg', caption: '2026 Thor Viking Championship Hammer' },
       { file: 'photos/25-26/20260330-awards-1.jpg', caption: '2026 Award Presentation' },
@@ -38,18 +43,30 @@ export const PHOTO_CATEGORIES = [
       { file: 'photos/25-26/20260330-awards-9.jpg', caption: '2026 Commish' },
       { file: 'photos/25-26/20260330-awards-11.jpg', caption: '2026 Thor Viking Award' },
       { file: 'photos/25-26/20260330-awards-12.jpg', caption: '2026 Award Winner' },
-      { file: 'photos/wbp-awards/20160322-222234.jpg', caption: '2016 Ridder Coomaraswamy Paddle H and Jonson Top Dog' },
-      { file: 'photos/wbp-awards/20190318-215932.jpg', caption: '2019 McGurren Jonson Paddle H' },
-      { file: 'photos/wbp-awards/20190318-215955.jpg', caption: '2019 Luck Rookie Award' },
-      { file: 'photos/wbp-awards/20190318-220031.jpg', caption: '2019 Dolan Top Dog with Commish' },
-      { file: 'photos/wbp-awards/20210329-grills-top-dog.jpg', caption: '2021 Grills Top Dog' },
-      { file: 'photos/wbp-awards/20210329-jonson-paddle-h-and-grills-commish.jpg', caption: '2021 Jonson Paddle H and Grills Commish' },
-      { file: 'photos/wbp-awards/20210329-rockman-dacunto-unicorn-award.jpg', caption: '2021 Rockman Dacunto Unicorn Award' },
-      { file: 'photos/wbp-awards/20220322-paddle-shark-award.jpg', caption: '2022 Paddle Shark Award' },
+      // 2023
       { file: 'photos/wbp-awards/2023-b-smith-ufo-award.jpg', caption: '2023 B Smith Ufo Award' },
       { file: 'photos/wbp-awards/2023-ccd-group-photo.jpg', caption: '2023 CCD Group Photo' },
       { file: 'photos/wbp-awards/2023-michael-dolan-regular-season-champ.jpg', caption: '2023 Michael Dolan Regular Season Champ' },
       { file: 'photos/wbp-awards/2023-myles-ridder-homie-award.jpg', caption: '2023 Myles Ridder Homie Award' },
+      // 2022
+      { file: 'photos/champion-award/img-20220322-rayhill-rookie-award.jpg', caption: '2022 Rayhill Rookie Award' },
+      { file: 'photos/wbp-awards/20220322-paddle-shark-award.jpg', caption: '2022 Paddle Shark Award' },
+      { file: 'photos/wbp-awards/img-20220322-dolan-paddle-shark.jpg', caption: '2022 Dolan Paddle Shark' },
+      { file: 'photos/wbp-awards/img-20220322-mcgurren-paddle-homie.jpg', caption: '2022 Mcgurren Paddle Homie' },
+      // 2021
+      { file: 'photos/wbp-awards/20210329-grills-top-dog.jpg', caption: '2021 Grills Top Dog' },
+      { file: 'photos/wbp-awards/20210329-jonson-paddle-h-and-grills-commish.jpg', caption: '2021 Jonson Paddle H and Grills Commish' },
+      { file: 'photos/wbp-awards/20210329-rockman-dacunto-unicorn-award.jpg', caption: '2021 Rockman Dacunto Unicorn Award' },
+      // 2020
+      { file: 'photos/wbp-awards/img-1539.jpg', caption: '2020 Cage Match Winners' },
+      // 2019
+      { file: 'photos/wbp-awards/20190318-215932.jpg', caption: '2019 McGurren Jonson Paddle H' },
+      { file: 'photos/wbp-awards/20190318-215955.jpg', caption: '2019 Luck Rookie Award' },
+      { file: 'photos/wbp-awards/20190318-220031.jpg', caption: '2019 Dolan Top Dog with Commish' },
+      { file: 'photos/wbp-awards/image1.jpeg', caption: '2019 Dolan Trophy Case' },
+      // 2016
+      { file: 'photos/wbp-awards/20160322-222234.jpg', caption: '2016 Ridder Coomaraswamy Paddle H and Jonson Top Dog' },
+      // 2014
       { file: 'photos/wbp-awards/image004.jpg', caption: '2014 Kelsey Rookie Award' },
       { file: 'photos/wbp-awards/image008.jpg', caption: '2014 Kelsey Rookie Award' },
       { file: 'photos/wbp-awards/image012.jpg', caption: '2014 B Smith Top Dog' },
@@ -57,19 +74,18 @@ export const PHOTO_CATEGORIES = [
       { file: 'photos/wbp-awards/image022.jpg', caption: '2014 T Richards Paddle H Award & Jonson' },
       { file: 'photos/wbp-awards/image024.jpg', caption: '2014 Paddle H Awards' },
       { file: 'photos/wbp-awards/image032.jpg', caption: '2014 Award Recipients' },
-      { file: 'photos/wbp-awards/image033.jpg', caption: '2010 Lynch Paddle Shark Award' },
-      { file: 'photos/wbp-awards/image034.jpg', caption: '2012 Ramsey Preying Mantis Award' },
+      // 2013
       { file: 'photos/wbp-awards/image035.jpg', caption: '2013 B Smith Top Dog' },
+      { file: 'photos/wbp-awards/image048.jpg', caption: '2013 Brown Paddle HOG Award' },
+      // 2012
+      { file: 'photos/wbp-awards/image034.jpg', caption: '2012 Ramsey Preying Mantis Award' },
       { file: 'photos/wbp-awards/image036.jpg', caption: '2012 Coomaraswamy Rookie Award' },
       { file: 'photos/wbp-awards/image037.jpg', caption: '2012 Rookie Award' },
-      { file: 'photos/wbp-awards/image045.jpg', caption: '2010 T Richards Paddle H and Krantz Undertaker Back from the Dead Award' },
       { file: 'photos/wbp-awards/image046.jpg', caption: '2012 T Richards Paddle H' },
       { file: 'photos/wbp-awards/image047.jpg', caption: '2012 Paddle H Award' },
-      { file: 'photos/wbp-awards/image048.jpg', caption: '2013 Brown Paddle HOG Award' },
-      { file: 'photos/wbp-awards/image1.jpeg', caption: '2019 Dolan Trophy Case' },
-      { file: 'photos/wbp-awards/img-1539.jpg', caption: '2020 Cage Match Winners' },
-      { file: 'photos/wbp-awards/img-20220322-dolan-paddle-shark.jpg', caption: 'Dolan Paddle Shark' },
-      { file: 'photos/wbp-awards/img-20220322-mcgurren-paddle-homie.jpg', caption: 'Mcgurren Paddle Homie' },
+      // 2010
+      { file: 'photos/wbp-awards/image033.jpg', caption: '2010 Lynch Paddle Shark Award' },
+      { file: 'photos/wbp-awards/image045.jpg', caption: '2010 T Richards Paddle H and Krantz Undertaker Back from the Dead Award' },
     ],
   },
   {
@@ -93,6 +109,18 @@ export const PHOTO_CATEGORIES = [
       { file: 'photos/25-26/20260330-group-photo-1.jpg', caption: '2026 WBP Group Photo' },
       { file: 'photos/25-26/screenshot_20260331_143918_google.jpg', caption: '2026 WBP Group Photo' },
       { file: 'photos/25-26/20260330-wbp-rainbow.jpg', caption: '2026 WBP Rainbow' },
+      { file: 'photos/25-26/20260330-award-1.jpg', caption: '2026 WBP Award Trophies' },
+      { file: 'photos/25-26/20260330-award-2.jpg', caption: '2026 Thor Viking Championship Hammer' },
+      { file: 'photos/25-26/20260330-awards-1.jpg', caption: '2026 Award Presentation' },
+      { file: 'photos/25-26/20260330-awards-2.jpg', caption: '2026 Award Presentation' },
+      { file: 'photos/25-26/20260330-awards-4.jpg', caption: '2026 Thor Viking Award Presentation' },
+      { file: 'photos/25-26/20260330-awards-5.jpg', caption: '2026 Thor Viking Award' },
+      { file: 'photos/25-26/20260330-awards-6.jpg', caption: '2026 Best Homie Ever Award' },
+      { file: 'photos/25-26/20260330-awards-7.jpg', caption: '2026 Award Presentation' },
+      { file: 'photos/25-26/20260330-awards-8.jpg', caption: '2026 Award Presentation' },
+      { file: 'photos/25-26/20260330-awards-9.jpg', caption: '2026 Commish' },
+      { file: 'photos/25-26/20260330-awards-11.jpg', caption: '2026 Thor Viking Award' },
+      { file: 'photos/25-26/20260330-awards-12.jpg', caption: '2026 Award Winner' },
     ],
   },
   {

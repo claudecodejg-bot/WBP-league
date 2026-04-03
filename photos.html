@@ -197,6 +197,28 @@
       z-index: 1001;
     }
 
+    /* ── Older photos collapsible ─────────────────────────────────────── */
+    .older-photos-toggle {
+      margin-top: 1rem;
+      border-top: 1px solid var(--gray-200);
+      padding-top: 0.75rem;
+    }
+    .older-photos-summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gray-600);
+      padding: 0.4rem 0;
+      user-select: none;
+    }
+    .older-photos-summary::-webkit-details-marker { display: none; }
+    .older-photos-summary:hover { color: var(--accent); }
+    .older-photos-toggle[open] > .older-photos-summary .section-chevron { transform: rotate(180deg); }
+
     @media (max-width: 640px) {
       .gallery-grid { grid-template-columns: repeat(2, 1fr); }
       .lb-nav-btn { width: 36px; height: 48px; font-size: 1.4rem; }
@@ -284,18 +306,45 @@
 
     const allFiles = cat.photos.map(p => p.file)
 
-    const thumbsHtml = cat.photos.map((p, i) => `
-      <div class="gallery-item">
-        <div class="gallery-thumb-wrap"
-             data-cat="${cat.id}"
-             data-index="${i}"
-             tabindex="0"
-             role="button"
-             aria-label="View photo ${i + 1} of ${cat.photos.length}">
-          <img src="${p.file}" alt="${p.caption || cat.label + ' photo ' + (i + 1)}" class="gallery-thumb" loading="lazy">
-        </div>${p.caption ? `
-        <div class="gallery-caption">${p.caption}</div>` : ''}
-      </div>`).join('')
+    function photoYear(caption) {
+      const m = caption && caption.match(/^(\d{4})/)
+      return m ? parseInt(m[1], 10) : 0
+    }
+
+    function renderThumbs(photos, catId, indexOffset) {
+      return photos.map((p, i) => `
+        <div class="gallery-item">
+          <div class="gallery-thumb-wrap"
+               data-cat="${catId}"
+               data-index="${indexOffset + i}"
+               tabindex="0"
+               role="button"
+               aria-label="View photo ${indexOffset + i + 1} of ${cat.photos.length}">
+            <img src="${p.file}" alt="${p.caption || cat.label + ' photo ' + (indexOffset + i + 1)}" class="gallery-thumb" loading="lazy">
+          </div>${p.caption ? `
+          <div class="gallery-caption">${p.caption}</div>` : ''}
+        </div>`).join('')
+    }
+
+    let bodyHtml = ''
+    if (cat.collapseOlderThan) {
+      const cutoff = cat.collapseOlderThan
+      const recent = cat.photos.filter(p => photoYear(p.caption) >= cutoff)
+      const older  = cat.photos.filter(p => photoYear(p.caption) < cutoff)
+      bodyHtml = `<div class="gallery-grid">${renderThumbs(recent, cat.id, 0)}</div>`
+      if (older.length) {
+        bodyHtml += `
+          <details class="older-photos-toggle">
+            <summary class="older-photos-summary">
+              <span>Older Awards (${older.length} photos)</span>
+              <span class="section-chevron">&#9660;</span>
+            </summary>
+            <div class="gallery-grid" style="margin-top:0.75rem;">${renderThumbs(older, cat.id, recent.length)}</div>
+          </details>`
+      }
+    } else {
+      bodyHtml = `<div class="gallery-grid">${renderThumbs(cat.photos, cat.id, 0)}</div>`
+    }
 
     details.innerHTML = `
       <summary class="photo-section-header">
@@ -304,7 +353,7 @@
         <span class="section-chevron">&#9660;</span>
       </summary>
       <div class="section-body">
-        <div class="gallery-grid">${thumbsHtml}</div>
+        ${bodyHtml}
       </div>`
 
     container.appendChild(details)
