@@ -2,10 +2,11 @@
 //  Results page logic
 // =============================================
 
-import { supabase } from './supabase-client.js'
+import { supabase, connectionErrorHtml } from './supabase-client.js'
+import { CURRENT_SEASON } from './config.js'
 import { isWinner, matchScore, fmt } from './scoring.js'
 
-export async function loadResults(season = '2025-26') {
+export async function loadResults(season = CURRENT_SEASON) {
   const container = document.getElementById('results-container')
   container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading results…</div>'
 
@@ -15,10 +16,16 @@ export async function loadResults(season = '2025-26') {
   }
   matchQuery = matchQuery.order('played_on', { ascending: false })
 
-  const [membersRes, matchesRes] = await Promise.all([
-    supabase.from('members').select('id, full_name'),
-    matchQuery
-  ])
+  let membersRes, matchesRes
+  try {
+    [membersRes, matchesRes] = await Promise.all([
+      supabase.from('members').select('id, full_name'),
+      matchQuery
+    ])
+  } catch (err) {
+    container.innerHTML = connectionErrorHtml()
+    return
+  }
 
   if (membersRes.error || matchesRes.error) {
     container.innerHTML = '<div class="alert alert-error">Failed to load results. Please try again.</div>'

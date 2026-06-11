@@ -214,7 +214,8 @@
 
 <script type="module">
   import { initNav } from './js/auth.js'
-  import { supabase } from './js/supabase-client.js'
+  import { supabase, connectionErrorHtml } from './js/supabase-client.js'
+  import { CURRENT_SEASON } from './js/config.js'
   import { isWinner, matchScore, fmt } from './js/scoring.js'
 
   document.getElementById('footer-year').textContent = new Date().getFullYear()
@@ -229,7 +230,6 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal() })
 
   // ── Season state ───────────────────────────────────────────────────────
-  const CURRENT_SEASON = '2025-26'
   const seasonSelect   = document.getElementById('season-select')
   let _activeSeason    = localStorage.getItem('activeSeason') || CURRENT_SEASON
 
@@ -266,7 +266,13 @@
   async function loadSeasonData() {
     let matchQuery = supabase.from('matches').select('*')
     if (_activeSeason !== 'all') matchQuery = matchQuery.eq('season', _activeSeason)
-    const matchesRes = await matchQuery.order('played_on', { ascending: false })
+    let matchesRes
+    try {
+      matchesRes = await matchQuery.order('played_on', { ascending: false })
+    } catch (err) {
+      document.getElementById('matchups-container').innerHTML = connectionErrorHtml()
+      return
+    }
 
     if (matchesRes.error) {
       document.getElementById('matchups-container').innerHTML =
@@ -332,10 +338,16 @@
 
   // ── Load ───────────────────────────────────────────────────────────────
   async function init() {
-    const [membersRes, seasonsRes] = await Promise.all([
-      supabase.from('members').select('id, full_name, is_guest').order('full_name'),
-      supabase.from('member_seasons').select('member_id, season')
-    ])
+    let membersRes, seasonsRes
+    try {
+      [membersRes, seasonsRes] = await Promise.all([
+        supabase.from('members').select('id, full_name, is_guest').order('full_name'),
+        supabase.from('member_seasons').select('member_id, season')
+      ])
+    } catch (err) {
+      document.getElementById('matchups-container').innerHTML = connectionErrorHtml()
+      return
+    }
 
     if (membersRes.error) {
       document.getElementById('matchups-container').innerHTML =

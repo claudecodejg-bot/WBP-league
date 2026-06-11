@@ -248,6 +248,7 @@
 <script type="module">
   import { initNav, getCurrentMember } from './js/auth.js'
   import { supabase } from './js/supabase-client.js'
+  import { CURRENT_SEASON } from './js/config.js'
   import { computeCurrentSeasonStats, isWinner } from './js/scoring.js'
 
   document.getElementById('footer-year').textContent = new Date().getFullYear()
@@ -330,8 +331,8 @@
 
     const members       = membersRes.data
     const allMatchesData = matchesRes.data
-    const currentMatches = allMatchesData.filter(m => m.season === '2025-26')
-    const priorMatches   = allMatchesData.filter(m => m.season !== '2025-26')
+    const currentMatches = allMatchesData.filter(m => m.season === CURRENT_SEASON)
+    const priorMatches   = allMatchesData.filter(m => m.season !== CURRENT_SEASON)
 
     // Animate match count (current season only)
     animateHome(document.getElementById('stat-matches'), currentMatches.length, false)
@@ -387,7 +388,7 @@
     const { data: latest } = await supabase
       .from('matches')
       .select('played_on, week_label')
-      .eq('season', '2025-26')
+      .eq('season', CURRENT_SEASON)
       .order('played_on', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -396,7 +397,7 @@
 
     // Get all matches and members for that date
     const [matchesRes, membersRes] = await Promise.all([
-      supabase.from('matches').select('*').eq('played_on', latest.played_on).eq('season', '2025-26'),
+      supabase.from('matches').select('*').eq('played_on', latest.played_on).eq('season', CURRENT_SEASON),
       supabase.from('members').select('id, full_name')
     ])
     if (matchesRes.error || !matchesRes.data?.length) return

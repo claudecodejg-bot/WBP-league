@@ -79,13 +79,13 @@
 <script type="module">
   import { initNav, getCurrentMember } from './js/auth.js'
   import { supabase } from './js/supabase-client.js'
+  import { CURRENT_SEASON } from './js/config.js'
   import { loadResults } from './js/results.js'
   import { matchScore, isWinner, fmt } from './js/scoring.js'
 
   document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('results')
 
-  const CURRENT_SEASON = '2025-26'
   const seasonSelect   = document.getElementById('season-select')
   let _activeSeason    = localStorage.getItem('activeSeason') || CURRENT_SEASON
 
@@ -122,6 +122,15 @@
     if (val === '' || val == null) return null
     const n = parseInt(val, 10)
     return isNaN(n) ? null : n
+  }
+
+  // Maps a Supabase insert error to a friendly message. The unique
+  // constraint (matches_no_duplicates) raises Postgres code 23505.
+  function friendlyInsertError(error) {
+    if (error?.code === '23505' || /duplicate|matches_no_duplicates/i.test(error?.message || '')) {
+      return 'This match looks like it was already entered — check the results list before re-adding.'
+    }
+    return 'Error saving: ' + (error?.message || 'please try again.')
   }
 
   // ── Open modal: fetch schedule + current-season members ───
@@ -323,7 +332,7 @@
     })
 
     saveBtn.disabled = false
-    if (error) return showErr('Error saving: ' + error.message)
+    if (error) return showErr(friendlyInsertError(error))
     _courtIdx++
     advanceCourt()
   }
@@ -429,7 +438,7 @@
         team1_set1:t1s1, team1_set2:t1s2, team1_set3:t1s3, team2_set1:t2s1, team2_set2:t2s2, team2_set3:t2s3
       })
       btn.disabled=false; btn.textContent='Save Result'
-      if (error) return showErr('Error: ' + error.message)
+      if (error) return showErr(friendlyInsertError(error))
       closeModal(); loadResults(_activeSeason)
     })
   }
@@ -456,7 +465,7 @@
     loadResults(_activeSeason)
   })
 
-  populateSeasonDropdown().then(() => loadResults(_activeSeason))
+  populateSeasonDropdown().catch(() => {}).then(() => loadResults(_activeSeason))
 </script>
 </body>
 </html>

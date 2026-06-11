@@ -2,7 +2,8 @@
 //  Availability page logic
 // =============================================
 
-import { supabase } from './supabase-client.js'
+import { supabase, escapeHtml } from './supabase-client.js'
+import { CURRENT_SEASON, SEASON_END } from './config.js'
 
 /**
  * Returns the Monday of the week containing `date`.
@@ -36,8 +37,6 @@ function weekLabel(monday) {
  * Builds the next N upcoming Mondays, always starting from next week's Monday.
  * This ensures availability is always shown for future weeks, not the current week.
  */
-const SEASON_END = new Date('2026-03-30T23:59:59')
-
 function upcomingWeeks(count = 4) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -108,7 +107,7 @@ export async function loadAvailability(memberId, isAdmin) {
           </button>
         </div>
         <textarea class="avail-note hidden" id="note-${key}" rows="2"
-                  placeholder="Optional note (e.g. can only do mornings)">${note}</textarea>
+                  placeholder="Optional note (e.g. can only do mornings)">${escapeHtml(note)}</textarea>
       </div>
     `
   }
@@ -205,7 +204,7 @@ export async function loadAvailability(memberId, isAdmin) {
  */
 async function getCurrentSeasonMembers() {
   const [seasonRes, extraRes] = await Promise.all([
-    supabase.from('member_seasons').select('member_id').eq('season', '2025-26'),
+    supabase.from('member_seasons').select('member_id').eq('season', CURRENT_SEASON),
     supabase.from('members').select('id').eq('full_name', 'Rockman')
   ])
   const ids = [
@@ -296,7 +295,7 @@ export async function loadAdminAvailability(container, weekCount = 4) {
   `
 
   for (const m of members) {
-    html += `<tr><td class="avail-grid-name">${m.full_name}</td>`
+    html += `<tr><td class="avail-grid-name">${escapeHtml(m.full_name)}</td>`
     for (const monday of weeks) {
       const wk  = toISO(monday)
       const key = `${m.id}_${wk}`

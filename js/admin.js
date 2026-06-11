@@ -3,6 +3,7 @@
 // =============================================
 
 import { supabase } from './supabase-client.js'
+import { CURRENT_SEASON } from './config.js'
 import { isWinner, matchScore, fmt } from './scoring.js'
 import { loadAdminAvailability } from './availability.js'
 
@@ -185,7 +186,7 @@ async function submitMatch() {
   const { error } = await supabase.from('matches').insert({
     week_label: weekLabel,
     played_on:  playedOn,
-    season: '2025-26',
+    season: CURRENT_SEASON,
     team1_player1: t1p1, team1_player2: t1p2,
     team2_player1: t2p1, team2_player2: t2p2,
     team1_set1: t1s1, team1_set2: t1s2, team1_set3: t1s3,

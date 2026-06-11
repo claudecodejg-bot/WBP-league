@@ -3,11 +3,10 @@
 // =============================================
 
 import { supabase }                from './supabase-client.js'
+import { SEASON_START, SEASON_END } from './config.js'
 import { computeCurrentSeasonStats, isWinner } from './scoring.js'
 
-const SEASON_START   = '2025-10-01'  // current season (25-26) start date
 const ITERATIONS     = 2000          // random sampling iterations
-const SEASON_END     = new Date('2026-03-30T23:59:59')
 const BALANCE_WEIGHT = 3             // penalty per 1-pt team score differential
 
 // ── Date helpers ────────────────────────────
