@@ -139,6 +139,10 @@
       padding: 1.5rem 0;
     }
   </style>
+  <link rel="icon" type="image/png" href="wbp-logo.png">
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
+  <script src="js/nav.js" defer></script>
 </head>
 <body>
 
@@ -152,28 +156,11 @@
     <li><a href="matchups.html"     data-page="matchups">Matchups</a></li>
     <li><a href="availability.html" data-page="availability">Availability</a></li>
     <li><a href="photos.html"       data-page="photos">Photos</a></li>
-    <li><a href="golf.html?v=2"     data-page="golf">Golf</a></li>
+    <li><a href="golf.html"     data-page="golf">Golf</a></li>
   </ul>
   <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
   <button id="nav-auth-btn">Sign In</button>
 </nav>
-<script>
-  (function () {
-    var btn = document.getElementById('nav-hamburger')
-    btn.addEventListener('click', function () {
-      var open = btn.closest('nav').classList.toggle('nav-open')
-      btn.textContent = open ? '\u2715' : '\u2630'
-      btn.setAttribute('aria-expanded', open)
-    })
-    document.querySelectorAll('.nav-links a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        btn.closest('nav').classList.remove('nav-open')
-        btn.textContent = '\u2630'
-        btn.setAttribute('aria-expanded', 'false')
-      })
-    })
-  })()
-</script>
 
 <!-- Match-detail modal -->
 <div class="mu-overlay" id="mu-overlay" role="dialog" aria-modal="true">
@@ -217,8 +204,6 @@
   import { supabase, connectionErrorHtml } from './js/supabase-client.js'
   import { CURRENT_SEASON } from './js/config.js'
   import { isWinner, matchScore, fmt } from './js/scoring.js'
-
-  document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('matchups')
 
   // ── Modal wiring ───────────────────────────────────────────────────────
@@ -235,15 +220,14 @@
 
   // ── Data ───────────────────────────────────────────────────────────────
   let allMembers       = []
-  let allMatches       = []
+  let allMatchesData   = []   // full match list, fetched once at init
+  let allMatches       = []   // season-filtered view of allMatchesData
   let memberMap        = {}
   let allMemberSeasons = []   // [{ member_id, season }]
 
-  // ── Populate season dropdown ───────────────────────────────────────────
-  async function populateSeasonDropdown() {
-    const { data } = await supabase.from('matches').select('season')
-    if (!data) return
-    const seasons = [...new Set(data.map(m => m.season))].sort().reverse()
+  // ── Populate season dropdown (derived from the matches fetched at init) ─
+  function populateSeasonDropdown() {
+    const seasons = [...new Set(allMatchesData.map(m => m.season))].sort().reverse()
     const options = [seasons[0], 'all', ...seasons.slice(1)]
     seasonSelect.innerHTML = options.map(s => {
       if (s === 'all') return `<option value="all"${_activeSeason === 'all' ? ' selected' : ''}>Entire History</option>`
@@ -262,25 +246,11 @@
     loadSeasonData()
   })
 
-  // ── Load season data + rebuild player dropdown ─────────────────────────
-  async function loadSeasonData() {
-    let matchQuery = supabase.from('matches').select('*')
-    if (_activeSeason !== 'all') matchQuery = matchQuery.eq('season', _activeSeason)
-    let matchesRes
-    try {
-      matchesRes = await matchQuery.order('played_on', { ascending: false })
-    } catch (err) {
-      document.getElementById('matchups-container').innerHTML = connectionErrorHtml()
-      return
-    }
-
-    if (matchesRes.error) {
-      document.getElementById('matchups-container').innerHTML =
-        '<div class="alert alert-error">Failed to load data. Please try again.</div>'
-      return
-    }
-
-    allMatches = matchesRes.data
+  // ── Filter cached matches for the season + rebuild player dropdown ─────
+  function loadSeasonData() {
+    allMatches = _activeSeason === 'all'
+      ? allMatchesData
+      : allMatchesData.filter(m => m.season === _activeSeason)
     memberMap  = Object.fromEntries(
       allMembers.filter(m => m.full_name !== 'Forfeit').map(m => [m.id, m.full_name])
     )
@@ -332,24 +302,32 @@
       select.value = prevVal
       showMatchups(prevVal)
     } else {
-      document.getElementById('matchups-container').innerHTML = ''
+      // Check URL param (e.g. matchups.html?id=UUID) — e.g. from the Players tab
+      const preselect = new URLSearchParams(window.location.search).get('id')
+      if (preselect && [...select.options].some(o => o.value === preselect)) {
+        select.value = preselect
+        showMatchups(preselect)
+      } else {
+        document.getElementById('matchups-container').innerHTML = ''
+      }
     }
   }
 
   // ── Load ───────────────────────────────────────────────────────────────
   async function init() {
-    let membersRes, seasonsRes
+    let membersRes, seasonsRes, matchesRes
     try {
-      [membersRes, seasonsRes] = await Promise.all([
+      [membersRes, seasonsRes, matchesRes] = await Promise.all([
         supabase.from('members').select('id, full_name, is_guest').order('full_name'),
-        supabase.from('member_seasons').select('member_id, season')
+        supabase.from('member_seasons').select('member_id, season'),
+        supabase.from('matches').select('*').order('played_on', { ascending: false })
       ])
     } catch (err) {
       document.getElementById('matchups-container').innerHTML = connectionErrorHtml()
       return
     }
 
-    if (membersRes.error) {
+    if (membersRes.error || matchesRes.error) {
       document.getElementById('matchups-container').innerHTML =
         '<div class="alert alert-error">Failed to load data. Please try again.</div>'
       return
@@ -357,6 +335,7 @@
 
     allMembers       = membersRes.data
     allMemberSeasons = seasonsRes.data || []
+    allMatchesData   = matchesRes.data
 
     const select = document.getElementById('player-select')
     select.addEventListener('change', () => {
@@ -364,8 +343,8 @@
       else document.getElementById('matchups-container').innerHTML = ''
     })
 
-    await populateSeasonDropdown()
-    await loadSeasonData()
+    populateSeasonDropdown()
+    loadSeasonData()
   }
 
   // ── Aggregate records ──────────────────────────────────────────────────

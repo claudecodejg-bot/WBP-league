@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — Paddle Tennis League</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="wbp-logo.png">
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
+  <script src="js/nav.js" defer></script>
 </head>
 <body>
 
@@ -56,8 +60,6 @@
 <script type="module">
   import { requireAdmin, initNav } from './js/auth.js'
   import { initAdmin } from './js/admin.js'
-
-  document.getElementById('footer-year').textContent = new Date().getFullYear()
 
   async function init() {
     const member = await requireAdmin()

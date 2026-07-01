@@ -1,4 +1,12 @@
 // Auto-generated — edit captions here if needed
+//
+// NOTE: the gallery grid loads small copies from photos/thumbs/** (the
+// lightbox uses the original). After adding new photos, regenerate thumbs:
+//   find photos -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \) ! -path 'photos/thumbs/*' | while read f; do
+//     out="photos/thumbs/${f#photos/}"; mkdir -p "$(dirname "$out")"
+//     [ -f "$out" ] || sips -Z 640 -s format jpeg -s formatOptions 72 "$f" --out "$out" >/dev/null
+//   done
+// (A missing thumb just falls back to the full-size image.)
 export const PHOTO_CATEGORIES = [
   {
     id: 'champion-award',

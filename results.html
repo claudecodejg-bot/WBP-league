@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Results — Paddle Tennis League</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="wbp-logo.png">
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
+  <script src="js/nav.js" defer></script>
 </head>
 <body>
 
@@ -18,28 +22,11 @@
     <li><a href="matchups.html"  data-page="matchups">Matchups</a></li>
     <li><a href="availability.html" data-page="availability">Availability</a></li>
     <li><a href="photos.html"       data-page="photos">Photos</a></li>
-    <li><a href="golf.html?v=2"         data-page="golf">Golf</a></li>
+    <li><a href="golf.html"         data-page="golf">Golf</a></li>
   </ul>
   <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
   <button id="nav-auth-btn">Sign In</button>
 </nav>
-<script>
-  (function () {
-    var btn = document.getElementById('nav-hamburger')
-    btn.addEventListener('click', function () {
-      var open = btn.closest('nav').classList.toggle('nav-open')
-      btn.textContent = open ? '\u2715' : '\u2630'
-      btn.setAttribute('aria-expanded', open)
-    })
-    document.querySelectorAll('.nav-links a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        btn.closest('nav').classList.remove('nav-open')
-        btn.textContent = '\u2630'
-        btn.setAttribute('aria-expanded', 'false')
-      })
-    })
-  })()
-</script>
 
 <main>
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.25rem;">
@@ -80,10 +67,8 @@
   import { initNav, getCurrentMember } from './js/auth.js'
   import { supabase } from './js/supabase-client.js'
   import { CURRENT_SEASON } from './js/config.js'
-  import { loadResults } from './js/results.js'
+  import { loadResults, knownSeasons } from './js/results.js'
   import { matchScore, isWinner, fmt } from './js/scoring.js'
-
-  document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('results')
 
   const seasonSelect   = document.getElementById('season-select')
@@ -356,7 +341,7 @@
         await supabase.from('scheduled_matches').delete().eq('id', _schedule.id)
       }
       closeModal()
-      loadResults(_activeSeason)
+      loadResults(_activeSeason, { refresh: true })
     })
   }
 
@@ -439,15 +424,14 @@
       })
       btn.disabled=false; btn.textContent='Save Result'
       if (error) return showErr(friendlyInsertError(error))
-      closeModal(); loadResults(_activeSeason)
+      closeModal(); loadResults(_activeSeason, { refresh: true })
     })
   }
 
-  // ── Season dropdown & results ─────────────────────────────
-  async function populateSeasonDropdown() {
-    const { data } = await supabase.from('matches').select('season')
-    if (!data) return
-    const seasons = [...new Set(data.map(m => m.season))].sort().reverse()
+  // ── Season dropdown (derived from the matches cached by loadResults) ─
+  function populateSeasonDropdown() {
+    const seasons = knownSeasons()
+    if (seasons.length === 0) return
     const options = [seasons[0], 'all', ...seasons.slice(1)]
     seasonSelect.innerHTML = options.map(s => {
       if (s === 'all') return `<option value="all"${_activeSeason === 'all' ? ' selected' : ''}>Entire History</option>`
@@ -465,7 +449,15 @@
     loadResults(_activeSeason)
   })
 
-  populateSeasonDropdown().catch(() => {}).then(() => loadResults(_activeSeason))
+  async function init() {
+    const requested = _activeSeason
+    await loadResults(_activeSeason)
+    populateSeasonDropdown()
+    // If the saved season no longer exists, populateSeasonDropdown fell back
+    // to the newest one — re-render from cache (instant, no refetch).
+    if (_activeSeason !== requested) loadResults(_activeSeason)
+  }
+  init()
 </script>
 </body>
 </html>

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WBP League — Paddle Tennis</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="wbp-logo.png">
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
+  <script src="js/nav.js" defer></script>
 </head>
 <body>
 
@@ -18,28 +22,11 @@
     <li><a href="matchups.html"     data-page="matchups">Matchups</a></li>
     <li><a href="availability.html" data-page="availability">Availability</a></li>
     <li><a href="photos.html"       data-page="photos">Photos</a></li>
-    <li><a href="golf.html?v=2"         data-page="golf">Golf</a></li>
+    <li><a href="golf.html"         data-page="golf">Golf</a></li>
   </ul>
   <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
   <button id="nav-auth-btn">Sign In</button>
 </nav>
-<script>
-  (function () {
-    var btn = document.getElementById('nav-hamburger')
-    btn.addEventListener('click', function () {
-      var open = btn.closest('nav').classList.toggle('nav-open')
-      btn.textContent = open ? '\u2715' : '\u2630'
-      btn.setAttribute('aria-expanded', open)
-    })
-    document.querySelectorAll('.nav-links a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        btn.closest('nav').classList.remove('nav-open')
-        btn.textContent = '\u2630'
-        btn.setAttribute('aria-expanded', 'false')
-      })
-    })
-  })()
-</script>
 
 <main class="main-wide">
 
@@ -83,7 +70,7 @@
       <p>Sometimes the ball just bounces your way. And sometimes a rainbow shows up to prove it was meant to be. And most importantly, Devo won the first ever Vinny's WBP Award.</p>
 
       <div style="text-align:center; margin:1.5rem 0 0.5rem;">
-        <video controls playsinline style="max-width:100%; max-height:400px; border-radius:var(--radius); box-shadow:var(--shadow);">
+        <video controls playsinline preload="metadata" style="max-width:100%; max-height:400px; border-radius:var(--radius); box-shadow:var(--shadow);">
           <source src="photos/25-26/vinny-wbp-award.mp4" type="video/mp4">
         </video>
       </div>
@@ -246,81 +233,11 @@
 <footer>WBP League &copy; <span id="footer-year"></span></footer>
 
 <script type="module">
-  import { initNav, getCurrentMember } from './js/auth.js'
+  import { initNav } from './js/auth.js'
   import { supabase } from './js/supabase-client.js'
   import { CURRENT_SEASON } from './js/config.js'
-  import { computeCurrentSeasonStats, isWinner } from './js/scoring.js'
-
-  document.getElementById('footer-year').textContent = new Date().getFullYear()
+  import { computeCurrentSeasonStats } from './js/scoring.js'
   initNav('home')
-
-  let scheduledId = null
-
-  async function loadUpcoming(isAdmin) {
-    const today = new Date().toISOString().split('T')[0]
-    const { data, error } = await supabase
-      .from('scheduled_matches')
-      .select('*')
-      .gte('played_on', today)
-      .order('played_on', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-
-    if (error || !data) return
-
-    scheduledId = data.id
-
-    const courts    = data.courts
-    const numCourts = courts.length
-    let html = `
-      <div class="upcoming-section">
-        <div class="upcoming-header">
-          <span class="upcoming-pill">Upcoming</span>
-          <span class="upcoming-title">${data.week_label}</span>
-          ${isAdmin ? `<button id="undo-schedule-btn" class="btn btn-secondary" style="margin-left:auto;font-size:0.75rem;padding:0.3rem 0.75rem;">Undo Schedule</button>` : ''}
-        </div>`
-
-    courts.forEach((court, i) => {
-      const [p1, p2] = court.team1
-      const [p3, p4] = court.team2
-      const location = court.location || 'Woodway CC'
-      const time     = court.time     || '7:00 PM'
-      html += `
-        <div class="upcoming-match-card"${i < numCourts - 1 ? ' style="margin-bottom:0.75rem;"' : ''}>
-          <div class="upcoming-meta">
-            <span class="upcoming-court">🎾 Court ${i + 1} &mdash; ${location}</span>
-            <span style="font-size:0.75rem;color:var(--gray-400);">${time}</span>
-          </div>
-          <div class="upcoming-teams">
-            <div class="upcoming-team">${p1} &amp; ${p2}</div>
-            <div class="upcoming-vs">vs</div>
-            <div class="upcoming-team" style="text-align:right;">${p3} &amp; ${p4}</div>
-          </div>
-        </div>`
-    })
-
-    html += `</div>`
-    document.getElementById('upcoming-container').innerHTML = html
-
-    if (isAdmin) {
-      document.getElementById('undo-schedule-btn').addEventListener('click', undoSchedule)
-    }
-  }
-
-  async function undoSchedule() {
-    if (!confirm('Remove this scheduled match? You can re-run the scheduler to pick new pairings.')) return
-    const btn = document.getElementById('undo-schedule-btn')
-    btn.disabled    = true
-    btn.textContent = 'Removing…'
-    const { error } = await supabase.from('scheduled_matches').delete().eq('id', scheduledId)
-    if (error) {
-      alert('Error: ' + error.message)
-      btn.disabled    = false
-      btn.textContent = 'Undo Schedule'
-      return
-    }
-    document.getElementById('upcoming-container').innerHTML = ''
-  }
 
   async function loadHomeStats() {
     const [membersRes, matchesRes] = await Promise.all([
@@ -383,68 +300,6 @@
     requestAnimationFrame(step)
   }
 
-  async function loadLatestResult() {
-    // Get the most recent played_on date in the current season
-    const { data: latest } = await supabase
-      .from('matches')
-      .select('played_on, week_label')
-      .eq('season', CURRENT_SEASON)
-      .order('played_on', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (!latest) return
-
-    // Get all matches and members for that date
-    const [matchesRes, membersRes] = await Promise.all([
-      supabase.from('matches').select('*').eq('played_on', latest.played_on).eq('season', CURRENT_SEASON),
-      supabase.from('members').select('id, full_name')
-    ])
-    if (matchesRes.error || !matchesRes.data?.length) return
-
-    const nameMap = Object.fromEntries((membersRes.data || []).map(m => [m.id, m.full_name]))
-    const matches = matchesRes.data
-    const numMatches = matches.length
-
-    const dateLabel = new Date(latest.played_on + 'T12:00:00').toLocaleDateString('en-US',
-      { weekday: 'long', month: 'long', day: 'numeric' })
-
-    let html = `
-      <div class="upcoming-section" style="border-left-color:var(--green-mid);">
-        <div class="upcoming-header">
-          <span class="upcoming-pill" style="background:var(--green-mid);">Latest Result</span>
-          <span class="upcoming-title">${latest.week_label} &mdash; ${dateLabel}</span>
-        </div>`
-
-    matches.forEach((m, i) => {
-      const t1p1 = nameMap[m.team1_player1] || '?', t1p2 = nameMap[m.team1_player2] || '?'
-      const t2p1 = nameMap[m.team2_player1] || '?', t2p2 = nameMap[m.team2_player2] || '?'
-      const t1won = isWinner(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
-
-      const sets = []
-      if (m.team1_set1 != null) sets.push(`${m.team1_set1}–${m.team2_set1}`)
-      if (m.team1_set2 != null) sets.push(`${m.team1_set2}–${m.team2_set2}`)
-      if (m.team1_set3 != null) sets.push(`${m.team1_set3}–${m.team2_set3}`)
-
-      html += `
-        <div class="upcoming-match-card"${i < numMatches - 1 ? ' style="margin-bottom:0.75rem;"' : ''}>
-          <div class="upcoming-meta">
-            <span class="upcoming-court">🎾 Court ${i + 1}</span>
-          </div>
-          <div class="upcoming-teams">
-            <div class="upcoming-team" style="${t1won ? 'font-weight:700;' : 'opacity:0.65;'}">${t1p1} &amp; ${t1p2}${t1won ? ' ✓' : ''}</div>
-            <div class="upcoming-vs">${sets.join(', ')}</div>
-            <div class="upcoming-team" style="text-align:right;${!t1won ? 'font-weight:700;' : 'opacity:0.65;'}">${t2p1} &amp; ${t2p2}${!t1won ? ' ✓' : ''}</div>
-          </div>
-        </div>`
-    })
-
-    html += `</div>`
-    document.getElementById('latest-result-container').innerHTML = html
-  }
-
-  // getCurrentMember().then(member => loadUpcoming(member?.is_admin === true))
-  // loadLatestResult()
   loadHomeStats()
 
 </script>

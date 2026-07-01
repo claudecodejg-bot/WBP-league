@@ -225,6 +225,10 @@
       .section-label { font-size: 0.92rem; }
     }
   </style>
+  <link rel="icon" type="image/png" href="wbp-logo.png">
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
+  <script src="js/nav.js" defer></script>
 </head>
 <body>
 
@@ -243,23 +247,6 @@
   <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
   <button id="nav-auth-btn">Sign In</button>
 </nav>
-<script>
-  (function () {
-    var btn = document.getElementById('nav-hamburger')
-    btn.addEventListener('click', function () {
-      var open = btn.closest('nav').classList.toggle('nav-open')
-      btn.textContent = open ? '\u2715' : '\u2630'
-      btn.setAttribute('aria-expanded', open)
-    })
-    document.querySelectorAll('.nav-links a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        btn.closest('nav').classList.remove('nav-open')
-        btn.textContent = '\u2630'
-        btn.setAttribute('aria-expanded', 'false')
-      })
-    })
-  })()
-</script>
 
 <main>
   <h1 class="page-title">📸 Photos</h1>
@@ -290,8 +277,6 @@
 <script type="module">
   import { initNav }         from './js/auth.js'
   import { PHOTO_CATEGORIES } from './photos/photos-data.js'
-
-  document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('photos')
 
   // ── Render category sections ──────────────────────────────────────────
@@ -310,6 +295,13 @@
       return m ? parseInt(m[1], 10) : 0
     }
 
+    // Grid shows small pre-generated thumbnails (photos/thumbs/**); the
+    // lightbox still loads the full-size original. If a thumbnail is
+    // missing, fall back to the original so the photo always shows.
+    function thumbFor(file) {
+      return file.replace(/^photos\//, 'photos/thumbs/')
+    }
+
     function renderThumbs(photos, catId, indexOffset) {
       return photos.map((p, i) => `
         <div class="gallery-item">
@@ -319,7 +311,7 @@
                tabindex="0"
                role="button"
                aria-label="View photo ${indexOffset + i + 1} of ${cat.photos.length}">
-            <img src="${p.file}" alt="${p.caption || cat.label + ' photo ' + (indexOffset + i + 1)}" class="gallery-thumb" loading="lazy">
+            <img src="${thumbFor(p.file)}" onerror="this.onerror=null;this.src='${p.file}'" alt="${p.caption || cat.label + ' photo ' + (indexOffset + i + 1)}" class="gallery-thumb" loading="lazy">
           </div>${p.caption ? `
           <div class="gallery-caption">${p.caption}</div>` : ''}
         </div>`).join('')

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>2026 Championship — WBP League</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="wbp-logo.png">
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
+  <script src="js/nav.js" defer></script>
 </head>
 <body>
 
@@ -18,28 +22,11 @@
     <li><a href="matchups.html"     data-page="matchups">Matchups</a></li>
     <li><a href="availability.html" data-page="availability">Availability</a></li>
     <li><a href="photos.html"       data-page="photos">Photos</a></li>
-    <li><a href="golf.html?v=2"     data-page="golf">Golf</a></li>
+    <li><a href="golf.html"     data-page="golf">Golf</a></li>
   </ul>
   <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
   <button id="nav-auth-btn">Sign In</button>
 </nav>
-<script>
-  (function () {
-    var btn = document.getElementById('nav-hamburger')
-    btn.addEventListener('click', function () {
-      var open = btn.closest('nav').classList.toggle('nav-open')
-      btn.textContent = open ? '\u2715' : '\u2630'
-      btn.setAttribute('aria-expanded', open)
-    })
-    document.querySelectorAll('.nav-links a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        btn.closest('nav').classList.remove('nav-open')
-        btn.textContent = '\u2630'
-        btn.setAttribute('aria-expanded', 'false')
-      })
-    })
-  })()
-</script>
 
 <main class="main-wide">
 
@@ -245,7 +232,6 @@
 
 <script type="module">
   import { initNav } from './js/auth.js'
-  document.getElementById('footer-year').textContent = new Date().getFullYear()
   initNav('championship')
 </script>
 </body>

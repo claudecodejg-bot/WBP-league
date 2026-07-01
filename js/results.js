@@ -6,34 +6,49 @@ import { supabase, connectionErrorHtml } from './supabase-client.js'
 import { CURRENT_SEASON } from './config.js'
 import { isWinner, matchScore, fmt } from './scoring.js'
 
-export async function loadResults(season = CURRENT_SEASON) {
+// Members + all matches are fetched once and cached, so switching seasons
+// re-renders instantly from memory. Pass { refresh: true } after inserting
+// a match so the new result shows up.
+let _cache = null   // { memberMap, matches } — matches ordered played_on desc
+
+/** Seasons present in the cached match data, newest first. */
+export function knownSeasons() {
+  return _cache ? [...new Set(_cache.matches.map(m => m.season))].sort().reverse() : []
+}
+
+export async function loadResults(season = CURRENT_SEASON, { refresh = false } = {}) {
   const container = document.getElementById('results-container')
-  container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading results…</div>'
+  if (refresh) _cache = null
 
-  let matchQuery = supabase.from('matches').select('*')
-  if (season !== 'all') {
-    matchQuery = matchQuery.eq('season', season)
+  if (!_cache) {
+    container.innerHTML = '<div class="loading-state"><div class="spinner"></div> Loading results…</div>'
+
+    let membersRes, matchesRes
+    try {
+      [membersRes, matchesRes] = await Promise.all([
+        supabase.from('members').select('id, full_name'),
+        supabase.from('matches').select('*').order('played_on', { ascending: false })
+      ])
+    } catch (err) {
+      container.innerHTML = connectionErrorHtml()
+      return
+    }
+
+    if (membersRes.error || matchesRes.error) {
+      container.innerHTML = '<div class="alert alert-error">Failed to load results. Please try again.</div>'
+      return
+    }
+
+    _cache = {
+      memberMap: Object.fromEntries(membersRes.data.map(m => [m.id, m.full_name])),
+      matches: matchesRes.data
+    }
   }
-  matchQuery = matchQuery.order('played_on', { ascending: false })
 
-  let membersRes, matchesRes
-  try {
-    [membersRes, matchesRes] = await Promise.all([
-      supabase.from('members').select('id, full_name'),
-      matchQuery
-    ])
-  } catch (err) {
-    container.innerHTML = connectionErrorHtml()
-    return
-  }
-
-  if (membersRes.error || matchesRes.error) {
-    container.innerHTML = '<div class="alert alert-error">Failed to load results. Please try again.</div>'
-    return
-  }
-
-  const memberMap = Object.fromEntries(membersRes.data.map(m => [m.id, m.full_name]))
-  const matches = matchesRes.data
+  const memberMap = _cache.memberMap
+  const matches = season === 'all'
+    ? _cache.matches
+    : _cache.matches.filter(m => m.season === season)
 
   if (matches.length === 0) {
     container.innerHTML = '<p style="color:var(--gray-600);text-align:center;padding:2rem;">No results yet.</p>'

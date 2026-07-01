@@ -432,6 +432,10 @@
       .lb-nav-btn { width: 36px; height: 48px; font-size: 1.4rem; }
     }
   </style>
+  <link rel="icon" type="image/png" href="wbp-logo.png">
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
+  <script src="js/nav.js" defer></script>
 </head>
 <body>
 
@@ -450,23 +454,6 @@
   <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
   <button id="nav-auth-btn">Sign In</button>
 </nav>
-<script>
-  (function () {
-    var btn = document.getElementById('nav-hamburger')
-    btn.addEventListener('click', function () {
-      var open = btn.closest('nav').classList.toggle('nav-open')
-      btn.textContent = open ? '\u2715' : '\u2630'
-      btn.setAttribute('aria-expanded', open)
-    })
-    document.querySelectorAll('.nav-links a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        btn.closest('nav').classList.remove('nav-open')
-        btn.textContent = '\u2630'
-        btn.setAttribute('aria-expanded', 'false')
-      })
-    })
-  })()
-</script>
 
 <main>
 
@@ -534,7 +521,7 @@
       <div class="award-icon">💪</div>
       <div class="award-label">Long Drive — Hole 9</div>
       <div class="award-name">Walsh</div>
-      <img src="long-drive-sign.jpg" alt="Long Drive Sign" class="award-sign-thumb" data-gallery='["long-drive-sign.jpg"]' data-index="0">
+      <img src="long-drive-sign.jpg" alt="Long Drive Sign" class="award-sign-thumb" loading="lazy" data-gallery='["long-drive-sign.jpg"]' data-index="0">
     </div>
   </div>
 
@@ -705,13 +692,13 @@
   <div class="card">
     <div class="gallery-grid" id="gallery">
       <div class="gallery-thumb-wrap" data-gallery='["golf-photo-1.jpg","golf-photo-2.jpg","golf-photo-3.jpg"]' data-index="0">
-        <img src="golf-photo-1.jpg" alt="Golf Outing Photo 1" class="gallery-thumb">
+        <img src="golf-photo-1.jpg" alt="Golf Outing Photo 1" class="gallery-thumb" loading="lazy">
       </div>
       <div class="gallery-thumb-wrap" data-gallery='["golf-photo-1.jpg","golf-photo-2.jpg","golf-photo-3.jpg"]' data-index="1">
-        <img src="golf-photo-2.jpg" alt="Golf Outing Photo 2" class="gallery-thumb">
+        <img src="golf-photo-2.jpg" alt="Golf Outing Photo 2" class="gallery-thumb" loading="lazy">
       </div>
       <div class="gallery-thumb-wrap" data-gallery='["golf-photo-1.jpg","golf-photo-2.jpg","golf-photo-3.jpg"]' data-index="2">
-        <img src="golf-photo-3.jpg" alt="Golf Outing Photo 3" class="gallery-thumb">
+        <img src="golf-photo-3.jpg" alt="Golf Outing Photo 3" class="gallery-thumb" loading="lazy">
       </div>
     </div>
   </div>
@@ -720,7 +707,6 @@
 
 <footer>WBP League &copy; <span id="footer-year"></span></footer>
 <script>
-  document.getElementById('footer-year').textContent = new Date().getFullYear()
 
   // ── Shared multi-image lightbox ────────────────────────────────────────
   var lightbox  = document.getElementById('lightbox')
