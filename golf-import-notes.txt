@@ -1,0 +1,6 @@
+A few notes on special cases I encountered:
+
+Larry Castellani 3 and a few others had no tiebreaker score written — marked "N/A"
+Jayne Tully, Anne Tully, Tim Tully used raw stroke totals (276–280) instead of under-par scores
+Ed McCarrick wrote "-9 wins" — entered as is
+Dan McMahon (page 178) only appeared to have 4 clearly marked picks — the remaining slots are marked N/A
