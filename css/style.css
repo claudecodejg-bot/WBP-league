@@ -1866,3 +1866,140 @@ footer {
   .champion-banner-names { font-size: 1.3rem; }
   .champ-hero-names { font-size: 1.6rem; }
 }
+
+/* ── "Add to Home Screen" banner + iOS instruction sheet ──────────────── */
+.a2hs-banner {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--white);
+  border-radius: 14px;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.22);
+  transform: translateY(140%);
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.a2hs-banner.a2hs-show { transform: translateY(0); opacity: 1; }
+
+.a2hs-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  border: 1px solid var(--gray-200);
+}
+.a2hs-text { flex: 1; min-width: 0; }
+.a2hs-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  line-height: 1.25;
+}
+.a2hs-sub {
+  font-size: 0.74rem;
+  color: var(--gray-600);
+  line-height: 1.3;
+  margin-top: 0.1rem;
+}
+.a2hs-action {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.a2hs-action:hover { filter: brightness(0.95); }
+.a2hs-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+}
+.a2hs-close:hover { color: var(--gray-600); }
+
+.a2hs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.a2hs-overlay.a2hs-show { opacity: 1; }
+
+.a2hs-sheet {
+  position: relative;
+  background: var(--white);
+  width: 100%;
+  max-width: 480px;
+  border-radius: 16px 16px 0 0;
+  padding: 1.25rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%);
+  transition: transform 0.22s ease;
+}
+.a2hs-overlay.a2hs-show .a2hs-sheet { transform: translateY(0); }
+
+.a2hs-sheet-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.85rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--gray-400);
+  cursor: pointer;
+}
+.a2hs-sheet-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  margin-bottom: 0.85rem;
+}
+.a2hs-steps {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.88rem;
+  color: var(--gray-800);
+  line-height: 1.65;
+}
+.a2hs-steps li { margin-bottom: 0.35rem; }
+.a2hs-share {
+  display: inline-block;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  border-radius: 5px;
+  padding: 0 0.32rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.a2hs-note {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--gray-800);
+  line-height: 1.6;
+}
+
+@media (min-width: 640px) {
+  .a2hs-overlay { align-items: center; }
+  .a2hs-sheet { border-radius: 16px; transform: translateY(12px); padding-bottom: 1.5rem; }
+}
