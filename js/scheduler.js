@@ -3,7 +3,8 @@
 // =============================================
 
 import { supabase }                from './supabase-client.js'
-import { SEASON_START, SEASON_END } from './config.js'
+import { SEASON_START } from './config.js'
+import { upcomingWeeks } from './season-weeks.js'
 import { computeCurrentSeasonStats, isWinner } from './scoring.js'
 
 const ITERATIONS     = 2000          // random sampling iterations
@@ -29,25 +30,10 @@ export function formatWeekLabel(monday) {
 }
 
 export function getUpcomingWeeks() {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  // Start from the Monday on or after today
-  const day   = today.getDay()
-  const start = new Date(today)
-  if (day !== 1) {
-    const daysUntilMonday = day === 0 ? 1 : (8 - day)
-    start.setDate(start.getDate() + daysUntilMonday)
-  }
-
-  const weeks = []
-  for (let i = 0; i < 4; i++) {
-    const d = new Date(start)
-    d.setDate(d.getDate() + i * 7)
-    if (d > SEASON_END) break
-    weeks.push(d)
-  }
-  return weeks
+  // Deliberately the same window the availability page collects for.
+  // Offering a week nobody was asked about would just yield an empty
+  // schedule, so both read from season-weeks.js.
+  return upcomingWeeks()
 }
 
 // ── Data fetching ────────────────────────────

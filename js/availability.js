@@ -3,8 +3,8 @@
 // =============================================
 
 import { supabase, escapeHtml } from './supabase-client.js'
-import { CURRENT_SEASON, AVAILABILITY_START, AVAILABILITY_END,
-         UNOFFICIAL_WEEKS } from './config.js'
+import { CURRENT_SEASON } from './config.js'
+import { upcomingWeeks, isUnofficialWeek } from './season-weeks.js'
 
 /**
  * Returns the Monday of the week containing `date`.
@@ -32,44 +32,6 @@ function toISO(date) {
 function weekLabel(monday) {
   const opts = { month: 'long', day: 'numeric' }
   return monday.toLocaleDateString('en-US', opts)
-}
-
-/**
- * Returns every Monday in the configured availability window that hasn't
- * happened yet — i.e. from AVAILABILITY_START (or the coming Monday, if the
- * window has already opened) through AVAILABILITY_END inclusive.
- *
- * Driving this from the window rather than a fixed count means opening up
- * more weeks is a one-line change in config.js.
- */
-function upcomingWeeks() {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  // The Monday on or after today.
-  const day = today.getDay()
-  const nextMonday = new Date(today)
-  if (day !== 1) {
-    nextMonday.setDate(nextMonday.getDate() + (day === 0 ? 1 : 8 - day))
-  }
-
-  const windowStart = new Date(AVAILABILITY_START + 'T00:00:00')
-  const windowEnd   = new Date(AVAILABILITY_END   + 'T00:00:00')
-
-  // Start at whichever comes later: the window opening, or this coming week.
-  let cursor = nextMonday > windowStart ? nextMonday : windowStart
-
-  const weeks = []
-  while (cursor <= windowEnd) {
-    weeks.push(new Date(cursor))
-    cursor.setDate(cursor.getDate() + 7)
-  }
-  return weeks
-}
-
-/** True if the given Monday falls in the pre-season warm-up weeks. */
-function isUnofficial(monday) {
-  return UNOFFICIAL_WEEKS.includes(toISO(monday))
 }
 
 export async function loadAvailability(memberId, isAdmin) {
@@ -108,7 +70,7 @@ export async function loadAvailability(memberId, isAdmin) {
       <div class="availability-week card">
         <div class="week-header">
           <div class="week-date-label">${weekLabel(monday)}</div>
-          ${isUnofficial(monday) ? '<span class="week-tag-unofficial">Warm-up</span>' : ''}
+          ${isUnofficialWeek(monday) ? '<span class="week-tag-unofficial">Warm-up</span>' : ''}
         </div>
         <div class="avail-toggle">
           <button class="avail-btn ${isAvail === true ? 'selected-yes' : ''}"
