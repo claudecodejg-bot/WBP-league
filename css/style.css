@@ -2003,3 +2003,105 @@ footer {
   .a2hs-overlay { align-items: center; }
   .a2hs-sheet { border-radius: 16px; transform: translateY(12px); padding-bottom: 1.5rem; }
 }
+
+/* ── Home: new-season welcome ─────────────────────────────────────────── */
+.season-welcome {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2b2b2b 55%, #3d2215 100%);
+  color: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 2.25rem 2rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.season-welcome-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.6rem;
+}
+.season-welcome-title {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0 0 0.35rem;
+}
+.season-welcome-title span { color: var(--accent); }
+.season-welcome-sub {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.72);
+  margin: 0 0 1.35rem;
+}
+.season-welcome-body {
+  max-width: 620px;
+  margin: 0 auto 1.5rem;
+  text-align: left;
+  font-size: 0.94rem;
+  line-height: 1.75;
+  color: rgba(255, 255, 255, 0.9);
+}
+.season-welcome-body p { margin: 0 0 0.8rem; }
+.season-welcome-body p:last-child { margin-bottom: 0; }
+.season-welcome-body strong { color: #fff; }
+
+.countdown-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.countdown-box {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius);
+  padding: 0.65rem 1.05rem;
+  min-width: 74px;
+}
+.countdown-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1.1;
+}
+.countdown-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 0.15rem;
+}
+.countdown-live {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.welcome-cta {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.9rem;
+  border-radius: 26px;
+  transition: filter 0.15s, transform 0.15s;
+}
+.welcome-cta:hover { filter: brightness(0.94); transform: translateY(-1px); }
+.welcome-cta-note {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 0.7rem;
+}
+
+@media (max-width: 640px) {
+  .season-welcome { padding: 1.75rem 1.15rem; }
+  .season-welcome-title { font-size: 1.5rem; }
+  .season-welcome-body { font-size: 0.9rem; }
+  .countdown-box { min-width: 62px; padding: 0.55rem 0.8rem; }
+  .countdown-value { font-size: 1.25rem; }
+}
