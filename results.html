@@ -74,7 +74,7 @@
 <script type="module">
   import { initNav, getCurrentMember } from './js/auth.js'
   import { supabase } from './js/supabase-client.js'
-  import { CURRENT_SEASON } from './js/config.js'
+  import { CURRENT_SEASON, UNOFFICIAL_WEEKS } from './js/config.js'
   import { loadResults, knownSeasons } from './js/results.js'
   import { matchScore, isWinner, fmt } from './js/scoring.js'
   initNav('results')
@@ -115,6 +115,27 @@
     if (val === '' || val == null) return null
     const n = parseInt(val, 10)
     return isNaN(n) ? null : n
+  }
+
+  // The opening Mondays of the season are warm-ups played off the record.
+  // Nothing in the database distinguishes them, so a result saved for one of
+  // those dates would quietly count in the standings. Warn before that
+  // happens; the admin can still override if they really mean to.
+  function mondayOf(isoDate) {
+    const d = new Date(isoDate + 'T00:00:00')
+    const day = d.getDay()
+    d.setDate(d.getDate() - day + (day === 0 ? -6 : 1))
+    const pad = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  }
+
+  function confirmIfWarmUpWeek(playedOn) {
+    if (!playedOn || !UNOFFICIAL_WEEKS.includes(mondayOf(playedOn))) return true
+    return confirm(
+      'That date falls in a pre-season warm-up week, which is meant to stay ' +
+      'off the record.\n\nSaving it will count the match in the standings. ' +
+      'Add it anyway?'
+    )
   }
 
   // Maps a Supabase insert error to a friendly message. The unique
@@ -313,6 +334,8 @@
     if (new Set([t1p1,t1p2,t2p1,t2p2]).size !== 4) return showErr('Each player can only appear once.')
     if (t1s1 === null || t1s2 === null || t2s1 === null || t2s2 === null) return showErr('Please enter Set 1 and Set 2 for both teams.')
 
+    if (!confirmIfWarmUpWeek(_playedOn)) return
+
     const saveBtn = document.getElementById('court-save')
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…'
 
@@ -423,6 +446,8 @@
       if (!t2p1||!t2p2) return showErr('Please select both players for Team 2.')
       if (new Set([t1p1,t1p2,t2p1,t2p2]).size!==4) return showErr('Each player can only appear once.')
       if (t1s1===null||t1s2===null||t2s1===null||t2s2===null) return showErr('Please enter Set 1 and Set 2 for both teams.')
+      if (!confirmIfWarmUpWeek(po)) return
+
       const btn = document.getElementById('manual-save')
       btn.disabled=true; btn.textContent='Saving…'
       const { error } = await supabase.from('matches').insert({
