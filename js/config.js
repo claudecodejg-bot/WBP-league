@@ -6,21 +6,31 @@
 
 // The active season, in the format stored in the database
 // (matches.season and member_seasons.season).
-export const CURRENT_SEASON = '2025-26'
+export const CURRENT_SEASON = '2026-27'
 
 // First day of the current season (YYYY-MM-DD string). Used by the
 // scheduler to scope "this season" match history.
-export const SEASON_START = '2025-10-01'
+// 2026-27 opens Monday 21 September 2026.
+export const SEASON_START = '2026-09-21'
 
 // Last day of the current season. Availability and the scheduler
-// stop showing weeks after this date.
-export const SEASON_END = new Date('2026-03-30T23:59:59')
+// stop showing weeks after this date. (Last Monday of March 2027.)
+export const SEASON_END = new Date('2027-03-29T23:59:59')
 
-// ── Upcoming season ─────────────────────────────────────────────────────
-// Used by the home page welcome/countdown only. These are intentionally
-// separate from CURRENT_SEASON above: the site still reports 2025-26 as the
-// active season because no 2026-27 matches or member_seasons rows exist yet.
-// When the new season's roster is loaded, update CURRENT_SEASON/SEASON_START/
-// SEASON_END and these can follow.
+// ── Availability window ─────────────────────────────────────────────────
+// Which Mondays the availability page collects responses for right now.
+// The season runs through March, but we only ask people to commit a few
+// weeks ahead. Extend AVAILABILITY_END when you want the next block of
+// weeks to open up.
+export const AVAILABILITY_START = '2026-09-21'
+export const AVAILABILITY_END   = '2026-10-26'   // last Monday in October
+
+// Weeks played before the season officially counts. Matches in these weeks
+// are warm-ups; we still collect availability so courts can be organised.
+// Listed as YYYY-MM-DD Mondays.
+export const UNOFFICIAL_WEEKS = ['2026-09-21', '2026-09-28']
+
+// ── Season opener ───────────────────────────────────────────────────────
+// Drives the countdown on the home page.
 export const NEXT_SEASON_LABEL = '2026-27'
-export const NEXT_SEASON_START = new Date('2026-10-01T19:00:00')
+export const NEXT_SEASON_START = new Date('2026-09-21T19:00:00')

@@ -2105,3 +2105,17 @@ footer {
   .countdown-box { min-width: 62px; padding: 0.55rem 0.8rem; }
   .countdown-value { font-size: 1.25rem; }
 }
+
+/* Pre-season warm-up weeks on the availability page */
+.week-tag-unofficial {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  background: var(--green-pale);
+  color: var(--accent);
+  padding: 0.18rem 0.5rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  margin-left: 0.5rem;
+}
