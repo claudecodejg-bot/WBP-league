@@ -178,6 +178,13 @@
         : ''
       const ineligBadge = s.ineligibleFirst ? `<span class="inelig-asterisk" title="See footnote below">*</span>` : ''
 
+      // While a player has fewer than 4 matches their average is still partly
+      // last season's rank, so it won't match the scores they've actually
+      // posted. Mark it rather than let it look like a mistake.
+      const provMarker = s.usingRolling4
+        ? `<span class="prov-marker" title="Provisional — still carrying ${fmt(s.seedRank)} from last season until 4 matches are played">°</span>`
+        : ''
+
       const winPctDisplay = s.matchesPlayed > 0 ? Math.round(s.wins / s.matchesPlayed * 100) + '%' : '—'
       const yearsCell = _activeSeason === 'all'
         ? `<td style="text-align:center">${s.activeSeasons > 0 ? s.activeSeasons : '—'}</td>`
@@ -191,7 +198,7 @@
           <td>${s.wins}</td>
           <td>${s.losses}</td>
           <td>${winPctDisplay}</td>
-          <td class="avg-score">${fmt(s.seasonAvg)}</td>
+          <td class="avg-score">${fmt(s.seasonAvg)}${provMarker}</td>
           <td class="last-played">${daysSince(s.lastPlayed)}</td>
         </tr>`
     })
@@ -244,6 +251,10 @@
 
       html += '<h2 class="section-title">Members</h2>' + buildTable(memberData, { podium: isDefault })
       html += footnote
+      if (memberData.some(s => s.usingRolling4)) {
+        html += '<div class="standings-footnote">° Provisional &mdash; early-season averages carry the player\'s ' +
+                'rank from last season, shedding one match at a time until four have been played.</div>'
+      }
       if (_formerMemberStats.length > 0) {
         html += '<h2 class="section-title" style="margin-top:2rem;">Former Members</h2>' + buildTable(sortData(_formerMemberStats))
       }

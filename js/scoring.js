@@ -95,11 +95,39 @@ function getPlayerMatchEntries(memberId, matches) {
 }
 
 /**
- * Computes current-season stats using a rolling-4 average.
+ * Returns the season average a player finished on in the most recent season
+ * they actually played, or null if they have no history at all.
  *
- * If a player has fewer than 4 matches in currentSeasonMatches, their season
- * average is padded with the most recent scores from priorMatches to reach 4
- * total (matching the spreadsheet's early-season convention).
+ * "Most recent season they played" rather than simply "last season" so that
+ * someone who missed a year — injury, travel — is seeded from the last time
+ * they were on court instead of being treated as a newcomer.
+ */
+export function priorSeasonRank(memberId, priorMatches) {
+  const played = priorMatches.filter(m =>
+    m.team1_player1 === memberId || m.team1_player2 === memberId ||
+    m.team2_player1 === memberId || m.team2_player2 === memberId
+  )
+  if (played.length === 0) return null
+
+  // Season labels are YYYY-YY, so a plain sort puts the newest last.
+  const seasons = [...new Set(played.map(m => m.season))].sort()
+  const latest  = seasons[seasons.length - 1]
+
+  return computeMemberStats(memberId, played.filter(m => m.season === latest)).seasonAvg
+}
+
+/**
+ * Computes current-season stats, easing players in from last season's rank.
+ *
+ * A player carries their previous rank into the new season and sheds it one
+ * match at a time. With a prior rank of 7, a first-week score of 6 is
+ * averaged as [7, 7, 7, 6]; after a second match of 5 it becomes [7, 7, 6, 5];
+ * and once four matches are in the padding is gone entirely and the average
+ * is purely this season's results.
+ *
+ * The seed is the player's FINAL RANK from their last season played — not
+ * their last four individual match scores, which can sit far from where they
+ * actually finished.
  *
  * matchesPlayed / wins / losses always reflect the current season only.
  */
@@ -110,11 +138,15 @@ export function computeCurrentSeasonStats(memberId, currentSeasonMatches, priorM
   const curScores = cur.map(e => e.score)
 
   let avgScores = curScores
+  let seedRank  = null
+
   if (curScores.length < 4) {
-    const needed = 4 - curScores.length
-    const prior  = getPlayerMatchEntries(memberId, priorMatches)
-    const pad    = prior.slice(-needed).map(e => e.score)
-    avgScores    = [...pad, ...curScores]
+    seedRank = priorSeasonRank(memberId, priorMatches)
+    if (seedRank != null) {
+      const needed = 4 - curScores.length
+      avgScores = [...Array(needed).fill(seedRank), ...curScores]
+    }
+    // A player with no history at all is simply ranked on what they've played.
   }
 
   return {
@@ -124,7 +156,9 @@ export function computeCurrentSeasonStats(memberId, currentSeasonMatches, priorM
     losses,
     matchScores:   curScores,
     seasonAvg:     seasonAverage(avgScores),
-    usingRolling4: curScores.length < 4
+    // True while last season's rank is still propping up the average.
+    usingRolling4: curScores.length < 4 && seedRank != null,
+    seedRank
   }
 }
 

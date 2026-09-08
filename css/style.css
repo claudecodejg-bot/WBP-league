@@ -2119,3 +2119,11 @@ footer {
   white-space: nowrap;
   margin-left: 0.5rem;
 }
+
+/* Marks a season average still carrying last season's rank */
+.prov-marker {
+  color: var(--accent);
+  font-weight: 700;
+  margin-left: 1px;
+  cursor: help;
+}
