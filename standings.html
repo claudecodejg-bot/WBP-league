@@ -66,7 +66,7 @@
 <script type="module">
   import { initNav } from './js/auth.js'
   import { supabase, connectionErrorHtml } from './js/supabase-client.js'
-  import { CURRENT_SEASON } from './js/config.js'
+  import { CURRENT_SEASON, ELIGIBILITY_START } from './js/config.js'
   import { computeMemberStats, computeCurrentSeasonStats, isWinner, fmt } from './js/scoring.js'
   initNav('standings')
 
@@ -240,15 +240,36 @@
     } else {
       let memberData = sortData(_memberStats)
 
-      // Apply first-place eligibility rule for current season default sort
-      // Skipped before the season starts: with nobody having played, the
-      // "fewer than 4 matches" rule would demote the leader meaninglessly.
-      if (isDefault && !_seasonNotStarted && _activeSeason === CURRENT_SEASON && memberData.length >= 2) {
-        const inelig = firstPlaceIneligibility(memberData[0])
-        if (inelig) {
-          // Demote #1 to #2, promote #2 to #1
-          memberData = [memberData[1], { ...memberData[0], ineligibleFirst: true }, ...memberData.slice(2)]
-          footnote = `<div class="standings-footnote">* ${inelig.name} ${inelig.reasons.join(' and ')}.</div>`
+      // First-place eligibility. Dormant until ELIGIBILITY_START (January):
+      // early on nobody has four matches yet, so the check would demote
+      // leaders for no meaningful reason.
+      const eligibilityActive = Date.now() >= ELIGIBILITY_START.getTime()
+
+      if (eligibilityActive && isDefault && !_seasonNotStarted &&
+          _activeSeason === CURRENT_SEASON && memberData.length >= 2) {
+
+        // Walk down until an eligible player is found, rather than swapping
+        // once — otherwise, if the top two are both short of the minimum,
+        // an ineligible player is promoted into first unmarked.
+        const skipped = []
+        let winner = -1
+        for (let i = 0; i < memberData.length; i++) {
+          const why = firstPlaceIneligibility(memberData[i])
+          if (!why) { winner = i; break }
+          skipped.push(why)
+        }
+
+        // If nobody qualifies, leave the order alone — reshuffling would
+        // just move one ineligible player above another.
+        if (winner > 0) {
+          memberData = [
+            memberData[winner],
+            ...memberData.slice(0, winner).map(s => ({ ...s, ineligibleFirst: true })),
+            ...memberData.slice(winner + 1)
+          ]
+          footnote = '<div class="standings-footnote">' +
+            skipped.map(s => `* ${s.name} ${s.reasons.join(' and ')}.`).join('<br>') +
+            '</div>'
         }
       }
 

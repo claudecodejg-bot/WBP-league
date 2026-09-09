@@ -34,3 +34,11 @@ export const UNOFFICIAL_WEEKS = ['2026-09-21', '2026-09-28']
 // Drives the countdown on the home page.
 export const NEXT_SEASON_LABEL = '2026-27'
 export const NEXT_SEASON_START = new Date('2026-09-21T19:00:00')
+
+// ── First-place eligibility ─────────────────────────────────────────────
+// To hold top spot a player must have played at least 4 matches and have
+// played within the past 6 weeks. That check is dormant until this date:
+// early in the season nobody has four matches yet, so applying it would
+// demote leaders for no meaningful reason. From January it starts to mean
+// something — by then anyone near the top has had a full run of Mondays.
+export const ELIGIBILITY_START = new Date('2027-01-01T00:00:00')
