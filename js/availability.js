@@ -239,7 +239,7 @@ export async function loadAvailabilityTally(container) {
  * Admin view: loads all members' availability for upcoming weeks,
  * with editable dropdowns so admin can set availability on behalf of members.
  */
-export async function loadAdminAvailability(container, weekCount = 4) {
+export async function loadAdminAvailability(container) {
   const weeks = upcomingWeeks()
   const weekKeys = weeks.map(toISO)
 

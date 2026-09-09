@@ -31,6 +31,7 @@
     <li><a href="photos.html" data-page="photos">Photos</a></li>
     <li><a href="championship.html" data-page="championship">Championship</a></li>
     <li><a href="golf.html" data-page="golf">Golf</a></li>
+    <li id="scheduler-nav-item" style="display:none"><a href="scheduler.html" data-page="scheduler">Scheduler</a></li>
   </ul>
   <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
   <button id="nav-auth-btn">Sign In</button>
@@ -65,7 +66,7 @@
 
 <script type="module">
   import { requireLogin, getCurrentMember, initNav } from './js/auth.js'
-  import { loadAvailability, loadAvailabilityTally, loadAdminAvailability } from './js/availability.js?v=5'
+  import { loadAvailability, loadAvailabilityTally, loadAdminAvailability } from './js/availability.js?v=6'
 
   ;(async () => {
     initNav('availability')
@@ -88,10 +89,18 @@
     await loadAvailabilityTally(document.getElementById('tally-container'))
 
     if (member.is_admin) {
-      document.getElementById('scheduler-nav-item').style.display = 'block'
+      // Optional chaining on purpose: if the nav item is ever missing, the
+      // admin grid below should still render rather than the whole block
+      // dying on a null reference.
+      document.getElementById('scheduler-nav-item')?.style.setProperty('display', 'block')
+
       const adminEl = document.getElementById('admin-container')
-      adminEl.innerHTML = '<h2 class="tally-title">Full Member Responses</h2>'
-      await loadAdminAvailability(adminEl, 4)
+      adminEl.innerHTML =
+        '<div class="admin-avail-header">' +
+          '<h2 class="tally-title" style="margin:0;">Full Member Responses</h2>' +
+          '<a href="scheduler.html" class="btn btn-primary btn-sm">Generate Pairings &rarr;</a>' +
+        '</div>'
+      await loadAdminAvailability(adminEl)
     }
   })()
 </script>

@@ -2127,3 +2127,18 @@ footer {
   margin-left: 1px;
   cursor: help;
 }
+
+/* Availability admin section header — title plus the scheduler link */
+.admin-avail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+.btn-sm {
+  font-size: 0.78rem;
+  padding: 0.4rem 0.9rem;
+  white-space: nowrap;
+}
