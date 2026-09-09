@@ -42,3 +42,11 @@ export const NEXT_SEASON_START = new Date('2026-09-21T19:00:00')
 // demote leaders for no meaningful reason. From January it starts to mean
 // something — by then anyone near the top has had a full run of Mondays.
 export const ELIGIBILITY_START = new Date('2027-01-01T00:00:00')
+
+// ── Seeding a new season ────────────────────────────────────────────────
+// How many matches a season must contain before its final rank is trusted
+// as a player's carry-over seed. A one- or two-match season says very
+// little: Napolitano finished 2025-26 on 2.61 from three matches, having
+// won the championship. Below this threshold we walk back to the most
+// recent season with enough matches to mean something.
+export const MIN_SEED_MATCHES = 4

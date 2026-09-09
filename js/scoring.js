@@ -2,6 +2,8 @@
 //  Scoring calculations — shared across pages
 // =============================================
 
+import { MIN_SEED_MATCHES } from './config.js'
+
 /**
  * Determines if team1 won based on head-to-head set comparison.
  * Wins the match by winning 2 out of 3 sets (more games in a set = win that set).
@@ -109,11 +111,21 @@ export function priorSeasonRank(memberId, priorMatches) {
   )
   if (played.length === 0) return null
 
-  // Season labels are YYYY-YY, so a plain sort puts the newest last.
-  const seasons = [...new Set(played.map(m => m.season))].sort()
-  const latest  = seasons[seasons.length - 1]
+  // Season labels are YYYY-YY, so a plain sort then reverse gives newest first.
+  const seasons = [...new Set(played.map(m => m.season))].sort().reverse()
 
-  return computeMemberStats(memberId, played.filter(m => m.season === latest)).seasonAvg
+  // Walk back to the most recent season with enough matches to be meaningful.
+  // A season of one or two games can sit far from a player's real level —
+  // Napolitano won the 2026 championship yet finished 2025-26 on 2.61 from
+  // three matches.
+  for (const season of seasons) {
+    const stats = computeMemberStats(memberId, played.filter(m => m.season === season))
+    if (stats.matchesPlayed >= MIN_SEED_MATCHES) return stats.seasonAvg
+  }
+
+  // Nobody qualifies — fall back to the most recent season they played at
+  // all, which is the best available signal.
+  return computeMemberStats(memberId, played.filter(m => m.season === seasons[0])).seasonAvg
 }
 
 /**
