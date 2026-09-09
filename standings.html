@@ -81,6 +81,7 @@
   let _memberStats       = []
   let _formerMemberStats = []
   let _guestStats        = []
+  let _seasonNotStarted  = false
 
   function getCols() {
     const cols = [
@@ -240,7 +241,9 @@
       let memberData = sortData(_memberStats)
 
       // Apply first-place eligibility rule for current season default sort
-      if (isDefault && _activeSeason === CURRENT_SEASON && memberData.length >= 2) {
+      // Skipped before the season starts: with nobody having played, the
+      // "fewer than 4 matches" rule would demote the leader meaninglessly.
+      if (isDefault && !_seasonNotStarted && _activeSeason === CURRENT_SEASON && memberData.length >= 2) {
         const inelig = firstPlaceIneligibility(memberData[0])
         if (inelig) {
           // Demote #1 to #2, promote #2 to #1
@@ -311,6 +314,10 @@
 
   function populateSeasonDropdown() {
     const seasons = [...new Set(_db.matches.map(m => m.season))].sort().reverse()
+    // Before the first match of a new season there are no rows carrying that
+    // season label, so add it explicitly — otherwise the current season is
+    // missing from the dropdown entirely.
+    if (!seasons.includes(CURRENT_SEASON)) seasons.unshift(CURRENT_SEASON)
     // Current season first, then Entire History, then older seasons
     const options = [seasons[0], 'all', ...seasons.slice(1)]
     seasonSelect.innerHTML = options.map(s => {
@@ -356,8 +363,12 @@
     })
     const seasonLabel = _activeSeason === 'all' ? 'across all seasons' : (_activeSeason === CURRENT_SEASON ? 'this season' : `the ${_activeSeason} season`)
 
-    document.getElementById('standings-subtitle').textContent =
-      `${matches.length} match${matches.length !== 1 ? 'es' : ''} played ${seasonLabel}.`
+    // Pre-season: the table is showing carried-over ranks, not results.
+    _seasonNotStarted = _activeSeason === CURRENT_SEASON && matches.length === 0
+
+    document.getElementById('standings-subtitle').textContent = _seasonNotStarted
+      ? 'No matches played yet — ranked on the averages carried over from each player\'s last season.'
+      : `${matches.length} match${matches.length !== 1 ? 'es' : ''} played ${seasonLabel}.`
 
     function lastPlayedDate(memberId) {
       const played = matches
@@ -380,7 +391,11 @@
         streak: calcStreak(m.id, matches),
         activeSeasons: seasonCountById[m.id] || 0
       }
-    }).filter(s => s.matchesPlayed > 0)
+    }).filter(s =>
+      s.matchesPlayed > 0 ||
+      // Pre-season: show the roster ranked on the averages they carried over.
+      (_activeSeason === CURRENT_SEASON && activeMemberIds.has(s.id) && s.seasonAvg != null)
+    )
 
     _memberStats       = defaultSort(allNonGuestStats.filter(s => activeMemberIds.has(s.id)))
     _formerMemberStats = defaultSort(allNonGuestStats.filter(s => !activeMemberIds.has(s.id) && everMemberIds.has(s.id)))
