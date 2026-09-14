@@ -10,14 +10,47 @@ export async function getSession() {
   return session
 }
 
+// Pages that should never be a post-login destination: sending someone back
+// to the login screen (or the password form) after they sign in would loop.
+const NEVER_RETURN_TO = ['login.html', 'set-password.html']
+
 /**
- * Redirects to login.html if no active session.
+ * Validates a "return to this page" value before redirecting to it.
+ *
+ * Only a bare page name from this site is accepted — e.g. "availability.html"
+ * or "player.html?id=…". Anything else (full URLs, "//other-site.com",
+ * "javascript:" and so on) is rejected, so a crafted sign-in link can't be
+ * used to bounce a member off to another website after they log in.
+ *
+ * Returns the safe page, or null.
+ */
+export function safeReturnPage(raw) {
+  if (!raw) return null
+  if (!/^[a-z0-9_-]+\.html(\?[^#]*)?$/i.test(raw)) return null
+  const page = raw.split('?')[0].toLowerCase()
+  return NEVER_RETURN_TO.includes(page) ? null : raw
+}
+
+/**
+ * Where to send someone once they've signed in: the page they were trying to
+ * open if there was one, otherwise the home page.
+ */
+export function postLoginDestination() {
+  const next = new URLSearchParams(window.location.search).get('next')
+  return safeReturnPage(next) || 'index.html'
+}
+
+/**
+ * Redirects to login.html if no active session, remembering the current page
+ * so the member comes straight back here after signing in.
  * Returns the session if valid.
  */
 export async function requireLogin() {
   const session = await getSession()
   if (!session) {
-    window.location.href = 'login.html'
+    const here = (window.location.pathname.split('/').pop() || 'index.html') + window.location.search
+    const next = safeReturnPage(here)
+    window.location.href = next ? `login.html?next=${encodeURIComponent(next)}` : 'login.html'
     return null
   }
   return session

@@ -84,11 +84,11 @@
 
 <script type="module">
   import { supabase } from './js/supabase-client.js'
-  import { getSession } from './js/auth.js'
+  import { getSession, postLoginDestination } from './js/auth.js'
 
-  // If already logged in, redirect
+  // Already signed in: go where they were heading, or the home page.
   getSession().then(session => {
-    if (session) window.location.href = 'index.html'
+    if (session) window.location.href = postLoginDestination()
   })
 
   const alertEl   = document.getElementById('login-alert')
@@ -136,13 +136,17 @@
       return
     }
 
-    // If user needs to change their password, redirect to set-password page
+    // If user needs to change their password, redirect to set-password page,
+    // carrying along the page they were heading to.
     if (data.user?.user_metadata?.needs_password_change) {
-      window.location.href = 'set-password.html'
+      const next = new URLSearchParams(window.location.search).get('next')
+      window.location.href = 'set-password.html' + (next ? `?next=${encodeURIComponent(next)}` : '')
       return
     }
 
-    window.location.href = 'index.html'
+    // Back to the page they were trying to open, or the home page if they
+    // came via the Sign In button.
+    window.location.href = postLoginDestination()
   })
 
   // Forgot password
