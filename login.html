@@ -88,7 +88,7 @@
 
   // If already logged in, redirect
   getSession().then(session => {
-    if (session) window.location.href = 'availability.html'
+    if (session) window.location.href = 'index.html'
   })
 
   const alertEl   = document.getElementById('login-alert')
@@ -142,7 +142,7 @@
       return
     }
 
-    window.location.href = 'availability.html'
+    window.location.href = 'index.html'
   })
 
   // Forgot password
