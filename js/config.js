@@ -28,12 +28,14 @@ export const AVAILABILITY_END   = '2026-10-26'   // last Monday in October
 // Weeks played before the season officially counts. Matches in these weeks
 // are warm-ups; we still collect availability so courts can be organised.
 // Listed as YYYY-MM-DD Mondays.
-export const UNOFFICIAL_WEEKS = ['2026-09-21', '2026-09-28']
+export const UNOFFICIAL_WEEKS = ['2026-09-21', '2026-09-28', '2026-10-05']
 
 // ── Season opener ───────────────────────────────────────────────────────
-// Drives the countdown on the home page.
+// Drives the countdown on the home page. Play starts 21 September, but the
+// first three Mondays are warm-ups, so this counts down to the first match
+// that actually goes on the record: 7pm, Monday 12 October.
 export const NEXT_SEASON_LABEL = '2026-27'
-export const NEXT_SEASON_START = new Date('2026-09-21T19:00:00')
+export const NEXT_SEASON_START = new Date('2026-10-12T19:00:00')
 
 // ── First-place eligibility ─────────────────────────────────────────────
 // To hold top spot a player must have played at least 4 matches and have
