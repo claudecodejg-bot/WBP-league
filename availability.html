@@ -69,12 +69,15 @@
 <script type="module">
   import { requireLogin, getCurrentMember, initNav } from './js/auth.js'
   import { UNOFFICIAL_WEEKS } from './js/config.js'
+  import { upcomingWeeks, isUnofficialWeek } from './js/season-weeks.js'
 
   // First Monday that counts towards the standings: the one after the last
-  // warm-up week.
+  // warm-up week. Only shown while a warm-up week is still on the form —
+  // once they're all in the past the note would just be stale.
   function renderSeasonNote() {
     const el = document.getElementById('avail-season-note')
     if (!el || UNOFFICIAL_WEEKS.length === 0) return
+    if (!upcomingWeeks().some(isUnofficialWeek)) return
     const lastWarmUp = [...UNOFFICIAL_WEEKS].sort().pop()
     const firstReal = new Date(lastWarmUp + 'T00:00:00')
     firstReal.setDate(firstReal.getDate() + 7)

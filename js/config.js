@@ -9,9 +9,10 @@
 export const CURRENT_SEASON = '2026-27'
 
 // First day of the current season (YYYY-MM-DD string). Used by the
-// scheduler to scope "this season" match history.
-// 2026-27 opens Monday 21 September 2026.
-export const SEASON_START = '2026-09-21'
+// scheduler to scope "this season" match history. This is the first
+// Monday that counts — the September/early-October warm-ups are played
+// off the record and are deliberately outside it.
+export const SEASON_START = '2026-10-12'
 
 // Last day of the current season. Availability and the scheduler
 // stop showing weeks after this date. (Last Monday of March 2027.)
@@ -23,7 +24,7 @@ export const SEASON_END = new Date('2027-03-29T23:59:59')
 // weeks ahead. Extend AVAILABILITY_END when you want the next block of
 // weeks to open up.
 export const AVAILABILITY_START = '2026-09-21'
-export const AVAILABILITY_END   = '2026-10-26'   // last Monday in October
+export const AVAILABILITY_END   = '2026-12-28'   // last Monday of the year
 
 // Weeks played before the season officially counts. Matches in these weeks
 // are warm-ups; we still collect availability so courts can be organised.
