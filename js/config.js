@@ -23,7 +23,7 @@ export const SEASON_END = new Date('2027-03-29T23:59:59')
 // The season runs through March, but we only ask people to commit a few
 // weeks ahead. Extend AVAILABILITY_END when you want the next block of
 // weeks to open up.
-export const AVAILABILITY_START = '2026-09-21'
+export const AVAILABILITY_START = '2026-10-12'
 export const AVAILABILITY_END   = '2026-12-28'   // last Monday of the year
 
 // Weeks played before the season officially counts. Matches in these weeks
