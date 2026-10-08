@@ -163,7 +163,20 @@
     })
 
     if (error) {
-      showAlert('Could not send reset email. Please try again.')
+      // Supabase's own message is far more useful than a generic failure —
+      // the usual cause is a rate limit ("only request this once every 60
+      // seconds", or the hourly cap), which tells the member to wait rather
+      // than retry immediately and make it worse.
+      const detail = error.message || ''
+      const seconds = detail.match(/(\d+)\s*seconds?/)
+      if (/rate limit|only request this|too many/i.test(detail)) {
+        showAlert(seconds
+          ? `Too many reset requests. Please wait ${seconds[1]} seconds and try once more.`
+          : 'Too many reset requests right now. Please wait a few minutes and try again — or ask the league admin to reset it for you.')
+      } else {
+        showAlert('Could not send reset email: ' + (detail || 'please try again.'))
+      }
+      console.warn('Password reset failed:', error)
     } else {
       showAlert('Reset email sent! Check your inbox and click the link to set a new password.', 'success')
     }
