@@ -2176,3 +2176,54 @@ footer {
 }
 .btn-save-top:hover:not(:disabled) { filter: brightness(0.94); }
 .btn-save-top:disabled { opacity: 0.75; cursor: default; }
+
+/* ── Availability: later weeks behind a toggle ────────────────────────── */
+.more-weeks {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.more-weeks-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  user-select: none;
+}
+.more-weeks-summary::-webkit-details-marker { display: none; }
+.more-weeks-summary:hover { background: var(--gray-100); }
+
+.more-weeks-chevron {
+  color: var(--accent);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.more-weeks[open] .more-weeks-chevron { transform: rotate(180deg); }
+
+.more-weeks-text {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  line-height: 1.5;
+}
+.more-weeks-hint {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--gray-600);
+  margin-top: 0.15rem;
+}
+
+/* Swap the summary wording depending on whether it's open */
+.more-weeks .mw-open    { display: none; }
+.more-weeks[open] .mw-closed { display: none; }
+.more-weeks[open] .mw-open   { display: inline; }
+
+.more-weeks-body { padding: 0 0.75rem 0.25rem; }
+.more-weeks-body .availability-week:last-child { margin-bottom: 0.75rem; }

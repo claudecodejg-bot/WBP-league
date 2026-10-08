@@ -61,13 +61,15 @@ export async function loadAvailability(memberId, isAdmin) {
       <button class="btn-save-top js-save-avail" id="save-avail-top" data-label="Save">Save</button>
     </div>
   `
-  for (const monday of weeks) {
+  // Build each week separately so the later ones can be tucked behind a
+  // toggle — twelve cards at once made the page a long scroll.
+  const weekCards = weeks.map(monday => {
     const key = toISO(monday)
     const current = existingMap[key]
     const isAvail = current?.is_available ?? null
     const note    = current?.note ?? ''
 
-    html += `
+    return `
       <div class="availability-week card">
         <div class="week-header">
           <div class="week-date-label">${weekLabel(monday)}</div>
@@ -86,6 +88,32 @@ export async function loadAvailability(memberId, isAdmin) {
         <textarea class="avail-note hidden" id="note-${key}" rows="2"
                   placeholder="Optional note (e.g. can only do mornings)">${escapeHtml(note)}</textarea>
       </div>
+    `
+  })
+
+  // First few weeks open; the rest behind a toggle. The hidden cards are
+  // still in the page, so Save and "Mark All Available" cover every week
+  // whether or not the section is open.
+  const VISIBLE_WEEKS = 3
+  html += weekCards.slice(0, VISIBLE_WEEKS).join('')
+
+  const laterCards = weekCards.slice(VISIBLE_WEEKS)
+  if (laterCards.length > 0) {
+    const lastLabel = weekLabel(weeks[weeks.length - 1])
+    html += `
+      <details class="more-weeks">
+        <summary class="more-weeks-summary">
+          <span class="more-weeks-chevron" aria-hidden="true">&#9660;</span>
+          <span class="more-weeks-text">
+            <span class="mw-closed">
+              Show ${laterCards.length} more week${laterCards.length !== 1 ? 's' : ''}
+              <span class="more-weeks-hint">&mdash; through ${lastLabel}. Open this to set your availability for the rest of the dates.</span>
+            </span>
+            <span class="mw-open">Hide the later weeks</span>
+          </span>
+        </summary>
+        <div class="more-weeks-body">${laterCards.join('')}</div>
+      </details>
     `
   }
 
