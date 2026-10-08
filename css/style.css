@@ -593,6 +593,11 @@ main.main-wide {
 
 .avail-actions {
   margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .btn-mark-all {
@@ -2155,3 +2160,19 @@ footer {
   color: var(--gray-800);
 }
 .avail-season-note .week-tag-unofficial { margin-left: 0; }
+
+/* Compact Save beside "Mark All Available", for members who don't want to
+   scroll to the bottom of the form */
+.btn-save-top {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.4rem 1rem;
+  border: none;
+  border-radius: 20px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-save-top:hover:not(:disabled) { filter: brightness(0.94); }
+.btn-save-top:disabled { opacity: 0.75; cursor: default; }

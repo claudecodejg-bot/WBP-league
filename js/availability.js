@@ -58,6 +58,7 @@ export async function loadAvailability(memberId, isAdmin) {
   let html = `
     <div class="avail-actions">
       <button class="btn-mark-all" id="mark-all-btn">✓ Mark All Available</button>
+      <button class="btn-save-top js-save-avail" id="save-avail-top" data-label="Save">Save</button>
     </div>
   `
   for (const monday of weeks) {
@@ -90,7 +91,7 @@ export async function loadAvailability(memberId, isAdmin) {
 
   html += `
     <div id="save-status" class="alert hidden"></div>
-    <button class="save-btn" id="save-avail-btn">Save Availability</button>
+    <button class="save-btn js-save-avail" id="save-avail-btn" data-label="Save Availability">Save Availability</button>
   `
   container.innerHTML = html
 
@@ -121,11 +122,17 @@ export async function loadAvailability(memberId, isAdmin) {
   })
 
   // Save button
-  document.getElementById('save-avail-btn').addEventListener('click', async () => {
-    const saveBtn  = document.getElementById('save-avail-btn')
+  // Both Save buttons run this. The top one exists because the form is long
+  // enough that members were missing the one at the bottom.
+  const saveButtons = () => [...document.querySelectorAll('.js-save-avail')]
+  const setSaveState = (disabled, label) => saveButtons().forEach(b => {
+    b.disabled = disabled
+    b.textContent = label ?? b.dataset.label
+  })
+
+  saveButtons().forEach(btn => btn.addEventListener('click', async () => {
     const statusEl = document.getElementById('save-status')
-    saveBtn.disabled = true
-    saveBtn.textContent = 'Saving…'
+    setSaveState(true, 'Saving…')
     statusEl.classList.add('hidden')
 
     const upserts = []
@@ -149,8 +156,7 @@ export async function loadAvailability(memberId, isAdmin) {
       statusEl.textContent = 'Please select your availability for at least one week.'
       statusEl.className = 'alert alert-info'
       statusEl.classList.remove('hidden')
-      saveBtn.disabled = false
-      saveBtn.textContent = 'Save Availability'
+      setSaveState(false)
       return
     }
 
@@ -169,9 +175,17 @@ export async function loadAvailability(memberId, isAdmin) {
       if (tallyContainer) await loadAvailabilityTally(tallyContainer)
     }
     statusEl.classList.remove('hidden')
-    saveBtn.disabled = false
-    saveBtn.textContent = 'Save Availability'
-  })
+
+    // Confirm on the button itself. Someone who saved from the top of a long
+    // form would otherwise see no sign it worked, because the status message
+    // sits down at the bottom.
+    if (error) {
+      setSaveState(false)
+    } else {
+      setSaveState(true, 'Saved ✓')
+      setTimeout(() => setSaveState(false), 2000)
+    }
+  }))
 }
 
 /**
