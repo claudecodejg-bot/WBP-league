@@ -2255,3 +2255,48 @@ footer {
 
 .more-weeks-body { padding: 0 0.75rem 0.25rem; }
 .more-weeks-body .availability-week:last-child { margin-bottom: 0.75rem; }
+
+/* ── Scheduler: subs picker ───────────────────────────────────────────── */
+.scheduler-subs-row { margin-top: 0.75rem; }
+.scheduler-sub-picker {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+.scheduler-sub-picker .scheduler-select { flex: 1; min-width: 0; }
+
+.scheduler-sub-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+.scheduler-sub-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--green-pale);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem 0.25rem 0.7rem;
+  border-radius: 20px;
+}
+.scheduler-sub-chip button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.1rem;
+}
+.scheduler-sub-chip button:hover { color: var(--green-dark); }
+
+.scheduler-sub-hint {
+  font-size: 0.78rem;
+  color: var(--gray-600);
+  margin: 0.5rem 0 0;
+}

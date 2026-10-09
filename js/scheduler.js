@@ -3,7 +3,7 @@
 // =============================================
 
 import { supabase }                from './supabase-client.js'
-import { SEASON_START } from './config.js'
+import { SEASON_START, CURRENT_SEASON } from './config.js'
 import { upcomingWeeks } from './season-weeks.js'
 import { computeCurrentSeasonStats, isWinner } from './scoring.js'
 
@@ -52,6 +52,30 @@ async function getAvailableMembers(weekStart) {
 }
 
 // Count how many matches each member played this season (keyed by member UUID)
+/**
+ * Everyone who could be added as a sub: guests, former members, and current
+ * members who didn't mark themselves available. Grouped so the picker can
+ * show the most likely candidates first.
+ */
+export async function getSubCandidates() {
+  const [membersRes, seasonsRes] = await Promise.all([
+    supabase.from('members').select('id, full_name, is_guest').order('full_name'),
+    supabase.from('member_seasons').select('member_id').eq('season', CURRENT_SEASON)
+  ])
+  if (membersRes.error) throw new Error('Failed to load members: ' + membersRes.error.message)
+
+  const current = new Set((seasonsRes.data || []).map(r => r.member_id))
+  const groups = { 'Guests': [], 'Former Members': [], 'Members': [] }
+
+  for (const m of membersRes.data || []) {
+    if (m.full_name === 'Forfeit') continue
+    if (m.is_guest) groups['Guests'].push(m)
+    else if (current.has(m.id)) groups['Members'].push(m)
+    else groups['Former Members'].push(m)
+  }
+  return groups
+}
+
 async function getSeasonOutings(memberIds) {
   const { data, error } = await supabase
     .from('matches')
@@ -283,14 +307,35 @@ function determinePlayers(available, outings) {
 
 // ── Main export ───────────────────────────────
 
-export async function generateSchedule(weekStart) {
-  const available = await getAvailableMembers(weekStart)
+/**
+ * @param {Date}     weekStart
+ * @param {string[]} subIds  Members added by hand to fill out the courts —
+ *                           guests or anyone who didn't mark availability.
+ */
+export async function generateSchedule(weekStart, subIds = []) {
+  const responded = await getAvailableMembers(weekStart)
+
+  // Subs join the pool. Anyone who also marked themselves available is
+  // already in the list, so skip them rather than double-count.
+  let subs = []
+  if (subIds.length > 0) {
+    const have = new Set(responded.map(m => m.id))
+    const wanted = subIds.filter(id => !have.has(id))
+    if (wanted.length > 0) {
+      const { data, error } = await supabase
+        .from('members').select('id, full_name').in('id', wanted)
+      if (error) throw new Error('Failed to load subs: ' + error.message)
+      subs = (data || []).map(m => ({ id: m.id, name: m.full_name, isSub: true }))
+    }
+  }
+
+  const available = [...responded, ...subs]
 
   if (available.length === 0) {
     return { error: 'No availability responses yet for this week.' }
   }
   if (available.length < 4) {
-    return { error: `Only ${available.length} player(s) available — need at least 4 to schedule a court.` }
+    return { error: `Only ${available.length} player(s) available — need at least 4 to schedule a court. Add subs to fill a court.` }
   }
 
   const memberIds = available.map(m => m.id)
@@ -309,6 +354,8 @@ export async function generateSchedule(weekStart) {
   return {
     weekStart,
     available,
+    responded,
+    subs,
     playing,
     sittingOut,
     tiebreakUsed,

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Match Scheduler — WBP League</title>
-  <link rel="stylesheet" href="css/style.css?v=ed03f495">
+  <link rel="stylesheet" href="css/style.css?v=31b88b1b">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -46,6 +46,21 @@
         <label for="week-select" class="scheduler-label">Match Night</label>
         <select id="week-select" class="form-input scheduler-select"></select>
       </div>
+
+      <div class="scheduler-week-row scheduler-subs-row">
+        <label for="sub-select" class="scheduler-label">Add Subs</label>
+        <div class="scheduler-sub-picker">
+          <select id="sub-select" class="form-input scheduler-select">
+            <option value="">— choose a sub —</option>
+          </select>
+          <button type="button" id="add-sub-btn" class="btn btn-secondary btn-sm">Add</button>
+        </div>
+      </div>
+      <div id="sub-chips" class="scheduler-sub-chips"></div>
+      <p class="scheduler-sub-hint">
+        Optional. Add fill-ins so everyone playing is included &mdash; four players make a court.
+      </p>
+
       <button id="generate-btn" class="btn btn-primary scheduler-generate-btn">Generate Pairings</button>
     </div>
 
@@ -76,7 +91,7 @@
 
 <script type="module">
   import { requireLogin, getCurrentMember, initNav } from './js/auth.js?v=7b4f460f'
-  import { generateSchedule, getUpcomingWeeks, formatWeekLabel } from './js/scheduler.js?v=54b82e5e'
+  import { generateSchedule, getUpcomingWeeks, formatWeekLabel, getSubCandidates } from './js/scheduler.js?v=290297ba'
   import { supabase } from './js/supabase-client.js?v=2d21059e'
 
   ;(async () => {
@@ -107,6 +122,54 @@
       })
     }
 
+    // ── Subs ────────────────────────────────────────────────────────────
+    // Chosen subs are held here by id and passed to generateSchedule, which
+    // folds them into the available pool so the court count includes them.
+    const chosenSubs = new Map()   // id -> name
+
+    async function loadSubOptions() {
+      const select = document.getElementById('sub-select')
+      try {
+        const groups = await getSubCandidates()
+        for (const [label, people] of Object.entries(groups)) {
+          if (people.length === 0) continue
+          const group = document.createElement('optgroup')
+          group.label = label
+          for (const p of people) {
+            const opt = document.createElement('option')
+            opt.value = p.id
+            opt.textContent = p.full_name
+            group.appendChild(opt)
+          }
+          select.appendChild(group)
+        }
+      } catch (e) {
+        console.warn('Could not load sub list:', e)
+      }
+    }
+
+    function renderSubChips() {
+      const wrap = document.getElementById('sub-chips')
+      wrap.innerHTML = [...chosenSubs.entries()].map(([id, name]) =>
+        `<span class="scheduler-sub-chip">${name}<button type="button" data-remove="${id}" aria-label="Remove ${name}">&times;</button></span>`
+      ).join('')
+      wrap.querySelectorAll('[data-remove]').forEach(btn =>
+        btn.addEventListener('click', () => {
+          chosenSubs.delete(btn.dataset.remove)
+          renderSubChips()
+        }))
+    }
+
+    document.getElementById('add-sub-btn').addEventListener('click', () => {
+      const sel = document.getElementById('sub-select')
+      if (!sel.value) return
+      chosenSubs.set(sel.value, sel.selectedOptions[0].textContent)
+      sel.value = ''
+      renderSubChips()
+    })
+
+    loadSubOptions()
+
     document.getElementById('generate-btn').addEventListener('click', async () => {
       const btn        = document.getElementById('generate-btn')
       const resultsDiv = document.getElementById('scheduler-results')
@@ -121,7 +184,7 @@
 
       try {
         const weekStart = new Date(select.value + 'T12:00:00')
-        const result    = await generateSchedule(weekStart)
+        const result    = await generateSchedule(weekStart, [...chosenSubs.keys()])
 
         if (result.error) {
           resultsDiv.innerHTML = `<div class="alert alert-error">${result.error}</div>`

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Results — Paddle Tennis League</title>
-  <link rel="stylesheet" href="css/style.css?v=ed03f495">
+  <link rel="stylesheet" href="css/style.css?v=31b88b1b">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -160,11 +160,19 @@
       supabase.from('matches').select('week_label').eq('season', CURRENT_SEASON).order('played_on', { ascending: false }).limit(1).maybeSingle()
     ])
 
-    // Filter to current-season active members only
-    const activeIds = new Set((seasonMembersRes.data || []).map(r => r.member_id))
-    _members = (membersRes.data || []).filter(m => activeIds.has(m.id))
-    _memberNameToId = Object.fromEntries((membersRes.data || []).map(m => [m.full_name, m.id]))
     _schedule  = schedRes.data || null
+
+    // Current-season members, plus anyone the scheduler put on a court. Subs
+    // (guests or former members filling in) must be selectable here, or a
+    // night played with a fill-in could be scheduled but never recorded.
+    const activeIds   = new Set((seasonMembersRes.data || []).map(r => r.member_id))
+    const allMembers  = membersRes.data || []
+    const scheduled   = new Set(
+      (_schedule?.courts || []).flatMap(c => [...(c.team1 || []), ...(c.team2 || [])])
+    )
+
+    _members = allMembers.filter(m => activeIds.has(m.id) || scheduled.has(m.full_name))
+    _memberNameToId = Object.fromEntries(allMembers.map(m => [m.full_name, m.id]))
     _courtIdx  = 0
 
     // Auto-suggest next week label by incrementing the last one
