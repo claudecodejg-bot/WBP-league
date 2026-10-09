@@ -595,7 +595,6 @@ main.main-wide {
   margin-bottom: 1.25rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.6rem;
   flex-wrap: wrap;
 }
@@ -2163,16 +2162,32 @@ footer {
 
 /* Compact Save beside "Mark All Available", for members who don't want to
    scroll to the bottom of the form */
+/* Floats at the right edge so Save is reachable at any scroll position.
+   Sits above the fixed install banner (bottom) and below the sticky nav,
+   so it collides with neither. */
 .btn-save-top {
-  font-size: 0.8rem;
-  font-weight: 700;
-  padding: 0.4rem 1rem;
+  position: fixed;
+  right: 1rem;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  z-index: 90;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  padding: 0.7rem 1.4rem;
   border: none;
-  border-radius: 20px;
+  border-radius: 24px;
   background: var(--accent);
   color: #fff;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  transition: transform 0.15s, filter 0.15s;
+}
+.btn-save-top:active:not(:disabled) { transform: scale(0.96); }
+
+/* Lift clear of the install banner while it's on screen. */
+body:has(.a2hs-banner) .btn-save-top {
+  bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
 }
 .btn-save-top:hover:not(:disabled) { filter: brightness(0.94); }
 .btn-save-top:disabled { opacity: 0.75; cursor: default; }
