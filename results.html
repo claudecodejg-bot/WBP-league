@@ -94,6 +94,7 @@
   // ── Modal state ───────────────────────────────────────────
   let _schedule        = null   // scheduled_matches row
   let _courtIdx        = 0
+  let _skipped         = []    // court numbers left unrecorded this pass
   let _members         = []     // current-season members only
   let _memberNameToId  = {}
   let _weekLabel       = ''
@@ -174,6 +175,7 @@
     _members = allMembers.filter(m => activeIds.has(m.id) || scheduled.has(m.full_name))
     _memberNameToId = Object.fromEntries(allMembers.map(m => [m.full_name, m.id]))
     _courtIdx  = 0
+    _skipped   = []
 
     // Auto-suggest next week label by incrementing the last one
     const lastLabel = lastMatchRes.data?.week_label || ''
@@ -309,7 +311,11 @@
     ;['c-t1s1','c-t1s2','c-t1s3','c-t2s1','c-t2s2','c-t2s3'].forEach(id =>
       document.getElementById(id)?.addEventListener('input', updateCourtPreview))
 
-    document.getElementById('court-skip').addEventListener('click', () => { _courtIdx++; advanceCourt() })
+    document.getElementById('court-skip').addEventListener('click', () => {
+      _skipped.push(_courtIdx + 1)
+      _courtIdx++
+      advanceCourt()
+    })
     document.getElementById('court-save').addEventListener('click', saveCourtResult)
   }
 
@@ -366,17 +372,33 @@
   }
 
   function renderDoneScreen() {
-    setTitle('Results Saved')
-    setScreen(`
-      <div style="text-align:center;padding:1.5rem 0;">
-        <div style="font-size:2.5rem;margin-bottom:0.75rem;">✓</div>
-        <div style="font-weight:700;font-size:1rem;">All courts entered</div>
-        <div style="color:var(--gray-500);font-size:0.88rem;margin-top:0.25rem;">${_weekLabel}</div>
-      </div>`,
-    `<button id="done-close" class="btn btn-primary" style="width:100%;">Done</button>`)
+    const pending = _skipped.length > 0
+
+    setTitle(pending ? 'Saved So Far' : 'Results Saved')
+    setScreen(pending
+      ? `<div style="text-align:center;padding:1.25rem 0 0.5rem;">
+           <div style="font-size:2.2rem;margin-bottom:0.5rem;">&#128221;</div>
+           <div style="font-weight:700;font-size:1rem;">
+             Court${_skipped.length > 1 ? 's' : ''} ${_skipped.join(' and ')} still to come
+           </div>
+           <div style="color:var(--gray-500);font-size:0.88rem;margin-top:0.35rem;line-height:1.5;">
+             Everything else is saved. The schedule is kept, so you can reopen
+             Add Result later and enter the rest &mdash; skip past the courts
+             you have already done.
+           </div>
+         </div>`
+      : `<div style="text-align:center;padding:1.5rem 0;">
+           <div style="font-size:2.5rem;margin-bottom:0.75rem;">&#10003;</div>
+           <div style="font-weight:700;font-size:1rem;">All courts entered</div>
+           <div style="color:var(--gray-500);font-size:0.88rem;margin-top:0.25rem;">${_weekLabel}</div>
+         </div>`,
+    `<button id="done-close" class="btn btn-primary" style="width:100%;">${pending ? 'Finish for now' : 'Done'}</button>`)
+
     document.getElementById('done-close').addEventListener('click', async () => {
-      // Clear the scheduled match so the landing page upcoming section is removed
-      if (_schedule?.id) {
+      // Only clear the schedule once every court is recorded — otherwise the
+      // remaining pairings (and any subs named in them) would be lost, and the
+      // home page would stop showing a night that is still outstanding.
+      if (!pending && _schedule?.id) {
         await supabase.from('scheduled_matches').delete().eq('id', _schedule.id)
       }
       closeModal()
