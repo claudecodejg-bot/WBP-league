@@ -2166,6 +2166,7 @@ footer {
    Sits above the fixed install banner (bottom) and below the sticky nav,
    so it collides with neither. */
 .btn-save-top {
+  display: none;            /* shown once something has been changed */
   position: fixed;
   right: 1rem;
   top: 50%;
@@ -2184,7 +2185,22 @@ footer {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
   transition: filter 0.15s;
 }
+.btn-save-top.is-armed { display: inline-block; }
 .btn-save-top:active:not(:disabled) { transform: translateY(-50%) scale(0.96); }
+
+/* On phones, sit above the bottom-right corner — the spot people expect and
+   the most reliable placement across mobile browsers. */
+@media (max-width: 640px) {
+  .btn-save-top {
+    top: auto;
+    transform: none;
+    right: 1rem;
+    bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    padding: 0.85rem 1.6rem;
+    font-size: 0.95rem;
+  }
+  .btn-save-top:active:not(:disabled) { transform: scale(0.96); }
+}
 
 .btn-save-top:hover:not(:disabled) { filter: brightness(0.94); }
 .btn-save-top:disabled { opacity: 0.75; cursor: default; }

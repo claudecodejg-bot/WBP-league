@@ -58,7 +58,7 @@ export async function loadAvailability(memberId, isAdmin) {
   let html = `
     <div class="avail-actions">
       <button class="btn-mark-all" id="mark-all-btn">✓ Mark All Available</button>
-      <button class="btn-save-top js-save-avail" id="save-avail-top" data-label="Save" hidden>Save</button>
+      <button class="btn-save-top js-save-avail" id="save-avail-top" data-label="Save">Save</button>
     </div>
   `
   // Build each week separately so the later ones can be tucked behind a
@@ -126,7 +126,7 @@ export async function loadAvailability(memberId, isAdmin) {
   // The floating Save stays out of the way until there is something to save,
   // then follows the member down the page.
   const floatingSave = document.getElementById('save-avail-top')
-  const markChanged = () => { if (floatingSave) floatingSave.hidden = false }
+  const markChanged = () => floatingSave?.classList.add('is-armed')
 
   // Typing a note counts as a change too.
   container.querySelectorAll('.avail-note').forEach(el =>
@@ -223,7 +223,7 @@ export async function loadAvailability(memberId, isAdmin) {
       setSaveState(true, 'Saved ✓')
       setTimeout(() => {
         setSaveState(false)
-        if (floatingSave) floatingSave.hidden = true
+        floatingSave?.classList.remove('is-armed')
       }, 2000)
     }
   }))
