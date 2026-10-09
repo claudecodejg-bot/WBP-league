@@ -10,8 +10,10 @@ immediately while unchanged files still cache normally.
 Run this after editing css/style.css, js/nav.js or js/install.js, before
 committing. Safe to run any time: it only rewrites when the hash changes.
 
-Not applied to ES modules (js/auth.js and friends). Those import each other by
-plain path, so versioning them would mean rewriting the whole import graph.
+Modules imported directly from a page are stamped too. Imports *between*
+modules are left alone — rewriting those would mean a build step — so a change
+to a module that no page imports directly still takes up to GitHub's ten
+minutes to reach everyone.
 """
 
 import hashlib
@@ -20,6 +22,8 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+# Referenced from HTML by src/href.
 ASSETS = ["css/style.css", "js/nav.js", "js/install.js"]
 
 
@@ -43,6 +47,26 @@ def main():
         if text != original:
             page.write_text(text)
             changed.append(page.name)
+
+    # ES modules imported directly from a page: `from './js/x.js'`.
+    # availability.html used to carry a hand-maintained ?v=6 that nobody
+    # remembered to bump, so phones kept serving a stale copy.
+    for page in sorted(ROOT.glob("*.html")):
+        text = original = page.read_text()
+
+        def stamp_import(match):
+            name = match.group(1)
+            path = ROOT / "js" / name
+            if not path.exists():
+                return match.group(0)
+            digest = hashlib.md5(path.read_bytes()).hexdigest()[:8]
+            return f"from './js/{name}?v={digest}'"
+
+        text = re.sub(r"from '\./js/([a-z-]+\.js)(?:\?v=[0-9a-z]+)?'", stamp_import, text)
+        if text != original:
+            page.write_text(text)
+            if page.name not in changed:
+                changed.append(page.name)
 
     for asset, digest in hashes.items():
         print(f"  {asset} -> {digest}")

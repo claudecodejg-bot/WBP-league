@@ -72,11 +72,11 @@
 <footer>WBP League &copy; <span id="footer-year"></span></footer>
 
 <script type="module">
-  import { initNav, getCurrentMember } from './js/auth.js'
-  import { supabase } from './js/supabase-client.js'
-  import { CURRENT_SEASON, UNOFFICIAL_WEEKS } from './js/config.js'
-  import { loadResults, knownSeasons } from './js/results.js'
-  import { matchScore, isWinner, fmt } from './js/scoring.js'
+  import { initNav, getCurrentMember } from './js/auth.js?v=7b4f460f'
+  import { supabase } from './js/supabase-client.js?v=2d21059e'
+  import { CURRENT_SEASON, UNOFFICIAL_WEEKS } from './js/config.js?v=d0c3b471'
+  import { loadResults, knownSeasons } from './js/results.js?v=9c8852da'
+  import { matchScore, isWinner, fmt } from './js/scoring.js?v=29666dc2'
   initNav('results')
 
   const seasonSelect   = document.getElementById('season-select')

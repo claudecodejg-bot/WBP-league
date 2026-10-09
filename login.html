@@ -83,8 +83,8 @@
 <footer>WBP League &copy; <span id="footer-year"></span></footer>
 
 <script type="module">
-  import { supabase } from './js/supabase-client.js'
-  import { getSession, postLoginDestination } from './js/auth.js'
+  import { supabase } from './js/supabase-client.js?v=2d21059e'
+  import { getSession, postLoginDestination } from './js/auth.js?v=7b4f460f'
 
   // Already signed in: go where they were heading, or the home page.
   getSession().then(session => {
