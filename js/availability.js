@@ -94,7 +94,7 @@ export async function loadAvailability(memberId, isAdmin) {
   // First few weeks open; the rest behind a toggle. The hidden cards are
   // still in the page, so Save and "Mark All Available" cover every week
   // whether or not the section is open.
-  const VISIBLE_WEEKS = 2
+  const VISIBLE_WEEKS = 1
   html += weekCards.slice(0, VISIBLE_WEEKS).join('')
 
   const laterCards = weekCards.slice(VISIBLE_WEEKS)
