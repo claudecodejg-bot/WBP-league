@@ -2167,7 +2167,8 @@ footer {
    so it collides with neither. */
 .btn-save-top {
   position: fixed;
-  right: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   z-index: 90;
   font-size: 0.85rem;
@@ -2181,9 +2182,9 @@ footer {
   cursor: pointer;
   white-space: nowrap;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
-  transition: transform 0.15s, filter 0.15s;
+  transition: filter 0.15s;
 }
-.btn-save-top:active:not(:disabled) { transform: scale(0.96); }
+.btn-save-top:active:not(:disabled) { transform: translateX(-50%) scale(0.96); }
 
 /* Lift clear of the install banner while it's on screen. */
 body:has(.a2hs-banner) .btn-save-top {
