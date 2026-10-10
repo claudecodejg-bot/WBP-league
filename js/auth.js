@@ -112,23 +112,31 @@ export async function initNav(activePage) {
     if (link) link.classList.add('active')
   }
 
-  // Sign in/out lives in the menu rather than as its own button in the bar.
-  // On a phone the bar only has room for the logo, Save and the menu toggle.
+  // Sign Out appears in the menu, and only when someone is actually signed
+  // in. There is deliberately no Sign In entry: the whole site is readable
+  // without an account, and the only page that needs one — Availability —
+  // sends people to sign in by itself.
   const links = document.querySelector('.nav-links')
   if (!links) return
 
-  const session = await getSession()
+  let session = null
+  try {
+    session = await getSession()
+  } catch (err) {
+    return   // can't tell either way; show nothing rather than the wrong thing
+  }
+  if (!session) return
+
   const li = document.createElement('li')
   li.className = 'nav-auth-item'
 
   const link = document.createElement('a')
   link.href = '#'
   link.id = 'nav-auth-link'
-  link.textContent = session ? 'Sign Out' : 'Sign In'
+  link.textContent = 'Sign Out'
   link.addEventListener('click', e => {
     e.preventDefault()
-    if (session) signOut()
-    else window.location.href = 'login.html'
+    signOut()
   })
 
   li.appendChild(link)
