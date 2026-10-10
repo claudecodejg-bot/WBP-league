@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Matchups — Paddle Tennis League</title>
-  <link rel="stylesheet" href="css/style.css?v=ba76a4db">
+  <link rel="stylesheet" href="css/style.css?v=d00cc0d1">
   <style>
     /* ---- Match-detail modal ---- */
     .mu-overlay {
@@ -488,7 +488,7 @@
 
     if (rows.length === 0) return '<p style="color:var(--gray-600);padding:0.5rem 0;">No data.</p>'
 
-    let html = `<table class="standings-table">
+    let html = `<div class="table-scroll"><table class="standings-table">
       <thead><tr>
         <th>Player</th><th>W</th><th>L</th><th>Played</th><th>Win %</th><th>Avg (W)</th><th>Avg (L)</th>
       </tr></thead><tbody>`
@@ -511,7 +511,7 @@
       </tr>`
     }
 
-    html += '</tbody></table>'
+    html += '</tbody></table></div>'
     return html
   }
 

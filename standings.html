@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Standings — Paddle Tennis League</title>
-  <link rel="stylesheet" href="css/style.css?v=ba76a4db">
+  <link rel="stylesheet" href="css/style.css?v=d00cc0d1">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -156,7 +156,7 @@
       return `<th data-sort="${col.key}" class="sortable-th${active ? ' sort-active' : ''}">${col.label}${arrow}</th>`
     }).join('')
 
-    let html = `<table class="standings-table"><thead><tr>${headerCells}</tr></thead><tbody>`
+    let html = `<div class="table-scroll"><table class="standings-table"><thead><tr>${headerCells}</tr></thead><tbody>`
 
     stats.forEach((s, i) => {
       const rank = i + 1
@@ -202,7 +202,7 @@
           <td class="last-played">${daysSince(s.lastPlayed)}</td>
         </tr>`
     })
-    html += '</tbody></table>'
+    html += '</tbody></table></div>'
     return html
   }
 

@@ -2315,3 +2315,18 @@ footer {
   }
   #nav-hamburger { flex-shrink: 0; }
 }
+
+/* Wide tables scroll inside their own box rather than making the whole page
+   scroll sideways. A page wider than the screen drags the fixed header — and
+   the menu button with it — out of view on Android, which is what made the
+   header look like it wasn't pinned. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+/* Belt and braces: the tournament bracket scrolls inside itself, so neither
+   it nor its wrapper may widen the page. */
+.bracket, .bracket-wrapper { max-width: 100%; }
+.bracket-wrapper { overflow-x: hidden; }
