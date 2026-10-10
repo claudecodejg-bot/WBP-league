@@ -56,12 +56,6 @@ a { color: var(--green-mid); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* ----- Navigation ----- */
-/* The header is pinned on every page and every screen size.
-   It used to be position: sticky, which held on some pages and devices but
-   not others — sticky depends on the containing block, and body is a flex
-   column here. Fixed has no such dependency, so it behaves identically
-   everywhere. body carries matching top padding so nothing sits underneath,
-   and html gets scroll-padding so in-page anchors don't land behind it. */
 nav {
   background: linear-gradient(135deg, #1a1a1a 0%, #2b2b2b 55%, #3d2215 100%);
   color: var(--white);
@@ -71,15 +65,10 @@ nav {
   justify-content: space-between;
   height: 120px;
   box-shadow: var(--shadow-lg);
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 100;
 }
-
-body { padding-top: 120px; }
-html { scroll-padding-top: 120px; }
 
 .nav-brand img {
   height: 108px;
@@ -2315,27 +2304,10 @@ footer {
 }
 
 
-@media (max-width: 640px) {
-  /* The header is pinned rather than sticky on phones. position: sticky was
-     holding on desktop but not on an actual Android handset, and a header
-     that scrolls away takes the Save button with it. Fixed cannot fail the
-     same way; body gets matching top padding so nothing hides underneath. */
-  nav { height: 68px; padding: 0 0.85rem; }
-  body { padding-top: 68px; }
-  html { scroll-padding-top: 68px; }
-
-  /* With the menu open the bar grows to hold the links; it overlays the page
-     rather than pushing it, so the padding above stays as it is. */
-  nav.nav-open { height: auto; padding-bottom: 0.5rem; }
-
-  .nav-brand { min-width: 0; flex-shrink: 1; overflow: hidden; }
-  #nav-hamburger { flex-shrink: 0; }
-}
 
 /* Wide tables scroll inside their own box rather than making the whole page
-   scroll sideways. A page wider than the screen drags the fixed header — and
-   the menu button with it — out of view on Android, which is what made the
-   header look like it wasn't pinned. */
+   scroll sideways. A page wider than the screen can be panned on a phone,
+   which drags the header — and the menu button with it — out of view. */
 .table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
