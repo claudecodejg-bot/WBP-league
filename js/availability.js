@@ -117,117 +117,106 @@ export async function loadAvailability(memberId, isAdmin) {
   }
 
   html += `
-    <div id="save-status" class="alert hidden"></div>
-    <button class="save-btn js-save-avail" id="save-avail-btn" data-label="Save Availability">Save Availability</button>
+    <div id="save-status" class="avail-save-status" aria-live="polite"></div>
   `
   container.innerHTML = html
 
-  // Save sits in the nav bar, which is already sticky, so it stays on screen
-  // as the member scrolls. It stays hidden until something has been changed.
-  // (An earlier attempt floated a button over the page; it worked on desktop
-  // but never appeared on Android, so this rides the nav instead.)
-  const markChanged = () =>
-    document.querySelectorAll('.js-save-avail').forEach(b => b.classList.add('is-armed'))
+  const statusEl = document.getElementById('save-status')
 
-  // Typing a note counts as a change too.
+  function showStatus(text, kind) {
+    statusEl.textContent = text
+    statusEl.className = 'avail-save-status' + (kind ? ' is-' + kind : '')
+  }
+
+  // ── Auto-save ─────────────────────────────────────────────────────────
+  // Every change saves by itself, so there is no Save button to find. Taps
+  // are batched: "Mark All Available" fires twelve changes at once and must
+  // not become twelve round trips.
+  let saveTimer = null
+  let saving    = false
+  let queued    = false
+
+  function collectAnswers() {
+    const rows = []
+    for (const monday of weeks) {
+      const key = toISO(monday)
+      const chosen = container.querySelector(
+        `.avail-btn[data-week="${key}"].selected-yes, .avail-btn[data-week="${key}"].selected-no`)
+      if (!chosen) continue
+      rows.push({
+        member_id:    memberId,
+        week_start:   key,
+        is_available: chosen.dataset.val === 'yes',
+        note:         document.getElementById(`note-${key}`)?.value.trim() || null
+      })
+    }
+    return rows
+  }
+
+  async function saveNow() {
+    if (saving) { queued = true; return }   // a save is in flight; fold into it
+    const rows = collectAnswers()
+    if (rows.length === 0) return
+
+    saving = true
+    showStatus('Saving…', 'saving')
+
+    const { error } = await supabase
+      .from('availability')
+      .upsert(rows, { onConflict: 'member_id,week_start' })
+
+    saving = false
+
+    if (error) {
+      showStatus('Could not save — check your connection. Your choices are still on screen.', 'error')
+    } else {
+      showStatus('Saved', 'saved')
+      const tally = document.getElementById('tally-container')
+      if (tally) await loadAvailabilityTally(tally)
+    }
+
+    if (queued) { queued = false; saveNow() }
+  }
+
+  // Short delay so a run of taps becomes one save.
+  function scheduleSave(delay = 700) {
+    showStatus('Saving…', 'saving')
+    clearTimeout(saveTimer)
+    saveTimer = setTimeout(saveNow, delay)
+  }
+
+  // Typing a note saves too, but on a longer delay so it isn't sent per key.
   container.querySelectorAll('.avail-note').forEach(el =>
-    el.addEventListener('input', markChanged))
+    el.addEventListener('input', () => scheduleSave(1200)))
 
   // Show note field when "Available" is selected
   container.querySelectorAll('.avail-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      markChanged()
       const week = btn.dataset.week
       const val  = btn.dataset.val
-      // Update button states
       container.querySelectorAll(`.avail-btn[data-week="${week}"]`).forEach(b => {
         b.classList.remove('selected-yes', 'selected-no')
       })
       btn.classList.add(val === 'yes' ? 'selected-yes' : 'selected-no')
-      // Toggle note
       const noteEl = document.getElementById(`note-${week}`)
       if (val === 'yes') noteEl.classList.remove('hidden')
       else noteEl.classList.add('hidden')
+      scheduleSave()
     })
-    // Show note if already available
     if (btn.dataset.val === 'yes' && btn.classList.contains('selected-yes')) {
       document.getElementById(`note-${btn.dataset.week}`)?.classList.remove('hidden')
     }
   })
 
-  // Mark All Available button
+  // Mark All Available — one save for the lot.
   document.getElementById('mark-all-btn').addEventListener('click', () => {
     container.querySelectorAll('.avail-btn[data-val="yes"]').forEach(btn => btn.click())
   })
 
-  // Save button
-  // Both Save buttons run this. The top one exists because the form is long
-  // enough that members were missing the one at the bottom.
-  const saveButtons = () => [...document.querySelectorAll('.js-save-avail')]
-  const setSaveState = (disabled, label) => saveButtons().forEach(b => {
-    b.disabled = disabled
-    b.textContent = label ?? b.dataset.label
+  // A save may still be pending when the page is closed; flush it.
+  window.addEventListener('pagehide', () => {
+    if (saveTimer) { clearTimeout(saveTimer); saveNow() }
   })
-
-  saveButtons().forEach(btn => btn.addEventListener('click', async () => {
-    const statusEl = document.getElementById('save-status')
-    setSaveState(true, 'Saving…')
-    statusEl.classList.add('hidden')
-
-    const upserts = []
-    for (const monday of weeks) {
-      const key = toISO(monday)
-      const selectedBtn = container.querySelector(`.avail-btn[data-week="${key}"].selected-yes, .avail-btn[data-week="${key}"].selected-no`)
-      if (!selectedBtn) continue // not answered yet, skip
-
-      const isAvailable = selectedBtn.dataset.val === 'yes'
-      const note = document.getElementById(`note-${key}`)?.value.trim() || null
-
-      upserts.push({
-        member_id:    memberId,
-        week_start:   key,
-        is_available: isAvailable,
-        note
-      })
-    }
-
-    if (upserts.length === 0) {
-      statusEl.textContent = 'Please select your availability for at least one week.'
-      statusEl.className = 'alert alert-info'
-      statusEl.classList.remove('hidden')
-      setSaveState(false)
-      return
-    }
-
-    const { error } = await supabase
-      .from('availability')
-      .upsert(upserts, { onConflict: 'member_id,week_start' })
-
-    if (error) {
-      statusEl.textContent = 'Error saving. Please try again.'
-      statusEl.className = 'alert alert-error'
-    } else {
-      statusEl.textContent = 'Availability saved!'
-      statusEl.className = 'alert alert-success'
-      // Refresh the tally below
-      const tallyContainer = document.getElementById('tally-container')
-      if (tallyContainer) await loadAvailabilityTally(tallyContainer)
-    }
-    statusEl.classList.remove('hidden')
-
-    // Confirm on the button itself. Someone who saved from the top of a long
-    // form would otherwise see no sign it worked, because the status message
-    // sits down at the bottom.
-    if (error) {
-      setSaveState(false)
-    } else {
-      setSaveState(true, 'Saved ✓')
-      setTimeout(() => {
-        setSaveState(false)
-        document.querySelectorAll('.js-save-avail').forEach(b => b.classList.remove('is-armed'))
-      }, 2000)
-    }
-  }))
 }
 
 /**

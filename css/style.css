@@ -2269,28 +2269,51 @@ footer {
   margin: 0.5rem 0 0;
 }
 
-/* ── Save in the nav bar (availability page) ──────────────────────────────
-   The nav is already sticky, so a Save button living in it stays on screen
-   while the member scrolls the form. Hidden until something is changed. */
-.nav-save {
-  display: none;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 20px;
-  padding: 0.45rem 1.1rem;
-  font-size: 0.85rem;
-  font-weight: 800;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  white-space: nowrap;
-  margin-left: 0.75rem;
-  margin-right: 0.6rem;
-  transition: filter 0.15s;
+/* ── Scheduler: subs picker ───────────────────────────────────────────── */
+.scheduler-subs-row { margin-top: 0.75rem; }
+.scheduler-sub-picker {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
 }
-.nav-save.is-armed { display: inline-block; }
-.nav-save:hover:not(:disabled) { filter: brightness(0.94); }
-.nav-save:disabled { opacity: 0.75; cursor: default; }
+.scheduler-sub-picker .scheduler-select { flex: 1; min-width: 0; }
+
+.scheduler-sub-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+.scheduler-sub-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--green-pale);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem 0.25rem 0.7rem;
+  border-radius: 20px;
+}
+.scheduler-sub-chip button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.1rem;
+}
+.scheduler-sub-chip button:hover { color: var(--green-dark); }
+
+.scheduler-sub-hint {
+  font-size: 0.78rem;
+  color: var(--gray-600);
+  margin: 0.5rem 0 0;
+}
+
 
 @media (max-width: 640px) {
   /* The header is pinned rather than sticky on phones. position: sticky was
@@ -2306,13 +2329,6 @@ footer {
   nav.nav-open { height: auto; padding-bottom: 0.5rem; }
 
   .nav-brand { min-width: 0; flex-shrink: 1; overflow: hidden; }
-  .nav-save {
-    margin-left: 0.5rem;
-    margin-right: 0.4rem;
-    padding: 0.45rem 0.85rem;
-    font-size: 0.82rem;
-    flex-shrink: 0;
-  }
   #nav-hamburger { flex-shrink: 0; }
 }
 
@@ -2330,3 +2346,18 @@ footer {
    it nor its wrapper may widen the page. */
 .bracket, .bracket-wrapper { max-width: 100%; }
 .bracket-wrapper { overflow-x: hidden; }
+
+/* Auto-save status on the availability form. Deliberately low-key: a short
+   confirmation rather than an alert box, since it appears on every change. */
+.avail-save-status {
+  min-height: 1.2rem;
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  color: transparent;
+  transition: color 0.2s;
+}
+.avail-save-status.is-saving { color: var(--gray-600); }
+.avail-save-status.is-saved  { color: #2b7a3d; }
+.avail-save-status.is-error  { color: #b3261e; font-weight: 700; }
