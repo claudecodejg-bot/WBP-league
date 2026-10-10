@@ -58,7 +58,6 @@ export async function loadAvailability(memberId, isAdmin) {
   let html = `
     <div class="avail-actions">
       <button class="btn-mark-all" id="mark-all-btn">✓ Mark All Available</button>
-      <button class="btn-save-top js-save-avail" id="save-avail-top" data-label="Save">Save</button>
     </div>
   `
   // Build each week separately so the later ones can be tucked behind a
@@ -123,10 +122,12 @@ export async function loadAvailability(memberId, isAdmin) {
   `
   container.innerHTML = html
 
-  // The floating Save stays out of the way until there is something to save,
-  // then follows the member down the page.
-  const floatingSave = document.getElementById('save-avail-top')
-  const markChanged = () => floatingSave?.classList.add('is-armed')
+  // Save sits in the nav bar, which is already sticky, so it stays on screen
+  // as the member scrolls. It stays hidden until something has been changed.
+  // (An earlier attempt floated a button over the page; it worked on desktop
+  // but never appeared on Android, so this rides the nav instead.)
+  const markChanged = () =>
+    document.querySelectorAll('.js-save-avail').forEach(b => b.classList.add('is-armed'))
 
   // Typing a note counts as a change too.
   container.querySelectorAll('.avail-note').forEach(el =>
@@ -223,7 +224,7 @@ export async function loadAvailability(memberId, isAdmin) {
       setSaveState(true, 'Saved ✓')
       setTimeout(() => {
         setSaveState(false)
-        floatingSave?.classList.remove('is-armed')
+        document.querySelectorAll('.js-save-avail').forEach(b => b.classList.remove('is-armed'))
       }, 2000)
     }
   }))

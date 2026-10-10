@@ -2162,49 +2162,6 @@ footer {
 
 /* Compact Save beside "Mark All Available", for members who don't want to
    scroll to the bottom of the form */
-/* Floats at the right edge so Save is reachable at any scroll position.
-   Sits above the fixed install banner (bottom) and below the sticky nav,
-   so it collides with neither. */
-.btn-save-top {
-  display: none;            /* shown once something has been changed */
-  position: fixed;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 90;
-  font-size: 0.85rem;
-  font-weight: 800;
-  letter-spacing: 0.3px;
-  padding: 0.7rem 1.4rem;
-  border: none;
-  border-radius: 24px;
-  background: var(--accent);
-  color: #fff;
-  cursor: pointer;
-  white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
-  transition: filter 0.15s;
-}
-.btn-save-top.is-armed { display: inline-block; }
-.btn-save-top:active:not(:disabled) { transform: translateY(-50%) scale(0.96); }
-
-/* On phones, sit above the bottom-right corner — the spot people expect and
-   the most reliable placement across mobile browsers. */
-@media (max-width: 640px) {
-  .btn-save-top {
-    top: auto;
-    transform: none;
-    right: 1rem;
-    bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
-    padding: 0.85rem 1.6rem;
-    font-size: 0.95rem;
-  }
-  .btn-save-top:active:not(:disabled) { transform: scale(0.96); }
-}
-
-.btn-save-top:hover:not(:disabled) { filter: brightness(0.94); }
-.btn-save-top:disabled { opacity: 0.75; cursor: default; }
-
 /* ── Availability: later weeks behind a toggle ────────────────────────── */
 .more-weeks {
   background: var(--white);
@@ -2299,4 +2256,48 @@ footer {
   font-size: 0.78rem;
   color: var(--gray-600);
   margin: 0.5rem 0 0;
+}
+
+/* ── Save in the nav bar (availability page) ──────────────────────────────
+   The nav is already sticky, so a Save button living in it stays on screen
+   while the member scrolls the form. Hidden until something is changed. */
+.nav-save {
+  display: none;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-left: 0.75rem;
+  margin-right: 0.6rem;
+  transition: filter 0.15s;
+}
+.nav-save.is-armed { display: inline-block; }
+.nav-save:hover:not(:disabled) { filter: brightness(0.94); }
+.nav-save:disabled { opacity: 0.75; cursor: default; }
+
+@media (max-width: 640px) {
+  /* Four controls in the bar is tight on a phone. Keep them on one line and
+     let the brand give up the space rather than Sign In wrapping below. */
+  nav { flex-wrap: nowrap; }
+  .nav-brand { min-width: 0; flex-shrink: 1; overflow: hidden; }
+  /* While Save is showing there isn't room for the wordmark too, and a
+     truncated "WBP Le…" looks broken. Drop to the logo alone for the
+     short time the button is up. Browsers without :has() simply keep the
+     old truncating behaviour. */
+  nav:has(.nav-save.is-armed) .nav-brand { font-size: 0; }
+  nav:has(.nav-save.is-armed) .nav-brand img { height: 44px; }
+  .nav-save {
+    margin-left: 0.5rem;
+    margin-right: 0.4rem;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+  #nav-hamburger, #nav-auth-btn { flex-shrink: 0; }
 }
