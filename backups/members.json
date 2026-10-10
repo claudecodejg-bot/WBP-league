@@ -175,6 +175,11 @@
     "is_guest": true
   },
   {
+    "full_name": "McCarthy",
+    "id": "a1ee3765-95a1-428e-8ada-c26b28be2335",
+    "is_guest": true
+  },
+  {
     "full_name": "Walsh",
     "id": "a2883f9c-7008-4726-b950-b6e74db75794",
     "is_guest": false
@@ -232,11 +237,6 @@
   {
     "full_name": "Krantz",
     "id": "bc060742-4099-4ed7-ba77-7a39f7a53f66",
-    "is_guest": false
-  },
-  {
-    "full_name": "Smith",
-    "id": "beb98933-a441-4f63-8a64-fa02314656ff",
     "is_guest": false
   },
   {
