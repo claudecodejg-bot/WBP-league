@@ -2282,22 +2282,31 @@ footer {
 .nav-save:disabled { opacity: 0.75; cursor: default; }
 
 @media (max-width: 640px) {
-  /* Four controls in the bar is tight on a phone. Keep them on one line and
-     let the brand give up the space rather than Sign In wrapping below. */
-  nav { flex-wrap: nowrap; }
+  /* The header is pinned rather than sticky on phones. position: sticky was
+     holding on desktop but not on an actual Android handset, and a header
+     that scrolls away takes the Save button with it. Fixed cannot fail the
+     same way; body gets matching top padding so nothing hides underneath. */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 68px;
+    padding: 0 0.85rem;
+  }
+  body { padding-top: 68px; }
+
+  /* With the menu open the bar grows to hold the links; it overlays the page
+     rather than pushing it, so the padding above stays as it is. */
+  nav.nav-open { height: auto; padding-bottom: 0.5rem; }
+
   .nav-brand { min-width: 0; flex-shrink: 1; overflow: hidden; }
-  /* While Save is showing there isn't room for the wordmark too, and a
-     truncated "WBP Le…" looks broken. Drop to the logo alone for the
-     short time the button is up. Browsers without :has() simply keep the
-     old truncating behaviour. */
-  nav:has(.nav-save.is-armed) .nav-brand { font-size: 0; }
-  nav:has(.nav-save.is-armed) .nav-brand img { height: 44px; }
   .nav-save {
     margin-left: 0.5rem;
     margin-right: 0.4rem;
-    padding: 0.45rem 0.8rem;
-    font-size: 0.8rem;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.82rem;
     flex-shrink: 0;
   }
-  #nav-hamburger, #nav-auth-btn { flex-shrink: 0; }
+  #nav-hamburger { flex-shrink: 0; }
 }

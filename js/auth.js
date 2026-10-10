@@ -112,15 +112,25 @@ export async function initNav(activePage) {
     if (link) link.classList.add('active')
   }
 
-  const authBtn = document.getElementById('nav-auth-btn')
-  if (!authBtn) return
+  // Sign in/out lives in the menu rather than as its own button in the bar.
+  // On a phone the bar only has room for the logo, Save and the menu toggle.
+  const links = document.querySelector('.nav-links')
+  if (!links) return
 
   const session = await getSession()
-  if (session) {
-    authBtn.textContent = 'Sign Out'
-    authBtn.addEventListener('click', signOut)
-  } else {
-    authBtn.textContent = 'Sign In'
-    authBtn.addEventListener('click', () => { window.location.href = 'login.html' })
-  }
+  const li = document.createElement('li')
+  li.className = 'nav-auth-item'
+
+  const link = document.createElement('a')
+  link.href = '#'
+  link.id = 'nav-auth-link'
+  link.textContent = session ? 'Sign Out' : 'Sign In'
+  link.addEventListener('click', e => {
+    e.preventDefault()
+    if (session) signOut()
+    else window.location.href = 'login.html'
+  })
+
+  li.appendChild(link)
+  links.appendChild(li)
 }

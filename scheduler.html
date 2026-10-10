@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Match Scheduler — WBP League</title>
-  <link rel="stylesheet" href="css/style.css?v=e2b133f6">
+  <link rel="stylesheet" href="css/style.css?v=80bdcde6">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -32,7 +32,6 @@
     <li><a href="scheduler.html" data-page="scheduler">Scheduler</a></li>
   </ul>
   <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
-  <button id="nav-auth-btn">Sign In</button>
 </nav>
 
 <main>
@@ -90,7 +89,7 @@
 <footer>WBP League &copy; <span id="footer-year"></span></footer>
 
 <script type="module">
-  import { requireLogin, getCurrentMember, initNav } from './js/auth.js?v=7b4f460f'
+  import { requireLogin, getCurrentMember, initNav } from './js/auth.js?v=f47df177'
   import { generateSchedule, getUpcomingWeeks, formatWeekLabel, getSubCandidates } from './js/scheduler.js?v=290297ba'
   import { supabase } from './js/supabase-client.js?v=2d21059e'
 
