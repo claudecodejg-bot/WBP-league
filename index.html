@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WBP League — Paddle Tennis</title>
-  <link rel="stylesheet" href="css/style.css?v=c501d179">
+  <link rel="stylesheet" href="css/style.css?v=0185c7c5">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -39,6 +39,9 @@
 
   <!-- Next match night's courts (filled by JS; hidden when none scheduled) -->
   <div id="upcoming-container"></div>
+
+  <!-- Most recent night's scores (filled by JS once the season has results) -->
+  <div id="latest-result-container"></div>
 
   <!-- New season welcome -->
   <section class="season-welcome">
@@ -116,12 +119,14 @@
 <script type="module">
   import { initNav } from './js/auth.js?v=3bf86c6c'
   import { supabase, escapeHtml as esc } from './js/supabase-client.js?v=2d21059e'
-  import { NEXT_SEASON_LABEL, NEXT_SEASON_START } from './js/config.js?v=d0c3b471'
+  import { CURRENT_SEASON, NEXT_SEASON_LABEL, NEXT_SEASON_START } from './js/config.js?v=d0c3b471'
+  import { computeCurrentSeasonStats, isWinner, fmt } from './js/scoring.js?v=29666dc2'
   initNav('home')
 
   // ── Countdown to the first week of the new season ─────────────────────
   function renderCountdown() {
     const row = document.getElementById('countdown-row')
+    if (!row) return   // in-season hero has replaced it
     const ms  = NEXT_SEASON_START.getTime() - Date.now()
 
     if (ms <= 0) {
@@ -195,32 +200,166 @@
     document.getElementById('upcoming-container').innerHTML = html + '</div>'
   }
 
-  // ── League at a glance ────────────────────────────────────────────────
-  // These are deliberately all-time / last-roster figures rather than
-  // "this season": the new season has no matches yet, so a current-season
-  // count would just read zero.
-  async function loadHomeStats() {
-    let matchesRes, seasonsRes
+  // ── Season state ──────────────────────────────────────────────────────
+  // Before the first match the page sells the new season: countdown, warm-up
+  // copy, all-time figures. Once results exist that reads as stale, so the
+  // hero switches to where the season actually stands and the pre-season
+  // copy is replaced rather than left to age.
+  async function loadSeasonState() {
+    let membersRes, seasonsRes, matchesRes
     try {
-      [matchesRes, seasonsRes] = await Promise.all([
-        supabase.from('matches').select('season'),
-        supabase.from('member_seasons').select('season')
+      [membersRes, seasonsRes, matchesRes] = await Promise.all([
+        supabase.from('members').select('id, full_name'),
+        supabase.from('member_seasons').select('member_id, season'),
+        supabase.from('matches').select('*')
       ])
     } catch (err) {
-      return   // stats are decorative; leave the em-dashes in place
+      return   // decorative; leave the em-dashes in place
     }
-    if (matchesRes.error || seasonsRes.error) return
+    if (membersRes.error || seasonsRes.error || matchesRes.error) return
 
-    const matches = matchesRes.data || []
-    const seasons = [...new Set(matches.map(m => m.season))]
+    const allMatches  = matchesRes.data || []
+    const current     = allMatches.filter(m => m.season === CURRENT_SEASON)
+    const prior       = allMatches.filter(m => m.season !== CURRENT_SEASON)
+    const rosterRows  = seasonsRes.data || []
+    const nameById    = Object.fromEntries((membersRes.data || []).map(m => [m.id, m.full_name]))
 
-    const rosterSeasons = seasonsRes.data || []
-    const latestRoster  = [...new Set(rosterSeasons.map(r => r.season))].sort().pop()
-    const returning     = rosterSeasons.filter(r => r.season === latestRoster).length
+    if (current.length === 0) {
+      // Kickoff has passed but no results are in yet (typically the Monday
+      // night itself). The static copy still sells the opener, so swap it.
+      if (Date.now() >= NEXT_SEASON_START.getTime()) justStartedHero()
+      preSeasonStats(allMatches, rosterRows)
+      return
+    }
 
+    inSeasonHero(current, prior, rosterRows, nameById)
+    renderLatestResult(current, nameById)
+  }
+
+  // '2026-27' reads as '2026–27' in prose, matching the static copy.
+  const seasonLabel = esc(CURRENT_SEASON).replace('-', '\u2013')
+
+  // Between the first ball and the first result being entered.
+  function justStartedHero() {
+    const hero = document.querySelector('.season-welcome')
+    if (!hero) return
+    hero.innerHTML = `
+      <div class="season-welcome-eyebrow">Season Underway</div>
+      <h1 class="season-welcome-title">The <span>${seasonLabel}</span> Season</h1>
+      <p class="season-welcome-sub">Wee Burn &amp; Woodway &mdash; paddle tennis since 2004</p>
+      <div class="season-welcome-body">
+        <p>The warm-ups are over and the season is live. <strong>Dolan and Napolitano</strong>
+           defend the title they took last spring; the other fourteen of us start from zero.</p>
+        <p>First results land here as soon as they are entered.</p>
+      </div>
+      <a href="availability.html" class="btn btn-primary season-welcome-cta">Set Your Availability &rarr;</a>
+      <p class="season-welcome-foot">Mondays are open through the end of December &mdash;
+        <a class="welcome-inline-link" href="availability.html">let us know which nights you can play</a>.</p>`
+  }
+
+  // Pre-season: all-time figures, since a "this season" count would read zero.
+  function preSeasonStats(allMatches, rosterRows) {
+    const seasons      = [...new Set(allMatches.map(m => m.season))]
+    const latestRoster = [...new Set(rosterRows.map(r => r.season))].sort().pop()
     animate(document.getElementById('stat-seasons'), seasons.length)
-    animate(document.getElementById('stat-matches'), matches.length)
-    animate(document.getElementById('stat-members'), returning)
+    animate(document.getElementById('stat-matches'), allMatches.length)
+    animate(document.getElementById('stat-members'), rosterRows.filter(r => r.season === latestRoster).length)
+  }
+
+  function inSeasonHero(current, prior, rosterRows, nameById) {
+    // Standings order: season average, seeded from last season early on.
+    const rosterIds = rosterRows.filter(r => r.season === CURRENT_SEASON).map(r => r.member_id)
+    const table = rosterIds
+      .map(id => ({ name: nameById[id] || '?', ...computeCurrentSeasonStats(id, current, prior) }))
+      .filter(r => r.matchesPlayed > 0)
+      .sort((a, b) => (b.seasonAvg ?? -Infinity) - (a.seasonAvg ?? -Infinity))
+
+    const leader   = table[0]
+    const weeks    = [...new Set(current.map(m => m.week_label).filter(Boolean))]
+    const lastWeek = current.reduce((a, b) => (a.played_on > b.played_on ? a : b)).week_label
+
+    const hero = document.querySelector('.season-welcome')
+    if (hero) {
+      hero.innerHTML = `
+        <div class="season-welcome-eyebrow">Season Underway</div>
+        <h1 class="season-welcome-title">The <span>${seasonLabel}</span> Season</h1>
+        <p class="season-welcome-sub">${esc(lastWeek || '')} &mdash; ${current.length} match${current.length !== 1 ? 'es' : ''} played across ${weeks.length} week${weeks.length !== 1 ? 's' : ''}</p>
+        ${leader ? `
+        <div class="season-welcome-body">
+          <p><strong>${esc(leader.name)}</strong> leads the table on ${fmt(leader.seasonAvg)}${
+            table[1] ? `, with <strong>${esc(table[1].name)}</strong> next on ${fmt(table[1].seasonAvg)}` : ''}.
+            ${leader.usingRolling4 ? 'Early days &mdash; averages still carry some of last season.' : ''}</p>
+        </div>` : ''}
+        <a href="standings.html" class="welcome-cta">See the Full Table &rarr;</a>
+        <div class="welcome-cta-note">
+          Playing this week? <a href="availability.html" class="welcome-inline-link">Update your availability</a>.
+        </div>`
+    }
+
+    // Stats become this-season figures.
+    const played = new Set()
+    for (const m of current) {
+      for (const id of [m.team1_player1, m.team1_player2, m.team2_player1, m.team2_player2]) {
+        if (id) played.add(id)
+      }
+    }
+    setStat('stat-seasons', weeks.length,   'Weeks Played')
+    setStat('stat-matches', current.length, 'Matches This Season')
+    const leaderEl = document.getElementById('stat-members')
+    if (leaderEl) {
+      leaderEl.textContent = leader ? leader.name.split(' ')[0].replace(',', '') : '—'
+      labelFor(leaderEl).textContent = 'Season Leader'
+    }
+  }
+
+  function labelFor(valueEl) {
+    return valueEl.parentElement.querySelector('.home-stat-label')
+  }
+  function setStat(id, value, label) {
+    const el = document.getElementById(id)
+    if (!el) return
+    labelFor(el).textContent = label
+    animate(el, value)
+  }
+
+  // Most recent night's scores.
+  function renderLatestResult(current, nameById) {
+    const latestDate = current.reduce((a, b) => (a.played_on > b.played_on ? a : b)).played_on
+    const night = current.filter(m => m.played_on === latestDate)
+    if (night.length === 0) return
+
+    const dateLabel = new Date(latestDate + 'T12:00:00')
+      .toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
+    let html = `
+      <div class="upcoming-section" style="border-left-color:var(--green-mid);">
+        <div class="upcoming-header">
+          <span class="upcoming-pill" style="background:var(--green-mid);">Latest Result</span>
+          <span class="upcoming-title">${esc(night[0].week_label || '')} &mdash; ${esc(dateLabel)}</span>
+        </div>`
+
+    night.forEach((m, i) => {
+      const t1 = [m.team1_player1, m.team1_player2].map(id => esc(nameById[id] || '?'))
+      const t2 = [m.team2_player1, m.team2_player2].map(id => esc(nameById[id] || '?'))
+      const t1won = isWinner(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
+
+      const sets = []
+      if (m.team1_set1 != null) sets.push(`${m.team1_set1}\u2013${m.team2_set1}`)
+      if (m.team1_set2 != null) sets.push(`${m.team1_set2}\u2013${m.team2_set2}`)
+      if (m.team1_set3 != null) sets.push(`${m.team1_set3}\u2013${m.team2_set3}`)
+
+      html += `
+        <div class="upcoming-match-card"${i < night.length - 1 ? ' style="margin-bottom:0.75rem;"' : ''}>
+          <div class="upcoming-meta"><span class="upcoming-court">\u{1F3BE} Court ${i + 1}</span></div>
+          <div class="upcoming-teams">
+            <div class="upcoming-team" style="${t1won ? 'font-weight:700;' : 'opacity:0.65;'}">${t1.join(' &amp; ')}${t1won ? ' \u2713' : ''}</div>
+            <div class="upcoming-vs">${sets.join(', ')}</div>
+            <div class="upcoming-team" style="text-align:right;${!t1won ? 'font-weight:700;' : 'opacity:0.65;'}">${t2.join(' &amp; ')}${!t1won ? ' \u2713' : ''}</div>
+          </div>
+        </div>`
+    })
+
+    document.getElementById('latest-result-container').innerHTML = html + '</div>'
   }
 
   function animate(el, target) {
@@ -240,7 +379,7 @@
   }
 
   loadUpcoming()
-  loadHomeStats()
+  loadSeasonState()
 </script>
 </body>
 </html>

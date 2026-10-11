@@ -2333,3 +2333,10 @@ footer {
 .avail-save-status.is-saving { color: var(--gray-600); }
 .avail-save-status.is-saved  { color: #2b7a3d; }
 .avail-save-status.is-error  { color: #b3261e; font-weight: 700; }
+
+/* Inline link inside the home hero's footnote */
+.welcome-inline-link {
+  color: var(--accent);
+  text-decoration: underline;
+  font-weight: 700;
+}
