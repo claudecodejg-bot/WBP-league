@@ -1,9 +1,9 @@
 {
   "source": "https://htmrvfkaudpevmzgteyh.supabase.co/rest/v1",
   "tables": {
-    "matches": 799,
+    "matches": 802,
     "member_seasons": 318,
-    "members": 66,
-    "scheduled_matches": 2
+    "members": 67,
+    "scheduled_matches": 1
   }
 }
