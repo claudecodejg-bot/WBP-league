@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign In — Paddle Tennis League</title>
-  <link rel="stylesheet" href="css/style.css?v=9013a9b4">
+  <link rel="stylesheet" href="css/style.css?v=1260c653">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -82,7 +82,7 @@
 <footer>WBP League &copy; <span id="footer-year"></span></footer>
 
 <script type="module">
-  import { supabase } from './js/supabase-client.js?v=2d21059e'
+  import { supabase, escapeHtml } from './js/supabase-client.js?v=2d21059e'
   import { getSession, postLoginDestination } from './js/auth.js?v=3bf86c6c'
 
   // Already signed in: go where they were heading, or the home page.
@@ -96,6 +96,14 @@
 
   function showAlert(msg, type = 'error') {
     alertEl.textContent = msg
+    alertEl.className = `alert alert-${type}`
+    alertEl.classList.remove('hidden')
+  }
+
+  // Same, for the one message that needs more than a line of plain text.
+  // Callers pass static markup; anything from the member is escaped first.
+  function showAlertHtml(html, type = 'error') {
+    alertEl.innerHTML = html
     alertEl.className = `alert alert-${type}`
     alertEl.classList.remove('hidden')
   }
@@ -177,7 +185,19 @@
       }
       console.warn('Password reset failed:', error)
     } else {
-      showAlert('Reset email sent! Check your inbox and click the link to set a new password.', 'success')
+      showAlertHtml(`
+        <strong>Reset email sent</strong> to ${escapeHtml(email)}.
+        Click the link in it to set a new password.
+        <div class="reset-spam-note">
+          <strong>Can&rsquo;t find it? Check your spam or junk folder</strong> &mdash;
+          that is where it usually ends up.
+          <div class="reset-spam-tip">
+            On Gmail, search <code>wbp in:anywhere</code> &mdash; that looks in
+            Spam and All Mail, which a normal search skips.
+          </div>
+          It comes from <strong>noreply@wbpleague.com</strong>. Marking it
+          &ldquo;Not spam&rdquo; helps the next person too.
+        </div>`, 'success')
     }
     btn.disabled = false
     btn.textContent = 'Send Reset Email'
