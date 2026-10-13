@@ -57,7 +57,7 @@ export async function loadAvailability(memberId, isAdmin) {
 
   let html = `
     <div class="avail-actions">
-      <button class="btn-mark-all" id="mark-all-btn">✓ Mark All Available</button>
+      <button class="btn-mark-all" id="mark-all-btn">✓ Mark All Semester Weeks Available</button>
     </div>
   `
   // Build each week separately so the later ones can be tucked behind a
@@ -105,7 +105,7 @@ export async function loadAvailability(memberId, isAdmin) {
           <span class="more-weeks-chevron" aria-hidden="true">&#9660;</span>
           <span class="more-weeks-text">
             <span class="mw-closed">
-              Show ${laterCards.length} more week${laterCards.length !== 1 ? 's' : ''}
+              Show ${laterCards.length} more week${laterCards.length !== 1 ? 's' : ''} (The Myles Ridder Option)
               <span class="more-weeks-hint">&mdash; through ${lastLabel}. Open this to set your availability for the rest of the dates.</span>
             </span>
             <span class="mw-open">Hide the later weeks</span>
