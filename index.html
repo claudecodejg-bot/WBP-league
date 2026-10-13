@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WBP League — Paddle Tennis</title>
-  <link rel="stylesheet" href="css/style.css?v=0185c7c5">
+  <link rel="stylesheet" href="css/style.css?v=9013a9b4">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -42,6 +42,8 @@
 
   <!-- Most recent night's scores (filled by JS once the season has results) -->
   <div id="latest-result-container"></div>
+
+  <div id="vinnys-container"></div>
 
   <!-- New season welcome -->
   <section class="season-welcome">
@@ -121,6 +123,7 @@
   import { supabase, escapeHtml as esc } from './js/supabase-client.js?v=2d21059e'
   import { CURRENT_SEASON, NEXT_SEASON_LABEL, NEXT_SEASON_START } from './js/config.js?v=d0c3b471'
   import { computeCurrentSeasonStats, isWinner, fmt } from './js/scoring.js?v=29666dc2'
+  import { fetchVinnys, leaderboard, attendeesOn, nightsHeld, NOT_A_PERSON } from './js/vinnys.js?v=e528c208'
   initNav('home')
 
   // ── Countdown to the first week of the new season ─────────────────────
@@ -234,6 +237,7 @@
 
     inSeasonHero(current, prior, rosterRows, nameById)
     renderLatestResult(current, nameById)
+    renderVinnys(current, nameById)
   }
 
   // '2026-27' reads as '2026–27' in prose, matching the static copy.
@@ -276,7 +280,9 @@
 
     const leader   = table[0]
     const weeks    = [...new Set(current.map(m => m.week_label).filter(Boolean))]
-    const lastWeek = current.reduce((a, b) => (a.played_on > b.played_on ? a : b)).week_label
+    const latest   = current.reduce((a, b) => (a.played_on > b.played_on ? a : b))
+    const lastWeek = latest.week_label
+    const summary  = summariseNight(current.filter(m => m.played_on === latest.played_on), nameById)
 
     const hero = document.querySelector('.season-welcome')
     if (hero) {
@@ -284,12 +290,13 @@
         <div class="season-welcome-eyebrow">Season Underway</div>
         <h1 class="season-welcome-title">The <span>${seasonLabel}</span> Season</h1>
         <p class="season-welcome-sub">${esc(lastWeek || '')} &mdash; ${current.length} match${current.length !== 1 ? 'es' : ''} played across ${weeks.length} week${weeks.length !== 1 ? 's' : ''}</p>
-        ${leader ? `
         <div class="season-welcome-body">
+          ${summary ? `<p>${summary}</p>` : ''}
+          ${leader ? `
           <p><strong>${esc(leader.name)}</strong> leads the table on ${fmt(leader.seasonAvg)}${
             table[1] ? `, with <strong>${esc(table[1].name)}</strong> next on ${fmt(table[1].seasonAvg)}` : ''}.
-            ${leader.usingRolling4 ? 'Early days &mdash; averages still carry some of last season.' : ''}</p>
-        </div>` : ''}
+            ${leader.usingRolling4 ? 'Early days &mdash; averages still carry some of last season.' : ''}</p>` : ''}
+        </div>
         <a href="standings.html" class="welcome-cta">See the Full Table &rarr;</a>
         <div class="welcome-cta-note">
           Playing this week? <a href="availability.html" class="welcome-inline-link">Update your availability</a>.
@@ -320,6 +327,124 @@
     if (!el) return
     labelFor(el).textContent = label
     animate(el, value)
+  }
+
+  // ── Vinny's Award ─────────────────────────────────────────
+  // Who stayed out after the matches. Quiet if nothing is recorded yet, so
+  // the block never shows an empty shell.
+  async function renderVinnys(current, nameById) {
+    const rows = await fetchVinnys()
+    if (rows.length === 0) return
+
+    const seasonDates = new Set(current.map(m => m.played_on))
+    const scoped = rows.filter(r => seasonDates.has(r.played_on))
+    if (scoped.length === 0) return
+
+    const latestNight = [...seasonDates].sort().pop()
+    const outTonight  = attendeesOn(scoped, latestNight).map(id => nameById[id] || '?')
+      .filter(n => n !== NOT_A_PERSON).sort()
+    const board       = leaderboard(scoped, nameById)
+    const nights      = nightsHeld(scoped).length
+    const most        = board[0].nights
+    const holders     = board.filter(r => r.nights === most).map(r => r.name)
+
+    const dateLabel = new Date(latestNight + 'T12:00:00')
+      .toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+
+    // Only worth a season line once there is more than one night to compare.
+    // Names contain commas ("Jonson, R."), so a list of joint leaders reads
+    // badly — only name a sole leader, and count the rest.
+    const lead = holders.length === 1
+      ? `<strong>${esc(holders[0])}</strong> leads the award on ${most} of ${nights} nights.`
+      : `${holders.length} are tied at the top on ${most} of ${nights} nights.`
+    const seasonLine = `<div class="vinnys-home-foot">${nights > 1 ? lead + ' ' : ''}` +
+      `<a class="welcome-inline-link" href="standings.html">${
+        nights > 1 ? 'Full table' : 'See the running tally'} &rarr;</a></div>`
+
+    document.getElementById('vinnys-container').innerHTML = `
+      <div class="vinnys-home">
+        <div class="vinnys-home-head">
+          <span class="vinnys-home-pill">&#127867; Vinny&rsquo;s</span>
+          <span class="vinnys-home-title">${outTonight.length} out after ${esc(dateLabel)}</span>
+        </div>
+        <div class="vinnys-home-names">${outTonight.map(esc).join(' &middot; ') || 'Nobody recorded.'}</div>
+        ${seasonLine}
+      </div>`
+  }
+
+  // ── Night summary ─────────────────────────────────────────
+  // A couple of sentences of highlights for the hero. Everything here is
+  // read off the scores, so it stays true without anyone rewriting it.
+  function pairName(m, side, nameById) {
+    const ids = side === 1 ? [m.team1_player1, m.team1_player2] : [m.team2_player1, m.team2_player2]
+    return ids.map(id => nameById[id] || '?').join(' &amp; ')
+  }
+
+  // isWinner takes the six set scores, not a row.
+  function t1Won(m) {
+    return isWinner(m.team1_set1, m.team1_set2, m.team1_set3,
+                    m.team2_set1, m.team2_set2, m.team2_set3)
+  }
+
+  function gamesFor(m) {
+    const t1 = (m.team1_set1 || 0) + (m.team1_set2 || 0) + (m.team1_set3 || 0)
+    const t2 = (m.team2_set1 || 0) + (m.team2_set2 || 0) + (m.team2_set3 || 0)
+    return { t1, t2 }
+  }
+
+  function scoreLine(m) {
+    const sets = [[m.team1_set1, m.team2_set1], [m.team1_set2, m.team2_set2], [m.team1_set3, m.team2_set3]]
+    const won  = t1Won(m)
+    return sets
+      .filter(([a, b]) => a !== null && a !== undefined && b !== null && b !== undefined)
+      .map(([a, b]) => won ? `${a}&ndash;${b}` : `${b}&ndash;${a}`)
+      .join(', ')
+  }
+
+  function summariseNight(night, nameById) {
+    if (night.length === 0) return ''
+
+    const parts = []
+    const n = night.length
+    parts.push(`${n} match${n !== 1 ? 'es' : ''} played.`)
+
+    // A third set means it went the distance; if the winners dropped the
+    // first, it was a comeback.
+    const threeSetters = night.filter(m =>
+      m.team1_set3 !== null && m.team1_set3 !== undefined)
+
+    const comebacks = threeSetters.filter(m => {
+      const winnerIsT1 = t1Won(m)
+      const t1TookSet1 = (m.team1_set1 || 0) > (m.team2_set1 || 0)
+      return winnerIsT1 !== t1TookSet1
+    })
+
+    if (comebacks.length > 0) {
+      const m = comebacks[0]
+      const w = t1Won(m) ? pairName(m, 1, nameById) : pairName(m, 2, nameById)
+      const l = t1Won(m) ? pairName(m, 2, nameById) : pairName(m, 1, nameById)
+      parts.push(`<strong>${w}</strong> came from a set down to beat ${l} ${scoreLine(m)}.`)
+    } else if (threeSetters.length > 0) {
+      const m = threeSetters[0]
+      const w = t1Won(m) ? pairName(m, 1, nameById) : pairName(m, 2, nameById)
+      const l = t1Won(m) ? pairName(m, 2, nameById) : pairName(m, 1, nameById)
+      parts.push(`<strong>${w}</strong> needed three sets to see off ${l}, ${scoreLine(m)}.`)
+    }
+
+    // Widest winning margin on the night, as long as it was genuinely one-sided.
+    const byMargin = [...night].sort((a, b) => {
+      const ga = gamesFor(a), gb = gamesFor(b)
+      return Math.abs(gb.t1 - gb.t2) - Math.abs(ga.t1 - ga.t2)
+    })
+    const top = byMargin[0]
+    const g   = gamesFor(top)
+    if (top && Math.abs(g.t1 - g.t2) >= 5 && !comebacks.includes(top)) {
+      const w = t1Won(top) ? pairName(top, 1, nameById) : pairName(top, 2, nameById)
+      const l = t1Won(top) ? pairName(top, 2, nameById) : pairName(top, 1, nameById)
+      parts.push(`The night&rsquo;s most emphatic win went to <strong>${w}</strong>, ${scoreLine(top)} over ${l}.`)
+    }
+
+    return parts.join(' ')
   }
 
   // Most recent night's scores.

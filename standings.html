@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Standings — Paddle Tennis League</title>
-  <link rel="stylesheet" href="css/style.css?v=0185c7c5">
+  <link rel="stylesheet" href="css/style.css?v=9013a9b4">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -64,9 +64,10 @@
 
 <script type="module">
   import { initNav } from './js/auth.js?v=3bf86c6c'
-  import { supabase, connectionErrorHtml } from './js/supabase-client.js?v=2d21059e'
+  import { supabase, connectionErrorHtml, escapeHtml } from './js/supabase-client.js?v=2d21059e'
   import { CURRENT_SEASON, ELIGIBILITY_START } from './js/config.js?v=d0c3b471'
   import { computeMemberStats, computeCurrentSeasonStats, isWinner, fmt } from './js/scoring.js?v=29666dc2'
+  import { fetchVinnys, leaderboard, nightsHeld } from './js/vinnys.js?v=e528c208'
   initNav('standings')
 
   const container    = document.getElementById('standings-container')
@@ -81,6 +82,7 @@
   let _formerMemberStats = []
   let _guestStats        = []
   let _seasonNotStarted  = false
+  let _vinnys            = []   // every season's rows; scoped at render time
 
   function getCols() {
     const cols = [
@@ -286,6 +288,8 @@
     if (_guestStats.length > 0) {
       html += '<h2 class="section-title" style="margin-top:2rem;">Guests</h2>' + buildTable(sortData(_guestStats))
     }
+
+    html += buildVinnysSection()
     container.innerHTML = html
 
     container.querySelectorAll('th[data-sort]').forEach(th => {
@@ -302,6 +306,79 @@
     })
   }
 
+  // ── Vinny's Award ─────────────────────────────────────────
+  // Nights out after the matches. Attendance is stored per date, so the
+  // tally is scoped by matching those dates to the selected season.
+  function buildVinnysSection() {
+    if (_vinnys.length === 0) return ''
+
+    const seasonDates = new Set(
+      (_activeSeason === 'all' ? _db.matches : _db.matches.filter(m => m.season === _activeSeason))
+        .map(m => m.played_on)
+    )
+    const rows = _vinnys.filter(r => seasonDates.has(r.played_on))
+    if (rows.length === 0) return ''
+
+    const nameById = Object.fromEntries(
+      [..._db.members, ..._db.guests].map(m => [m.id, m.full_name]))
+    const board  = leaderboard(rows, nameById)
+    const nights = nightsHeld(rows).length
+    const most   = board[0].nights
+
+    // With a single night everybody who turned up is tied, so ranking them
+    // says nothing — number the rows plainly until the counts separate.
+    const separated = board.some(r => r.nights !== most)
+
+    const body = board.map((r, i) => {
+      const leading = separated && r.nights === most
+      return `
+      <tr class="${leading ? 'podium-1' : ''}">
+        <td class="rank">${leading ? '\u{1F37B}' : i + 1}</td>
+        <td class="player-name">
+          <a href="player.html?id=${r.id}" class="player-link">${escapeHtml(r.name)}</a>
+        </td>
+        <td style="text-align:center;font-variant-numeric:tabular-nums;">${r.nights}</td>
+        <td class="vinnys-bar-cell">
+          <span class="vinnys-bar" style="width:${Math.round((r.nights / most) * 100)}%;"></span>
+        </td>
+        <td style="text-align:right;color:var(--gray-600);">${Math.round((r.nights / nights) * 100)}%</td>
+      </tr>`
+    }).join('')
+
+    const holders = board.filter(r => r.nights === most)
+    // Names carry commas ("Jonson, R."), so only name the leader when there
+    // is exactly one — a list of them reads as mush.
+    let note
+    if (!separated) {
+      note = `${board.length} ${board.length === 1 ? 'person has' : 'people have'} been out across
+              ${nights} night${nights !== 1 ? 's' : ''}, all level so far.`
+    } else if (holders.length === 1) {
+      note = `<strong>${escapeHtml(holders[0].name)}</strong> leads on ${most}
+              of ${nights} night${nights !== 1 ? 's' : ''}.`
+    } else {
+      note = `${holders.length} players are tied at the top on ${most}
+              of ${nights} night${nights !== 1 ? 's' : ''}.`
+    }
+
+    return `
+      <h2 class="section-title" style="margin-top:2rem;">&#127867; Vinny&rsquo;s Award</h2>
+      <p class="vinnys-lead-note">Who stayed out after the matches. ${note}</p>
+      <div class="table-scroll">
+        <table class="standings-table">
+          <thead>
+            <tr>
+              <th style="width:3rem;">#</th>
+              <th>Member</th>
+              <th style="text-align:center;">Nights</th>
+              <th></th>
+              <th style="text-align:right;">Share</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>`
+  }
+
   function defaultSort(stats) {
     return stats.sort((a, b) => {
       const avgA = a.seasonAvg ?? -Infinity
@@ -316,11 +393,12 @@
   let _db = null   // { members, guests, matches, memberSeasons }
 
   async function fetchAllData() {
-    const [membersRes, guestsRes, matchesRes, seasonsRes] = await Promise.all([
+    const [membersRes, guestsRes, matchesRes, seasonsRes, vinnysRows] = await Promise.all([
       supabase.from('members').select('id, full_name').eq('is_guest', false).order('full_name'),
       supabase.from('members').select('id, full_name').eq('is_guest', true).order('full_name'),
       supabase.from('matches').select('*'),
-      supabase.from('member_seasons').select('member_id, season')
+      supabase.from('member_seasons').select('member_id, season'),
+      fetchVinnys({ since: null })
     ])
     if (membersRes.error || guestsRes.error || matchesRes.error) return false
     _db = {
@@ -329,6 +407,7 @@
       matches: matchesRes.data,
       memberSeasons: seasonsRes.data || []
     }
+    _vinnys = vinnysRows
     return true
   }
 

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Results — Paddle Tennis League</title>
-  <link rel="stylesheet" href="css/style.css?v=0185c7c5">
+  <link rel="stylesheet" href="css/style.css?v=9013a9b4">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -41,7 +41,10 @@
       <h1 class="page-title" style="margin-bottom:0.15rem;">Match Results</h1>
       <p class="page-subtitle" style="margin:0;">All matches, grouped by week — most recent first.</p>
     </div>
-    <button id="add-result-btn" class="btn btn-primary" style="display:none;">+ Add Result</button>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+      <button id="vinnys-btn" class="btn btn-secondary" style="display:none;">&#127867; Vinny&rsquo;s</button>
+      <button id="add-result-btn" class="btn btn-primary" style="display:none;">+ Add Result</button>
+    </div>
   </div>
 
   <div class="season-bar">
@@ -87,6 +90,10 @@
       const btn = document.getElementById('add-result-btn')
       btn.style.display = ''
       btn.addEventListener('click', openResultModal)
+
+      const vb = document.getElementById('vinnys-btn')
+      vb.style.display = ''
+      vb.addEventListener('click', () => openVinnysModal())
     }
   })
 
@@ -391,18 +398,203 @@
            <div style="font-weight:700;font-size:1rem;">All courts entered</div>
            <div style="color:var(--gray-500);font-size:0.88rem;margin-top:0.25rem;">${_weekLabel}</div>
          </div>`,
-    `<button id="done-close" class="btn btn-primary" style="width:100%;">${pending ? 'Finish for now' : 'Done'}</button>`)
+    `<button id="done-close" class="btn btn-secondary">${pending ? 'Finish for now' : 'Done'}</button>
+     <button id="done-vinnys" class="btn btn-primary">&#127867; Record Vinny&rsquo;s &rarr;</button>`)
 
-    document.getElementById('done-close').addEventListener('click', async () => {
+    // Clearing the schedule is the same whichever button is pressed, so both
+    // paths go through here first.
+    async function finish() {
       // Only clear the schedule once every court is recorded — otherwise the
       // remaining pairings (and any subs named in them) would be lost, and the
       // home page would stop showing a night that is still outstanding.
       if (!pending && _schedule?.id) {
         await supabase.from('scheduled_matches').delete().eq('id', _schedule.id)
       }
-      closeModal()
       loadResults(_activeSeason, { refresh: true })
+    }
+
+    document.getElementById('done-close').addEventListener('click', async () => {
+      await finish()
+      closeModal()
     })
+
+    // Straight on to who went out, with tonight already selected.
+    document.getElementById('done-vinnys').addEventListener('click', async () => {
+      const night = _playedOn
+      await finish()
+      openVinnysModal(night)
+    })
+  }
+
+  // ── Vinny's Award ─────────────────────────────────────────
+  // Who went out after the matches. Stored one row per member per night,
+  // so saving a night is a clean replace: clear it, then insert the ticks.
+  let _vinnysNights  = []   // [{ playedOn, label, playerIds:Set }]
+  let _vinnysPeople  = []   // pickable members, name-sorted
+  let _vinnysMarked  = {}   // playedOn -> Set(member_id) already saved
+
+  async function openVinnysModal(preselectDate) {
+    modal.style.display = 'flex'
+    setTitle("Vinny's Award")
+    setScreen('<div class="loading-state"><div class="spinner"></div> Loading…</div>', '')
+
+    const [membersRes, seasonRes, matchesRes, vinnysRes] = await Promise.all([
+      supabase.from('members').select('id, full_name').order('full_name'),
+      supabase.from('member_seasons').select('member_id').eq('season', CURRENT_SEASON),
+      supabase.from('matches')
+        .select('played_on, week_label, team1_player1, team1_player2, team2_player1, team2_player2')
+        .eq('season', CURRENT_SEASON).order('played_on', { ascending: false }),
+      supabase.from('vinnys').select('played_on, member_id')
+    ])
+
+    if (membersRes.error || matchesRes.error) {
+      setScreen('<div class="alert alert-error">Could not load. Check the connection and try again.</div>',
+                '<button id="v-close" class="btn btn-primary" style="width:100%;">Close</button>')
+      document.getElementById('v-close').addEventListener('click', closeModal)
+      return
+    }
+    if (vinnysRes.error) {
+      setScreen(`<div class="alert alert-error">
+          The <code>vinnys</code> table isn't there yet &mdash; run
+          <strong>setup-vinnys.sql</strong> in the Supabase SQL editor first.
+        </div>`,
+        '<button id="v-close" class="btn btn-primary" style="width:100%;">Close</button>')
+      document.getElementById('v-close').addEventListener('click', closeModal)
+      return
+    }
+
+    const allMembers = membersRes.data || []
+    const activeIds  = new Set((seasonRes.data || []).map(r => r.member_id))
+    const matches    = matchesRes.data || []
+
+    // One entry per night that was actually played.
+    const byNight = new Map()
+    for (const m of matches) {
+      if (!byNight.has(m.played_on)) {
+        byNight.set(m.played_on, { playedOn: m.played_on, label: m.week_label || '', playerIds: new Set() })
+      }
+      const n = byNight.get(m.played_on)
+      for (const id of [m.team1_player1, m.team1_player2, m.team2_player1, m.team2_player2]) {
+        if (id) n.playerIds.add(id)
+      }
+    }
+    _vinnysNights = [...byNight.values()]
+
+    if (_vinnysNights.length === 0) {
+      setScreen('<div class="alert alert-info">No match nights recorded this season yet. Enter a result first.</div>',
+                '<button id="v-close" class="btn btn-primary" style="width:100%;">Close</button>')
+      document.getElementById('v-close').addEventListener('click', closeModal)
+      return
+    }
+
+    // Season members, plus any sub who played a night — a guest can go out too.
+    const playedAny = new Set(_vinnysNights.flatMap(n => [...n.playerIds]))
+    _vinnysPeople = allMembers
+      .filter(m => activeIds.has(m.id) || playedAny.has(m.id))
+      .filter(m => m.full_name !== 'Forfeit')
+
+    _vinnysMarked = {}
+    for (const r of (vinnysRes.data || [])) {
+      ;(_vinnysMarked[r.played_on] ||= new Set()).add(r.member_id)
+    }
+
+    const start = _vinnysNights.find(n => n.playedOn === preselectDate) || _vinnysNights[0]
+    renderVinnysStep(start.playedOn)
+  }
+
+  function renderVinnysStep(playedOn) {
+    const night  = _vinnysNights.find(n => n.playedOn === playedOn) || _vinnysNights[0]
+    const marked = _vinnysMarked[night.playedOn] || new Set()
+    const saved  = marked.size > 0
+
+    const nightOpts = _vinnysNights.map(n => {
+      const d = new Date(n.playedOn + 'T12:00:00')
+        .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const tally = (_vinnysMarked[n.playedOn] || new Set()).size
+      return `<option value="${n.playedOn}"${n.playedOn === night.playedOn ? ' selected' : ''}>${
+        n.label ? n.label + ' — ' : ''}${d}${tally ? ` (${tally} out)` : ''}</option>`
+    }).join('')
+
+    // Players that night first — they are the likely answer — then the rest.
+    const sortKey = m => (night.playerIds.has(m.id) ? 0 : 1)
+    const people  = [..._vinnysPeople].sort((a, b) =>
+      sortKey(a) - sortKey(b) || a.full_name.localeCompare(b.full_name))
+
+    const rows = people.map(m => `
+      <label class="vinnys-pick">
+        <input type="checkbox" class="vinnys-check" value="${m.id}"${marked.has(m.id) ? ' checked' : ''}>
+        <span class="vinnys-pick-name">${m.full_name}</span>
+        ${night.playerIds.has(m.id) ? '<span class="vinnys-pick-tag">played</span>' : ''}
+      </label>`).join('')
+
+    setTitle("Vinny's Award")
+    setScreen(`
+      <div id="vinnys-alert" class="alert hidden"></div>
+      <div class="form-group">
+        <label for="v-night">Night</label>
+        <select id="v-night" class="form-input">${nightOpts}</select>
+      </div>
+      <div class="vinnys-toolbar">
+        <span class="vinnys-count"><strong id="v-count">${marked.size}</strong> going out</span>
+        <span style="flex:1;"></span>
+        <button type="button" id="v-all-played" class="btn-link">Everyone who played</button>
+        <button type="button" id="v-none" class="btn-link">Clear</button>
+      </div>
+      <div class="vinnys-list">${rows}</div>`,
+      `<button id="v-cancel" class="btn btn-secondary">Cancel</button>
+       <button id="v-save"   class="btn btn-primary">${saved ? 'Update' : 'Save'} Vinny&rsquo;s</button>`)
+
+    const list  = document.getElementById('vinnys-list-root') || document
+    const boxes = () => [...document.querySelectorAll('.vinnys-check')]
+    const sync  = () => {
+      document.getElementById('v-count').textContent = boxes().filter(b => b.checked).length
+    }
+    boxes().forEach(b => b.addEventListener('change', sync))
+
+    document.getElementById('v-all-played').addEventListener('click', () => {
+      boxes().forEach(b => { if (night.playerIds.has(b.value)) b.checked = true })
+      sync()
+    })
+    document.getElementById('v-none').addEventListener('click', () => {
+      boxes().forEach(b => { b.checked = false })
+      sync()
+    })
+    document.getElementById('v-night').addEventListener('change', e => renderVinnysStep(e.target.value))
+    document.getElementById('v-cancel').addEventListener('click', closeModal)
+    document.getElementById('v-save').addEventListener('click', () => saveVinnys(night.playedOn))
+  }
+
+  async function saveVinnys(playedOn) {
+    const btn   = document.getElementById('v-save')
+    const alert = document.getElementById('vinnys-alert')
+    const ids   = [...document.querySelectorAll('.vinnys-check')].filter(b => b.checked).map(b => b.value)
+
+    btn.disabled = true
+    btn.textContent = 'Saving…'
+
+    // Replace the night wholesale so unticking somebody actually removes them.
+    const del = await supabase.from('vinnys').delete().eq('played_on', playedOn)
+    let err = del.error
+    if (!err && ids.length > 0) {
+      const ins = await supabase.from('vinnys')
+        .insert(ids.map(id => ({ played_on: playedOn, member_id: id })))
+      err = ins.error
+    }
+
+    btn.disabled = false
+    btn.textContent = 'Save Vinny’s'
+
+    if (err) {
+      alert.className = 'alert alert-error'
+      alert.textContent = 'Could not save: ' + err.message
+      return
+    }
+
+    _vinnysMarked[playedOn] = new Set(ids)
+    alert.className = 'alert alert-success'
+    alert.textContent = ids.length === 0
+      ? 'Night cleared — nobody recorded.'
+      : `Saved — ${ids.length} out at Vinny’s.`
   }
 
   // ── Manual form (no schedule found) ──────────────────────
