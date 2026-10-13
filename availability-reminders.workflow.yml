@@ -1,0 +1,55 @@
+# =====================================================================
+#  INSTALL THIS FILE AS .github/workflows/availability-reminders.yml
+#
+#  It is parked here because the token Claude pushes with is not allowed
+#  to create workflow files. Copy it into place yourself, either through
+#  GitHub (Add file -> Create new file, path
+#  .github/workflows/availability-reminders.yml) or with:
+#
+#      git mv availability-reminders.workflow.yml \
+#             .github/workflows/availability-reminders.yml
+#      git commit -m "Add the availability reminder workflow" && git push
+#
+#  Needs two repository secrets first — Settings -> Secrets and variables
+#  -> Actions -> New repository secret:
+#      SUPABASE_SECRET_KEY   Supabase -> Project Settings -> API (secret)
+#      RESEND_API_KEY        Resend -> API Keys
+# =====================================================================
+
+name: Availability reminders
+
+# GitHub cron is UTC and New York is not, so each reminder is scheduled at
+# both candidate UTC hours — one is right during EDT, the other during EST.
+# The script checks the actual local time and exits quietly on the wrong
+# one, so exactly one send happens whatever the time of year.
+on:
+  schedule:
+    - cron: '0 19 * * 4'   # Thu 15:00 EDT
+    - cron: '0 20 * * 4'   # Thu 15:00 EST
+    - cron: '0 14 * * 5'   # Fri 10:00 EDT
+    - cron: '0 15 * * 5'   # Fri 10:00 EST
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Send now regardless of the time: thursday or friday'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Work out who would be chased, send nothing'
+        type: boolean
+        default: true
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Send reminders
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REMINDER_FORCE: ${{ github.event.inputs.force }}
+        run: |
+          python3 scripts/send-availability-reminders.py \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
