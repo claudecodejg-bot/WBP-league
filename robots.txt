@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Sign-in and admin pages carry a noindex meta tag as well; they are not
+# useful search results.
+Disallow: /admin.html
+Disallow: /scheduler.html
+Disallow: /set-password.html
+
+Sitemap: https://wbpleague.com/sitemap.xml
