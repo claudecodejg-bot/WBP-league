@@ -1,0 +1,33 @@
+name: Availability reminders
+
+on:
+  schedule:
+    - cron: '0 19 * * 4'
+    - cron: '0 20 * * 4'
+    - cron: '0 14 * * 5'
+    - cron: '0 15 * * 5'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Send now regardless of the time: thursday or friday'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Work out who would be chased, send nothing'
+        type: boolean
+        default: true
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Send reminders
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REMINDER_FORCE: ${{ github.event.inputs.force }}
+        run: |
+          python3 scripts/send-availability-reminders.py \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
