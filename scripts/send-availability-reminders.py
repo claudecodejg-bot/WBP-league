@@ -41,6 +41,7 @@ import re
 import sys
 import urllib.error
 import urllib.request
+from html import unescape
 from zoneinfo import ZoneInfo
 
 BASE = "https://htmrvfkaudpevmzgteyh.supabase.co/rest/v1"
@@ -231,7 +232,10 @@ def main():
     if args.dry_run:
         subject, html, _ = render(kind, people[0]["full_name"], monday)
         print("\n--- dry run, nothing sent ---\nSubject: %s\n" % subject)
-        print(re.sub(r"\n\s*\n", "\n", re.sub(r"<[^>]+>", "", html)).strip())
+        # Strip the markup and turn &middot; and friends back into characters,
+        # so the preview reads like the email instead of like source.
+        preview = unescape(re.sub(r"<[^>]+>", "", html))
+        print(re.sub(r"\n\s*\n", "\n", preview).strip())
         return 0
 
     sent = failed = 0
