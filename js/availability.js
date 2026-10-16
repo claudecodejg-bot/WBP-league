@@ -239,8 +239,13 @@ async function getCurrentSeasonMembers() {
 /**
  * Tally view: shown to all members — aggregate counts + names per week.
  */
-export async function loadAvailabilityTally(container) {
-  const weeks = upcomingWeeks()
+/**
+ * The league tally. Members see only the coming week — enough to know who
+ * is in on Monday, without publishing everyone's answers for the next
+ * three months. Admin passes no limit and gets the lot.
+ */
+export async function loadAvailabilityTally(container, { limit = null } = {}) {
+  const weeks = limit ? upcomingWeeks().slice(0, limit) : upcomingWeeks()
   const weekKeys = weeks.map(toISO)
 
   const members = await getCurrentSeasonMembers()
@@ -257,7 +262,7 @@ export async function loadAvailabilityTally(container) {
     return
   }
 
-  let html = '<h2 class="tally-title">League Availability</h2>'
+  let html = `<h2 class="tally-title">${weeks.length === 1 ? 'Who&rsquo;s In This Week' : 'League Availability'}</h2>`
   for (const monday of weeks) {
     const key = toISO(monday)
     const weekAvail = (avail || []).filter(a => a.week_start === key)

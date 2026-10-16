@@ -97,7 +97,7 @@
       'Please fill in the warm-up weeks too, so we can set the courts.'
     el.hidden = false
   }
-  import { loadAvailability, loadAvailabilityTally, loadAdminAvailability } from './js/availability.js?v=2b0931a1'
+  import { loadAvailability, loadAvailabilityTally, loadAdminAvailability } from './js/availability.js?v=b8e5f7a3'
 
   ;(async () => {
     initNav('availability')
@@ -122,14 +122,19 @@
 
     await loadAvailability(member.id)
 
+    // Members see the coming week only; admin gets every week below.
+    if (!member.is_admin) {
+      document.getElementById('tally-wrap').style.display = ''
+      await loadAvailabilityTally(document.getElementById('tally-container'), { limit: 1 })
+    }
+
     if (member.is_admin) {
       // Optional chaining on purpose: if the nav item is ever missing, the
       // admin grid below should still render rather than the whole block
       // dying on a null reference.
       document.getElementById('scheduler-nav-item')?.style.setProperty('display', 'block')
 
-      // Who is in and who has not answered — admin only. Members used to
-      // see this, which exposed everyone else's answers to the whole league.
+      // Admin gets the full run of weeks, not just the coming one.
       document.getElementById('tally-wrap').style.display = ''
       await loadAvailabilityTally(document.getElementById('tally-container'))
 
