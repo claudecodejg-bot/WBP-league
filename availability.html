@@ -61,7 +61,7 @@
     </div>
   </div>
 
-  <div style="max-width:560px;margin:2rem auto 0;">
+  <div id="tally-wrap" style="max-width:560px;margin:2rem auto 0;display:none;">
     <div id="tally-container"></div>
   </div>
 
@@ -121,13 +121,17 @@
       `Hi, ${firstName}! Mark your availability for upcoming match weeks.`
 
     await loadAvailability(member.id)
-    await loadAvailabilityTally(document.getElementById('tally-container'))
 
     if (member.is_admin) {
       // Optional chaining on purpose: if the nav item is ever missing, the
       // admin grid below should still render rather than the whole block
       // dying on a null reference.
       document.getElementById('scheduler-nav-item')?.style.setProperty('display', 'block')
+
+      // Who is in and who has not answered — admin only. Members used to
+      // see this, which exposed everyone else's answers to the whole league.
+      document.getElementById('tally-wrap').style.display = ''
+      await loadAvailabilityTally(document.getElementById('tally-container'))
 
       const adminEl = document.getElementById('admin-container')
       adminEl.innerHTML =
