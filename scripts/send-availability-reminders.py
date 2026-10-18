@@ -92,16 +92,76 @@ def target_monday(now_local, cfg):
     return monday
 
 
+# Windows, not exact hours. GitHub's scheduler has run this workflow up to
+# three and a half hours behind its cron time, so an exact-hour test missed
+# every single run. The workflow now fires hourly across the morning and
+# afternoon and these windows decide which run does the work; a claim in the
+# database stops the others repeating it.
+#
+# Friday closes at noon on purpose: the email says "if we haven't heard from
+# you by noon today", which is false after noon. Better to send nothing than
+# to send that.
+THURSDAY_WINDOW = range(15, 20)   # 3pm to 7:59pm ET
+FRIDAY_WINDOW   = range(9, 12)    # 9am to 11:59am ET
+
+
 def which_reminder(now_local):
     forced = os.environ.get("REMINDER_FORCE", "").strip().lower()
     if forced in ("thursday", "friday"):
         return forced
     # weekday(): Thursday 3, Friday 4
-    if now_local.weekday() == 3 and now_local.hour == 15:
+    if now_local.weekday() == 3 and now_local.hour in THURSDAY_WINDOW:
         return "thursday"
-    if now_local.weekday() == 4 and now_local.hour == 10:
+    if now_local.weekday() == 4 and now_local.hour in FRIDAY_WINDOW:
         return "friday"
     return None
+
+
+def claim(monday, kind):
+    """
+    Claim this (week, reminder) so only one run sends it.
+
+    The insert is the lock: the table's primary key is (week_start, kind),
+    so a second run gets a 409 and backs off. Claiming before sending
+    rather than recording after means two runs overlapping cannot both
+    get through.
+
+    Returns True if this run owns the send.
+    """
+    body = json.dumps({"week_start": monday.isoformat(), "kind": kind}).encode()
+    req = urllib.request.Request(
+        BASE + "/reminder_log", data=body,
+        headers={
+            "apikey": SECRET, "Authorization": "Bearer " + SECRET,
+            "Content-Type": "application/json", "Prefer": "return=minimal",
+        }, method="POST")
+    try:
+        urllib.request.urlopen(req, timeout=30)
+        return True
+    except urllib.error.HTTPError as e:
+        if e.code == 409:
+            return False          # another run already sent this one
+        if e.code == 404:
+            # Table missing: the migration has not been run. Say so loudly
+            # rather than silently sending the same email every hour.
+            print("reminder_log table not found — run add-reminder-log.sql. "
+                  "Refusing to send without it, to avoid repeat emails.")
+            sys.exit(1)
+        raise
+
+
+def release(monday, kind):
+    """Give the claim back when nothing actually went out, so a later run
+    in the same window can try again."""
+    url = "%s/reminder_log?week_start=eq.%s&kind=eq.%s" % (
+        BASE, monday.isoformat(), kind)
+    req = urllib.request.Request(
+        url, headers={"apikey": SECRET, "Authorization": "Bearer " + SECRET},
+        method="DELETE")
+    try:
+        urllib.request.urlopen(req, timeout=30)
+    except Exception:
+        pass
 
 
 def get(path):
@@ -238,6 +298,12 @@ def main():
         print(re.sub(r"\n\s*\n", "\n", preview).strip())
         return 0
 
+    # Take the slot before sending anything. If another run in today's
+    # window already has it, stop here.
+    if not claim(monday, kind):
+        print("Already sent for this week — another run got there first.")
+        return 0
+
     sent = failed = 0
     for p in people:
         subject, html, text = render(kind, p["full_name"], monday)
@@ -254,6 +320,13 @@ def main():
             failed += 1
 
     print("Sent %d, failed %d." % (sent, failed))
+
+    # Nothing got through, so do not let the claim block a retry later in
+    # the window.
+    if sent == 0:
+        release(monday, kind)
+        print("Nothing sent — claim released so a later run can retry.")
+
     return 1 if failed else 0
 
 
