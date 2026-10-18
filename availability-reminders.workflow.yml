@@ -22,12 +22,14 @@ name: Availability reminders
 # both candidate UTC hours — one is right during EDT, the other during EST.
 # The script checks the actual local time and exits quietly on the wrong
 # one, so exactly one send happens whatever the time of year.
+# Hourly across Thursday and Friday rather than at four exact times.
+# GitHub ran this up to 3h36m behind its cron time, which made precise
+# scheduling useless. The script accepts any run inside its window
+# (Thu 15:00-19:59 ET, Fri 09:00-11:59 ET) and the reminder_log table
+# makes sure only the first one in each window actually sends.
 on:
   schedule:
-    - cron: '0 19 * * 4'   # Thu 15:00 EDT
-    - cron: '0 20 * * 4'   # Thu 15:00 EST
-    - cron: '0 14 * * 5'   # Fri 10:00 EDT
-    - cron: '0 15 * * 5'   # Fri 10:00 EST
+    - cron: '0 9-23 * * 4,5'
   workflow_dispatch:
     inputs:
       force:
