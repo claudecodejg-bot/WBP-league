@@ -18,10 +18,6 @@
 
 name: Availability reminders
 
-# GitHub cron is UTC and New York is not, so each reminder is scheduled at
-# both candidate UTC hours — one is right during EDT, the other during EST.
-# The script checks the actual local time and exits quietly on the wrong
-# one, so exactly one send happens whatever the time of year.
 # Hourly across Thursday and Friday rather than at four exact times.
 # GitHub ran this up to 3h36m behind its cron time, which made precise
 # scheduling useless. The script accepts any run inside its window
