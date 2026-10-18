@@ -97,7 +97,7 @@ async function getSeasonOutings(memberIds) {
 
 // Fetch ALL match history + scores; build partner/opp matrices (UUID-keyed)
 // and compute each playing player's season average.
-async function buildHistoryAndScores(playerIds) {
+async function buildHistoryAndScores(playerIds, subRatings = {}) {
   const { data: allMatches, error } = await supabase
     .from('matches')
     .select(
@@ -159,11 +159,13 @@ async function buildHistoryAndScores(playerIds) {
     incRecord(partnerRecord, t2[0], t2[1], !t1Won)
   }
 
-  // Season averages via the shared scoring module
+  // Season averages via the shared scoring module. A sub has no season
+  // average, so fall back to the rating an admin set for them; only if
+  // that is missing too does the caller's default apply.
   const scores = {}
   for (const id of playerIds) {
     const stats = computeCurrentSeasonStats(id, curMatches, priorMatches)
-    scores[id]  = stats.seasonAvg ?? null
+    scores[id]  = stats.seasonAvg ?? subRatings[id] ?? null
   }
 
   return { partnerCount, oppCount, partnerRecord, scores }
@@ -312,6 +314,71 @@ function determinePlayers(available, outings) {
  * @param {string[]} subIds  Members added by hand to fill out the courts —
  *                           guests or anyone who didn't mark availability.
  */
+/** Admin-set ratings, { id: number }, for players who have one. */
+async function getSubRatings(ids) {
+  if (ids.length === 0) return {}
+  const { data, error } = await supabase
+    .from('members').select('id, sub_rating').in('id', ids)
+  // A missing column (migration not run yet) must not break scheduling —
+  // without ratings the algorithm behaves exactly as it did before.
+  if (error) return {}
+  const out = {}
+  for (const r of (data || [])) {
+    if (r.sub_rating !== null && r.sub_rating !== undefined) out[r.id] = Number(r.sub_rating)
+  }
+  return out
+}
+
+/**
+ * Everyone in this week's pool with the number the scheduler will use for
+ * them, and where it came from. Drives the ratings panel: the admin needs
+ * to see the real spread before deciding where a sub sits in it.
+ */
+export async function getPoolRatings(weekStart, subIds = []) {
+  const responded = await getAvailableMembers(weekStart)
+  const have = new Set(responded.map(m => m.id))
+  let subs = []
+  const wanted = subIds.filter(id => !have.has(id))
+  if (wanted.length > 0) {
+    const { data } = await supabase
+      .from('members').select('id, full_name').in('id', wanted)
+    subs = (data || []).map(m => ({ id: m.id, name: m.full_name, isSub: true }))
+  }
+
+  const pool = [...responded, ...subs]
+  const ids  = pool.map(p => p.id)
+  if (ids.length === 0) return []
+
+  const { data: allMatches } = await supabase.from('matches')
+    .select('team1_player1, team1_player2, team2_player1, team2_player2,' +
+            'team1_set1, team1_set2, team1_set3,' +
+            'team2_set1, team2_set2, team2_set3, played_on')
+  const cur   = (allMatches || []).filter(m => m.played_on >= SEASON_START)
+  const prior = (allMatches || []).filter(m => m.played_on <  SEASON_START)
+  const ratings = await getSubRatings(ids)
+
+  return pool.map(p => {
+    const avg = computeCurrentSeasonStats(p.id, cur, prior).seasonAvg
+    return {
+      id: p.id,
+      name: p.name,
+      isSub: !!p.isSub,
+      seasonAvg: avg ?? null,
+      subRating: ratings[p.id] ?? null,
+      // What the scheduler will actually balance on.
+      effective: avg ?? ratings[p.id] ?? null
+    }
+  }).sort((a, b) => (b.effective ?? -Infinity) - (a.effective ?? -Infinity))
+}
+
+/** Store a rating. Admin-only at the database level. */
+export async function saveSubRating(memberId, rating) {
+  const value = rating === '' || rating === null ? null : Number(rating)
+  const { error } = await supabase
+    .from('members').update({ sub_rating: value }).eq('id', memberId)
+  if (error) throw new Error('Could not save rating: ' + error.message)
+}
+
 export async function generateSchedule(weekStart, subIds = []) {
   const responded = await getAvailableMembers(weekStart)
 
@@ -344,8 +411,9 @@ export async function generateSchedule(weekStart, subIds = []) {
   const { playing, sittingOut, tiebreakUsed } = determinePlayers(available, outings)
 
   const playerIds = playing.map(p => p.id)
+  const subRatings = await getSubRatings(playerIds)
   const { partnerCount, oppCount, partnerRecord, scores } =
-    await buildHistoryAndScores(playerIds)
+    await buildHistoryAndScores(playerIds, subRatings)
 
   const options = generateOptions(playerIds, partnerCount, oppCount, scores, partnerRecord)
 

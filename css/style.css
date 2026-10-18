@@ -2458,3 +2458,65 @@ footer {
   font-size: 0.85em;
   white-space: nowrap;
 }
+
+/* ── Sub ratings panel (scheduler) ──────────────────────────────── */
+.sub-ratings {
+  margin-top: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  background: var(--white);
+}
+.sub-ratings.hidden { display: none; }
+.sub-ratings-head { font-weight: 800; margin-bottom: 0.2rem; }
+.sub-ratings-note {
+  color: var(--gray-600);
+  font-size: 0.83rem;
+  line-height: 1.5;
+  margin: 0 0 0.75rem;
+}
+.sub-ratings-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+.sub-ratings-sub {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-600);
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+.sub-ratings-ladder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.86rem;
+}
+.sub-ratings-ladder li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+.sub-ratings-ladder li:last-child { border-bottom: none; }
+.sub-ratings-ladder li.is-sub { font-weight: 700; color: var(--accent); }
+.sub-ratings-num { font-variant-numeric: tabular-nums; color: var(--gray-600); }
+.sub-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.45rem;
+}
+.sub-rating-row label { font-size: 0.86rem; font-weight: 600; flex: 1; }
+.sub-rating-input { width: 5.5rem; flex-shrink: 0; }
+.sub-ratings-key { font-size: 0.75rem; color: var(--gray-600); margin-top: 0.35rem; }
+.sub-ratings-status { font-size: 0.8rem; color: var(--gray-600); margin-left: 0.5rem; }
+.sub-ratings-loading { font-size: 0.85rem; color: var(--gray-600); }
+
+@media (max-width: 640px) {
+  .sub-ratings-cols { grid-template-columns: 1fr; gap: 0.9rem; }
+}

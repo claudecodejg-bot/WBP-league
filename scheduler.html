@@ -14,7 +14,7 @@
   <meta property="og:url" content="https://wbpleague.com/scheduler.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=1260c653">
+  <link rel="stylesheet" href="css/style.css?v=992ecad1">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -66,6 +66,7 @@
         </div>
       </div>
       <div id="sub-chips" class="scheduler-sub-chips"></div>
+      <div id="sub-ratings" class="sub-ratings hidden"></div>
       <p class="scheduler-sub-hint">
         Optional. Add fill-ins so everyone playing is included &mdash; four players make a court.
       </p>
@@ -100,7 +101,8 @@
 
 <script type="module">
   import { requireLogin, getCurrentMember, initNav } from './js/auth.js?v=3bf86c6c'
-  import { generateSchedule, getUpcomingWeeks, formatWeekLabel, getSubCandidates } from './js/scheduler.js?v=290297ba'
+  import { generateSchedule, getUpcomingWeeks, formatWeekLabel, getSubCandidates,
+         getPoolRatings, saveSubRating } from './js/scheduler.js?v=ca69984b'
   import { supabase } from './js/supabase-client.js?v=2d21059e'
 
   ;(async () => {
@@ -166,7 +168,80 @@
         btn.addEventListener('click', () => {
           chosenSubs.delete(btn.dataset.remove)
           renderSubChips()
+          renderRatingsPanel()
         }))
+    }
+
+    // ── Sub ratings ─────────────────────────────────────────────────
+    // A sub has no season average, so without a rating the scheduler
+    // treats them as exactly mid-table. This shows the real spread of
+    // tonight's players so a sub can be placed against actual numbers.
+    async function renderRatingsPanel() {
+      const panel = document.getElementById('sub-ratings')
+      if (chosenSubs.size === 0) { panel.classList.add('hidden'); return }
+
+      panel.classList.remove('hidden')
+      panel.innerHTML = '<div class="sub-ratings-loading">Loading tonight&rsquo;s ratings…</div>'
+
+      let pool
+      try {
+        pool = await getPoolRatings(new Date(select.value + 'T12:00:00'),
+                                    [...chosenSubs.keys()])
+      } catch (e) {
+        panel.innerHTML = `<div class="alert alert-error">Could not load ratings: ${e.message}</div>`
+        return
+      }
+
+      const rated   = pool.filter(p => p.effective !== null)
+      const needing = pool.filter(p => p.effective === null || p.isSub)
+
+      const ladder = rated.map(p => `
+        <li class="${p.isSub ? 'is-sub' : ''}">
+          <span>${p.name}</span>
+          <span class="sub-ratings-num">${p.effective.toFixed(2)}${p.seasonAvg === null ? ' *' : ''}</span>
+        </li>`).join('')
+
+      const inputs = needing.map(p => `
+        <div class="sub-rating-row">
+          <label for="rate-${p.id}">${p.name}</label>
+          <input type="number" id="rate-${p.id}" data-member="${p.id}"
+                 class="form-input sub-rating-input" min="0" max="10" step="0.1"
+                 value="${p.subRating ?? ''}" placeholder="e.g. 6.5">
+        </div>`).join('')
+
+      panel.innerHTML = `
+        <div class="sub-ratings-head">Rate the subs</div>
+        <p class="sub-ratings-note">
+          Where do they sit against tonight&rsquo;s players? Same scale as the
+          season average. Leave blank and the scheduler assumes mid-table.
+        </p>
+        <div class="sub-ratings-cols">
+          <div>
+            <div class="sub-ratings-sub">Tonight, strongest first</div>
+            <ul class="sub-ratings-ladder">${ladder || '<li>Nobody rated yet.</li>'}</ul>
+            ${rated.some(p => p.seasonAvg === null) ? '<div class="sub-ratings-key">* set by you, not played</div>' : ''}
+          </div>
+          <div>
+            <div class="sub-ratings-sub">Set a rating</div>
+            ${inputs || '<div class="sub-ratings-key">Nothing to rate.</div>'}
+            <button type="button" id="save-ratings" class="btn btn-secondary btn-sm">Save ratings</button>
+            <span id="ratings-status" class="sub-ratings-status"></span>
+          </div>
+        </div>`
+
+      document.getElementById('save-ratings')?.addEventListener('click', async () => {
+        const status = document.getElementById('ratings-status')
+        status.textContent = 'Saving…'
+        try {
+          for (const el of panel.querySelectorAll('.sub-rating-input')) {
+            await saveSubRating(el.dataset.member, el.value)
+          }
+          status.textContent = 'Saved'
+          renderRatingsPanel()
+        } catch (e) {
+          status.textContent = e.message
+        }
+      })
     }
 
     document.getElementById('add-sub-btn').addEventListener('click', () => {
@@ -175,7 +250,10 @@
       chosenSubs.set(sel.value, sel.selectedOptions[0].textContent)
       sel.value = ''
       renderSubChips()
+      renderRatingsPanel()
     })
+
+    select.addEventListener('change', renderRatingsPanel)
 
     loadSubOptions()
 
