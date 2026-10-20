@@ -164,6 +164,14 @@
   }
 
   // ── Open modal: fetch schedule + current-season members ───
+  // A schedule is worth offering for about a week after its night: long
+  // enough for a late entry, short enough to ignore a stale one.
+  function recentCutoff() {
+    const d = new Date()
+    d.setDate(d.getDate() - 8)
+    return d.toISOString().split('T')[0]
+  }
+
   async function openResultModal() {
     modal.style.display = 'flex'
     setTitle('Add Match Result')
@@ -172,7 +180,13 @@
     const [membersRes, seasonMembersRes, schedRes, lastMatchRes] = await Promise.all([
       supabase.from('members').select('id, full_name').order('full_name'),
       supabase.from('member_seasons').select('member_id').eq('season', CURRENT_SEASON),
-      supabase.from('scheduled_matches').select('*').order('played_on', { ascending: false }).limit(1).maybeSingle(),
+      // Only a recent schedule. Results are normally entered the morning
+      // after, so yesterday must still count — but a leftover row from a
+      // previous season must not drive the form, which is what happened
+      // with a March row still sitting there in October.
+      supabase.from('scheduled_matches').select('*')
+        .gte('played_on', recentCutoff())
+        .order('played_on', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('matches').select('week_label').eq('season', CURRENT_SEASON).order('played_on', { ascending: false }).limit(1).maybeSingle()
     ])
 
