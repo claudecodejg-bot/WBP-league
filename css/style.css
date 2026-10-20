@@ -2520,3 +2520,53 @@ footer {
 @media (max-width: 640px) {
   .sub-ratings-cols { grid-template-columns: 1fr; gap: 0.9rem; }
 }
+
+/* ── Court-by-court result entry ────────────────────────────────── */
+/* Teams at top and bottom with the set scores between, so the two
+   numbers for a set sit directly above each other instead of in
+   separate blocks at opposite ends of the form. */
+.court-entry-team { margin-bottom: 0.5rem; }
+.court-entry-players {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+.court-entry-scores {
+  display: grid;
+  grid-template-columns: 4.2rem repeat(3, 1fr);
+  gap: 0.35rem;
+  align-items: center;
+  margin: 0.65rem 0 0.9rem;
+  padding: 0.65rem;
+  background: var(--gray-100);
+  border-radius: 10px;
+}
+.ces-head {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gray-600);
+  text-align: center;
+}
+.ces-row-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+.court-entry-scores .ces-box {
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 0.45rem 0.25rem;
+  margin: 0;
+}
+/* Chrome/Safari spinners steal width in a narrow box and are useless
+   for a 0-7 entry. */
+.court-entry-scores .ces-box::-webkit-outer-spin-button,
+.court-entry-scores .ces-box::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.court-entry-scores .ces-box { -moz-appearance: textfield; appearance: textfield; }
