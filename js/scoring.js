@@ -16,6 +16,41 @@ export function isWinner(t1s1, t1s2, t1s3, t2s1, t2s2, t2s3) {
 }
 
 /**
+ * Orients a match so the winning side comes first.
+ *
+ * Results read better won-side-first — "6-1, 6-1" rather than "1-6, 1-6"
+ * from the losers' point of view. Which team is team1 is an artefact of
+ * how the scheduler happened to write the court, and means nothing.
+ *
+ * Returns { decided, t1won, sets } where sets are [winnerGames, loserGames]
+ * pairs. If neither side won two sets the match is not decided — a part-
+ * entered or abandoned match — and the original order is kept, because
+ * there is no winner to put first.
+ */
+export function winnerFirst(m) {
+  const t1won = isWinner(m.team1_set1, m.team1_set2, m.team1_set3,
+                         m.team2_set1, m.team2_set2, m.team2_set3)
+  const t2won = isWinner(m.team2_set1, m.team2_set2, m.team2_set3,
+                         m.team1_set1, m.team1_set2, m.team1_set3)
+  const decided = t1won !== t2won
+
+  const raw = [
+    [m.team1_set1, m.team2_set1],
+    [m.team1_set2, m.team2_set2],
+    [m.team1_set3, m.team2_set3]
+  ].filter(([a, b]) => a != null && b != null)
+
+  const flip = decided && !t1won
+  return {
+    decided,
+    t1won,
+    // true when the display should show team2 first
+    flip,
+    sets: raw.map(([a, b]) => (flip ? [b, a] : [a, b]))
+  }
+}
+
+/**
  * Adjusts a single set score for scoring purposes:
  * - 7-6 (tiebreak): winner gets 6, loser gets 5.5
  * - 7-x (won with 7, not a tiebreak): capped at 6

@@ -154,7 +154,7 @@
   import { initNav } from './js/auth.js?v=3bf86c6c'
   import { supabase, escapeHtml as esc } from './js/supabase-client.js?v=2d21059e'
   import { CURRENT_SEASON, NEXT_SEASON_LABEL, NEXT_SEASON_START } from './js/config.js?v=d0c3b471'
-  import { computeCurrentSeasonStats, isWinner, fmt } from './js/scoring.js?v=29666dc2'
+  import { computeCurrentSeasonStats, isWinner, fmt, winnerFirst } from './js/scoring.js?v=875c8034'
   import { fetchVinnys, leaderboard, attendeesOn, nightsHeld, NOT_A_PERSON } from './js/vinnys.js?v=e528c208'
   initNav('home')
 
@@ -440,27 +440,39 @@
     const n = night.length
     parts.push(`${n} match${n !== 1 ? 'es' : ''} played.`)
 
-    // A third set means it went the distance; if the winners dropped the
-    // first, it was a comeback.
+    // Don't let one match carry two sentences — a three-setter that was
+    // also the widest margin would otherwise be described twice.
+    const mentioned = new Set()
+    const winnerOf = m => (t1Won(m) ? pairName(m, 1, nameById) : pairName(m, 2, nameById))
+    const loserOf  = m => (t1Won(m) ? pairName(m, 2, nameById) : pairName(m, 1, nameById))
+
     const threeSetters = night.filter(m =>
       m.team1_set3 !== null && m.team1_set3 !== undefined)
 
+    // How many sets the losing side took. Three sets played but none won is
+    // a sweep, not a battle, so it must not be called close.
+    const setsWonByLoser = m => {
+      const t1 = t1Won(m)
+      return [[m.team1_set1, m.team2_set1], [m.team1_set2, m.team2_set2], [m.team1_set3, m.team2_set3]]
+        .filter(([a, b]) => a != null && b != null)
+        .filter(([a, b]) => (t1 ? b > a : a > b))
+        .length
+    }
+
     const comebacks = threeSetters.filter(m => {
-      const winnerIsT1 = t1Won(m)
       const t1TookSet1 = (m.team1_set1 || 0) > (m.team2_set1 || 0)
-      return winnerIsT1 !== t1TookSet1
+      return t1Won(m) !== t1TookSet1
     })
+    const close = threeSetters.filter(m => setsWonByLoser(m) > 0)
 
     if (comebacks.length > 0) {
       const m = comebacks[0]
-      const w = t1Won(m) ? pairName(m, 1, nameById) : pairName(m, 2, nameById)
-      const l = t1Won(m) ? pairName(m, 2, nameById) : pairName(m, 1, nameById)
-      parts.push(`<strong>${w}</strong> came from a set down to beat ${l} ${scoreLine(m)}.`)
-    } else if (threeSetters.length > 0) {
-      const m = threeSetters[0]
-      const w = t1Won(m) ? pairName(m, 1, nameById) : pairName(m, 2, nameById)
-      const l = t1Won(m) ? pairName(m, 2, nameById) : pairName(m, 1, nameById)
-      parts.push(`<strong>${w}</strong> needed three sets to see off ${l}, ${scoreLine(m)}.`)
+      mentioned.add(m)
+      parts.push(`<strong>${winnerOf(m)}</strong> came from a set down to beat ${loserOf(m)} ${scoreLine(m)}.`)
+    } else if (close.length > 0) {
+      const m = close[0]
+      mentioned.add(m)
+      parts.push(`<strong>${winnerOf(m)}</strong> needed three sets to see off ${loserOf(m)}, ${scoreLine(m)}.`)
     }
 
     // Widest winning margin on the night, as long as it was genuinely one-sided.
@@ -468,12 +480,10 @@
       const ga = gamesFor(a), gb = gamesFor(b)
       return Math.abs(gb.t1 - gb.t2) - Math.abs(ga.t1 - ga.t2)
     })
-    const top = byMargin[0]
-    const g   = gamesFor(top)
-    if (top && Math.abs(g.t1 - g.t2) >= 5 && !comebacks.includes(top)) {
-      const w = t1Won(top) ? pairName(top, 1, nameById) : pairName(top, 2, nameById)
-      const l = t1Won(top) ? pairName(top, 2, nameById) : pairName(top, 1, nameById)
-      parts.push(`The night&rsquo;s most emphatic win went to <strong>${w}</strong>, ${scoreLine(top)} over ${l}.`)
+    const top = byMargin.find(m => !mentioned.has(m))
+    const g   = top ? gamesFor(top) : null
+    if (top && Math.abs(g.t1 - g.t2) >= 5) {
+      parts.push(`The night&rsquo;s most emphatic win went to <strong>${winnerOf(top)}</strong>, ${scoreLine(top)} over ${loserOf(top)}.`)
     }
 
     return parts.join(' ')
@@ -498,20 +508,20 @@
     night.forEach((m, i) => {
       const t1 = [m.team1_player1, m.team1_player2].map(id => esc(nameById[id] || '?'))
       const t2 = [m.team2_player1, m.team2_player2].map(id => esc(nameById[id] || '?'))
-      const t1won = isWinner(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
 
-      const sets = []
-      if (m.team1_set1 != null) sets.push(`${m.team1_set1}\u2013${m.team2_set1}`)
-      if (m.team1_set2 != null) sets.push(`${m.team1_set2}\u2013${m.team2_set2}`)
-      if (m.team1_set3 != null) sets.push(`${m.team1_set3}\u2013${m.team2_set3}`)
+      // Winner first, scores from their side. Which pair the scheduler
+      // happened to write as team1 is meaningless to a reader.
+      const { decided, flip, sets } = winnerFirst(m)
+      const left  = flip ? t2 : t1
+      const right = flip ? t1 : t2
 
       html += `
         <div class="upcoming-match-card"${i < night.length - 1 ? ' style="margin-bottom:0.75rem;"' : ''}>
           <div class="upcoming-meta"><span class="upcoming-court">\u{1F3BE} Court ${i + 1}</span></div>
           <div class="upcoming-teams">
-            <div class="upcoming-team" style="${t1won ? 'font-weight:700;' : 'opacity:0.65;'}">${t1.join(' &amp; ')}${t1won ? ' \u2713' : ''}</div>
-            <div class="upcoming-vs">${sets.join(', ')}</div>
-            <div class="upcoming-team" style="text-align:right;${!t1won ? 'font-weight:700;' : 'opacity:0.65;'}">${t2.join(' &amp; ')}${!t1won ? ' \u2713' : ''}</div>
+            <div class="upcoming-team" style="${decided ? 'font-weight:700;' : ''}">${left.join(' &amp; ')}${decided ? ' \u2713' : ''}</div>
+            <div class="upcoming-vs">${sets.map(([a, b]) => `${a}\u2013${b}`).join(', ')}</div>
+            <div class="upcoming-team" style="text-align:right;${decided ? 'opacity:0.65;' : ''}">${right.join(' &amp; ')}</div>
           </div>
         </div>`
     })

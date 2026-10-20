@@ -86,8 +86,8 @@
   import { initNav, getCurrentMember } from './js/auth.js?v=3bf86c6c'
   import { supabase } from './js/supabase-client.js?v=2d21059e'
   import { CURRENT_SEASON, UNOFFICIAL_WEEKS } from './js/config.js?v=d0c3b471'
-  import { loadResults, knownSeasons } from './js/results.js?v=9c8852da'
-  import { matchScore, isWinner, fmt } from './js/scoring.js?v=29666dc2'
+  import { loadResults, knownSeasons } from './js/results.js?v=4ffec798'
+  import { matchScore, isWinner, fmt, winnerFirst } from './js/scoring.js?v=875c8034'
   initNav('results')
 
   const seasonSelect   = document.getElementById('season-select')
@@ -345,7 +345,21 @@
     const t1p1name = _members.find(m => m.id === document.getElementById('c-t1p1').value)?.full_name || 'Team 1'
     const t2p1name = _members.find(m => m.id === document.getElementById('c-t2p1').value)?.full_name || 'Team 2'
     preview.classList.remove('hidden')
-    preview.innerHTML = `<strong>${t1p1name}'s team:</strong> ${fmt(t1score)} ${t1won ? '✓ WIN' : 'loss'} &nbsp;|&nbsp; <strong>${t2p1name}'s team:</strong> ${fmt(t2score)} ${!t1won ? '✓ WIN' : 'loss'}`
+    // Mirror how the result will read once posted: winner first, scores
+    // from their side. Avoids entering something that looks right here and
+    // then appears reversed on the results page.
+    const { decided, flip, sets } = winnerFirst({
+      team1_set1: t1s1, team1_set2: t1s2, team1_set3: t1s3,
+      team2_set1: t2s1, team2_set2: t2s2, team2_set3: t2s3
+    })
+    const setStr = sets.map(([a, b]) => `${a}\u2013${b}`).join(', ')
+    const win  = flip ? { name: t2p1name, score: t2score } : { name: t1p1name, score: t1score }
+    const lose = flip ? { name: t1p1name, score: t1score } : { name: t2p1name, score: t2score }
+    preview.innerHTML = decided
+      ? `<strong>${win.name}'s team win</strong> ${setStr} &nbsp;|&nbsp; ` +
+        `${fmt(win.score)} to ${lose.name}'s ${fmt(lose.score)}`
+      : `<strong>${t1p1name}'s team:</strong> ${fmt(t1score)} &nbsp;|&nbsp; ` +
+        `<strong>${t2p1name}'s team:</strong> ${fmt(t2score)} &mdash; no winner yet`
   }
 
   async function saveCourtResult() {

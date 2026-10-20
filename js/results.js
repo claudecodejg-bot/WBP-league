@@ -4,7 +4,7 @@
 
 import { supabase, connectionErrorHtml } from './supabase-client.js'
 import { CURRENT_SEASON } from './config.js'
-import { isWinner, matchScore, fmt } from './scoring.js'
+import { isWinner, matchScore, fmt, winnerFirst } from './scoring.js'
 
 // Members + all matches are fetched once and cached, so switching seasons
 // re-renders instantly from memory. Pass { refresh: true } after inserting
@@ -86,27 +86,30 @@ export async function loadResults(season = CURRENT_SEASON, { refresh = false } =
         m.team2_player2 && memberMap[m.team2_player2] ? `<a href="player.html?id=${m.team2_player2}" class="player-link">${memberMap[m.team2_player2]}</a>` : null
       ].filter(Boolean).join(' & ')
 
-      // Build set score string e.g. "6-3, 6-4"
-      const sets = []
-      if (m.team1_set1 !== null && m.team2_set1 !== null) sets.push(`${m.team1_set1}–${m.team2_set1}`)
-      if (m.team1_set2 !== null && m.team2_set2 !== null) sets.push(`${m.team1_set2}–${m.team2_set2}`)
-      if (m.team1_set3 !== null && m.team2_set3 !== null) sets.push(`${m.team1_set3}–${m.team2_set3}`)
-      const setStr = sets.join(', ')
+      // Winner on the left, scores from their side: "6-3, 6-4", never
+      // "3-6, 4-6". An undecided match keeps the order it was entered in.
+      const { flip, sets: oriented } = winnerFirst(m)
+      const setStr = oriented.map(([a, b]) => `${a}–${b}`).join(', ')
+
+      const left   = flip ? { names: t2names, score: t2score, won: t2won }
+                          : { names: t1names, score: t1score, won: t1won }
+      const right  = flip ? { names: t1names, score: t1score, won: t1won }
+                          : { names: t2names, score: t2score, won: t2won }
 
       html += `
         <div class="match-card">
-          <div class="match-team ${t1won ? 'team-won' : 'team-lost'}">
-            ${t1won ? '<div class="winner-label">Winner</div>' : ''}
-            <div class="match-team-names">${t1names}</div>
-            <div class="match-team-score">Match score: ${fmt(t1score)}</div>
+          <div class="match-team ${left.won ? 'team-won' : 'team-lost'}">
+            ${left.won ? '<div class="winner-label">Winner</div>' : ''}
+            <div class="match-team-names">${left.names}</div>
+            <div class="match-team-score">Match score: ${fmt(left.score)}</div>
           </div>
           <div class="match-score-center">
             <div class="match-sets" style="font-size:0.95rem;font-weight:600;color:var(--gray-800);">${setStr}</div>
           </div>
-          <div class="match-team team-right ${t2won ? 'team-won' : 'team-lost'}">
-            ${t2won ? '<div class="winner-label">Winner</div>' : ''}
-            <div class="match-team-names">${t2names}</div>
-            <div class="match-team-score">Match score: ${fmt(t2score)}</div>
+          <div class="match-team team-right ${right.won ? 'team-won' : 'team-lost'}">
+            ${right.won ? '<div class="winner-label">Winner</div>' : ''}
+            <div class="match-team-names">${right.names}</div>
+            <div class="match-team-score">Match score: ${fmt(right.score)}</div>
           </div>
         </div>
       `
