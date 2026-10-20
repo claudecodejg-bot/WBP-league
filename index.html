@@ -382,7 +382,7 @@
       .toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
 
     // Only worth a season line once there is more than one night to compare.
-    // Names contain commas ("Jonson, R."), so a list of joint leaders reads
+    // Names can contain commas ("Zejda, D."), so a list of joint leaders reads
     // badly — only name a sole leader, and count the rest.
     const lead = holders.length === 1
       ? `<strong>${esc(holders[0])}</strong> leads the award on ${most} of ${nights} nights.`
