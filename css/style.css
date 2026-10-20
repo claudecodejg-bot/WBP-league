@@ -2570,3 +2570,11 @@ footer {
   margin: 0;
 }
 .court-entry-scores .ces-box { -moz-appearance: textfield; appearance: textfield; }
+
+/* Availability nudge, sitting under the latest result */
+.avail-nudge {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--gray-600);
+  margin: -0.4rem 0 1.5rem;
+}

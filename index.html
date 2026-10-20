@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=128364c5">
+  <link rel="stylesheet" href="css/style.css?v=b7e66d34">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -74,6 +74,7 @@
 
   <!-- Most recent night's scores (filled by JS once the season has results) -->
   <div id="latest-result-container"></div>
+  <div id="avail-nudge"></div>
 
   <div id="vinnys-container"></div>
 
@@ -329,10 +330,7 @@
             table[1] ? `, with <strong>${esc(table[1].name)}</strong> next at ${fmt(table[1].seasonAvg)}` : ''}.
             ${leader.usingRolling4 ? 'Early days &mdash; ratings still carry some of last season.' : ''}</p>` : ''}
         </div>
-        <a href="standings.html" class="welcome-cta">See the Full Table &rarr;</a>
-        <div class="welcome-cta-note">
-          Playing this week? <a href="availability.html" class="welcome-inline-link">Update your availability</a>.
-        </div>`
+        <a href="standings.html?season=${encodeURIComponent(CURRENT_SEASON)}" class="welcome-cta">See the Full Table &rarr;</a>`
     }
 
     // Stats become this-season figures.
@@ -510,6 +508,14 @@
     })
 
     document.getElementById('latest-result-container').innerHTML = html + '</div>'
+
+    // The nudge sits here rather than under the hero: right after the
+    // scores is when someone is thinking about next Monday.
+    document.getElementById('avail-nudge').innerHTML = `
+      <div class="avail-nudge">
+        Playing this week?
+        <a href="availability.html" class="welcome-inline-link">Update your availability</a>.
+      </div>`
   }
 
   function animate(el, target) {

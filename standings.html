@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/standings.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=128364c5">
+  <link rel="stylesheet" href="css/style.css?v=b7e66d34">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -82,7 +82,13 @@
   const container    = document.getElementById('standings-container')
   const seasonSelect = document.getElementById('season-select')
 
-  let _activeSeason = localStorage.getItem('activeSeason') || CURRENT_SEASON
+  // A ?season= in the URL wins over whatever was last viewed. Links that
+  // promise a particular table — "See the Full Table" on the home page —
+  // must land on it, not on the season this browser happened to leave
+  // the dropdown sitting on.
+  const _seasonParam = new URLSearchParams(location.search).get('season')
+  let _activeSeason = _seasonParam || localStorage.getItem('activeSeason') || CURRENT_SEASON
+  if (_seasonParam) localStorage.setItem('activeSeason', _seasonParam)
 
   // Sort state
   let _sortCol = 'seasonAvg'
