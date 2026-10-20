@@ -2574,7 +2574,13 @@ footer {
 /* Availability nudge, sitting under the latest result */
 .avail-nudge {
   text-align: center;
-  font-size: 0.9rem;
-  color: var(--gray-600);
-  margin: -0.4rem 0 1.5rem;
+  font-size: 1.15rem;
+  color: var(--gray-800);
+  margin: -0.2rem 0 1.6rem;
 }
+.avail-nudge-link {
+  color: #c62828;
+  font-weight: 800;
+  text-decoration: underline;
+}
+.avail-nudge-link:hover { color: #9b1c1c; }
