@@ -325,9 +325,9 @@
         <div class="season-welcome-body">
           ${summary ? `<p>${summary}</p>` : ''}
           ${leader ? `
-          <p><strong>${esc(leader.name)}</strong> leads the table on ${fmt(leader.seasonAvg)}${
-            table[1] ? `, with <strong>${esc(table[1].name)}</strong> next on ${fmt(table[1].seasonAvg)}` : ''}.
-            ${leader.usingRolling4 ? 'Early days &mdash; averages still carry some of last season.' : ''}</p>` : ''}
+          <p><strong>${esc(leader.name)}</strong> leads the table with a rating of ${fmt(leader.seasonAvg)}${
+            table[1] ? `, with <strong>${esc(table[1].name)}</strong> next at ${fmt(table[1].seasonAvg)}` : ''}.
+            ${leader.usingRolling4 ? 'Early days &mdash; ratings still carry some of last season.' : ''}</p>` : ''}
         </div>
         <a href="standings.html" class="welcome-cta">See the Full Table &rarr;</a>
         <div class="welcome-cta-note">
@@ -436,21 +436,11 @@
   function summariseNight(night, nameById) {
     if (night.length === 0) return ''
 
-    const parts = []
-    const n = night.length
-    parts.push(`${n} match${n !== 1 ? 'es' : ''} played.`)
-
-    // Don't let one match carry two sentences — a three-setter that was
-    // also the widest margin would otherwise be described twice.
-    const mentioned = new Set()
     const winnerOf = m => (t1Won(m) ? pairName(m, 1, nameById) : pairName(m, 2, nameById))
     const loserOf  = m => (t1Won(m) ? pairName(m, 2, nameById) : pairName(m, 1, nameById))
 
-    const threeSetters = night.filter(m =>
-      m.team1_set3 !== null && m.team1_set3 !== undefined)
-
-    // How many sets the losing side took. Three sets played but none won is
-    // a sweep, not a battle, so it must not be called close.
+    // Sets the losing side took. Three sets played but none won is a sweep,
+    // not a battle, so it must not be described as close.
     const setsWonByLoser = m => {
       const t1 = t1Won(m)
       return [[m.team1_set1, m.team2_set1], [m.team1_set2, m.team2_set2], [m.team1_set3, m.team2_set3]]
@@ -459,34 +449,27 @@
         .length
     }
 
-    const comebacks = threeSetters.filter(m => {
-      const t1TookSet1 = (m.team1_set1 || 0) > (m.team2_set1 || 0)
-      return t1Won(m) !== t1TookSet1
-    })
-    const close = threeSetters.filter(m => setsWonByLoser(m) > 0)
+    // One sentence per match, with the verb chosen from how it actually
+    // went — games margin and whether it was a comeback — so three courts
+    // do not read as three copies of the same line.
+    const describe = m => {
+      const threeSet  = m.team1_set3 !== null && m.team1_set3 !== undefined
+      const tookSet1  = (m.team1_set1 || 0) > (m.team2_set1 || 0)
+      const comeback  = threeSet && t1Won(m) !== tookSet1
+      const g         = gamesFor(m)
+      const margin    = Math.abs(g.t1 - g.t2)
 
-    if (comebacks.length > 0) {
-      const m = comebacks[0]
-      mentioned.add(m)
-      parts.push(`<strong>${winnerOf(m)}</strong> came from a set down to beat ${loserOf(m)} ${scoreLine(m)}.`)
-    } else if (close.length > 0) {
-      const m = close[0]
-      mentioned.add(m)
-      parts.push(`<strong>${winnerOf(m)}</strong> needed three sets to see off ${loserOf(m)}, ${scoreLine(m)}.`)
+      let verb
+      if (comeback)                            verb = 'came from a set down to beat'
+      else if (threeSet && setsWonByLoser(m))  verb = 'needed three sets to see off'
+      else if (margin >= 8)                    verb = 'were far too strong for'
+      else if (margin <= 2)                    verb = 'edged'
+      else                                     verb = 'beat'
+
+      return `<strong>${winnerOf(m)}</strong> ${verb} ${loserOf(m)} ${scoreLine(m)}.`
     }
 
-    // Widest winning margin on the night, as long as it was genuinely one-sided.
-    const byMargin = [...night].sort((a, b) => {
-      const ga = gamesFor(a), gb = gamesFor(b)
-      return Math.abs(gb.t1 - gb.t2) - Math.abs(ga.t1 - ga.t2)
-    })
-    const top = byMargin.find(m => !mentioned.has(m))
-    const g   = top ? gamesFor(top) : null
-    if (top && Math.abs(g.t1 - g.t2) >= 5) {
-      parts.push(`The night&rsquo;s most emphatic win went to <strong>${winnerOf(top)}</strong>, ${scoreLine(top)} over ${loserOf(top)}.`)
-    }
-
-    return parts.join(' ')
+    return night.map(describe).join(' ')
   }
 
   // Most recent night's scores.
