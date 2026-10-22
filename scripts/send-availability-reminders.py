@@ -50,6 +50,11 @@ SENDER = "WBP League <noreply@wbpleague.com>"
 SITE = "https://wbpleague.com/availability.html"
 TZ = ZoneInfo("America/New_York")
 
+# Cloudflare fronts Resend's API and blocks clients whose User-Agent looks
+# automated — urllib's default "Python-urllib/3.x" earns a 403 with error
+# code 1010, which never reaches Resend at all. Identify properly instead.
+USER_AGENT = "wbp-league-reminders/1.0 (+https://wbpleague.com)"
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_JS = os.path.join(ROOT, "js", "config.js")
 
@@ -134,6 +139,7 @@ def claim(monday, kind):
         headers={
             "apikey": SECRET, "Authorization": "Bearer " + SECRET,
             "Content-Type": "application/json", "Prefer": "return=minimal",
+            "User-Agent": USER_AGENT,
         }, method="POST")
     try:
         urllib.request.urlopen(req, timeout=30)
@@ -156,7 +162,8 @@ def release(monday, kind):
     url = "%s/reminder_log?week_start=eq.%s&kind=eq.%s" % (
         BASE, monday.isoformat(), kind)
     req = urllib.request.Request(
-        url, headers={"apikey": SECRET, "Authorization": "Bearer " + SECRET},
+        url, headers={"apikey": SECRET, "Authorization": "Bearer " + SECRET,
+                      "User-Agent": USER_AGENT},
         method="DELETE")
     try:
         urllib.request.urlopen(req, timeout=30)
@@ -171,6 +178,7 @@ def get(path):
             "apikey": SECRET,
             "Authorization": "Bearer " + SECRET,
             "Accept": "application/json",
+            "User-Agent": USER_AGENT,
         },
     )
     with urllib.request.urlopen(req, timeout=30) as r:
@@ -250,6 +258,7 @@ def send(to_addr, subject, html, text):
         headers={
             "Authorization": "Bearer " + RESEND_KEY,
             "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
         },
         method="POST",
     )
