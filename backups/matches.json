@@ -1207,6 +1207,23 @@
     "week_label": "Week 4"
   },
   {
+    "created_at": "2026-10-20T00:42:01.727913+00:00",
+    "id": "19bec556-5ec1-4284-bda3-5331e114d35f",
+    "played_on": "2026-10-19",
+    "season": "2026-27",
+    "team1_player1": "6cb7240f-4ce9-4891-943d-6493e9a38e89",
+    "team1_player2": "ae99d5a9-5403-4ad7-adca-5672d3dcb1c3",
+    "team1_set1": 5,
+    "team1_set2": 4,
+    "team1_set3": null,
+    "team2_player1": "afadabfe-5fd5-4053-b6da-af7049d2be28",
+    "team2_player2": "f90c40c0-93eb-4524-839a-e597159c77ea",
+    "team2_set1": 7,
+    "team2_set2": 6,
+    "team2_set3": null,
+    "week_label": "Week 2"
+  },
+  {
     "created_at": "2026-03-09T22:18:35.67382+00:00",
     "id": "19d86235-5b4c-4d48-af08-88402bfb4e2a",
     "played_on": "2021-02-10",
@@ -2667,6 +2684,23 @@
     "team2_set2": 7,
     "team2_set3": 6,
     "week_label": "Week 19"
+  },
+  {
+    "created_at": "2026-10-20T00:42:31.807839+00:00",
+    "id": "3563c495-6b57-40f2-be14-97f88ba8abfc",
+    "played_on": "2026-10-19",
+    "season": "2026-27",
+    "team1_player1": "15537aa0-2461-4428-83ca-af8115ad46f7",
+    "team1_player2": "843461ee-d25e-4466-9f56-dc75abbc4d7a",
+    "team1_set1": 7,
+    "team1_set2": 3,
+    "team1_set3": 0,
+    "team2_player1": "a676a7e1-3b6b-4f82-8461-80d4289f7a4e",
+    "team2_player2": "a5dab49e-a0fe-47e8-a015-4a782172b63e",
+    "team2_set1": 6,
+    "team2_set2": 6,
+    "team2_set3": 6,
+    "week_label": "Week 2"
   },
   {
     "created_at": "2026-03-09T22:18:35.67382+00:00",
