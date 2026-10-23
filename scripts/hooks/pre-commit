@@ -1,0 +1,59 @@
+#!/bin/sh
+#
+# Keeps the ?v= fingerprints in step with the files they point at.
+#
+# Without this, stamp-assets.py has to be run by hand before committing, and
+# forgetting it is silent: the pages keep pointing at the old fingerprints and
+# phones go on serving stale code. That is what made the scheduler show wrong
+# ratings, so it is worth having git do it rather than remembering.
+#
+# Installed by pointing git at this directory:
+#     git config core.hooksPath scripts/hooks
+# It is set per clone, so a fresh clone needs that line run once.
+
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "pre-commit: no python3, leaving fingerprints alone" >&2
+    exit 0
+fi
+
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+# A fingerprint is a hash of the file as it reads on disk. If a page or module
+# has edits that aren't being committed, the hash would describe content that
+# isn't going in either — and the next commit would bring that content back
+# under the same fingerprint, which is the stale-cache bug all over again.
+# So stop rather than commit a fingerprint that lies.
+dirty=$(git diff --name-only -- '*.js' '*.css' '*.html')
+if [ -n "$dirty" ]; then
+    echo "pre-commit: these have edits that aren't staged:" >&2
+    printf '%s\n' "$dirty" | sed 's/^/  /' >&2
+    echo "pre-commit: stage them (git add) or set them aside (git stash push)," >&2
+    echo "            otherwise the fingerprints would not match what is" >&2
+    echo "            committed. Nothing committed." >&2
+    exit 1
+fi
+
+# Files already edited but not staged. Anything dirty that wasn't on this list
+# afterwards was changed by the script just now, so it belongs in this commit.
+before=$(git diff --name-only)
+
+if ! output=$(python3 scripts/stamp-assets.py); then
+    echo "$output" >&2
+    echo "pre-commit: stamp-assets.py failed, nothing committed" >&2
+    exit 1
+fi
+
+after=$(git diff --name-only)
+restamped=$(printf '%s\n' "$after" | while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    printf '%s\n' "$before" | grep -Fxq "$file" || printf '%s\n' "$file"
+done)
+
+if [ -n "$restamped" ]; then
+    printf '%s\n' "$restamped" | tr '\n' '\0' | xargs -0 git add -- || exit 1
+    echo "pre-commit: refreshed fingerprints, added to this commit:"
+    printf '%s\n' "$restamped" | sed 's/^/  /'
+fi
+
+exit 0

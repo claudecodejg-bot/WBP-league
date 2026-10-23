@@ -98,6 +98,41 @@ Whenever you edit the code files:
 
 ---
 
+## Keeping the cache fingerprints current
+
+Every stylesheet and script is referenced with a `?v=` fingerprint — a short
+code taken from the file's contents, e.g. `js/scoring.js?v=bb2d1038`. Browsers
+decide what they already have by the URL, so changing the file changes its
+fingerprint and the new version is picked up straight away instead of being
+served from cache for hours.
+
+`scripts/stamp-assets.py` keeps those fingerprints in step, including the
+imports modules make of each other. A pre-commit hook runs it for you and adds
+any refreshed files to the commit, so there is normally nothing to do by hand.
+
+The hook stops the commit in two cases. If a script, stylesheet or page has
+edits you haven't staged, its fingerprint would describe code that isn't being
+committed — stage it with `git add`, or set it aside with `git stash push`. And
+if two modules end up importing each other, it says which ones and commits
+nothing.
+
+The hook lives in `scripts/hooks/` and git has to be pointed at it once per
+clone:
+
+```bash
+git config core.hooksPath scripts/hooks
+```
+
+To run the stamping on its own:
+
+```bash
+python3 scripts/stamp-assets.py
+```
+
+Running it twice is harmless — the second run reports nothing to update.
+
+---
+
 ## Pages overview
 
 | Page | URL | Who can see it |
