@@ -3,7 +3,7 @@
 // =============================================
 
 import { supabase }                from './supabase-client.js'
-import { SEASON_START, CURRENT_SEASON } from './config.js'
+import { SEASON_START, CURRENT_SEASON, MIN_SEED_MATCHES } from './config.js'
 import { upcomingWeeks } from './season-weeks.js'
 import { computeCurrentSeasonStats, isWinner } from './scoring.js'
 
@@ -97,6 +97,21 @@ async function getSeasonOutings(memberIds) {
 
 // Fetch ALL match history + scores; build partner/opp matrices (UUID-keyed)
 // and compute each playing player's season average.
+/**
+ * The number the scheduler balances on.
+ *
+ * An admin-set rating outranks a season average built on fewer than
+ * MIN_SEED_MATCHES matches. A sub who has played once has an average
+ * made of a single result — Song came out at 8.00 and Moyers at 4.23
+ * off one night each — which says far less than a considered rating.
+ * Once they have played enough for the average to mean something, their
+ * actual results take over and the rating stops being consulted.
+ */
+function effectiveScore(stats, rating) {
+  if (rating != null && stats.matchesPlayed < MIN_SEED_MATCHES) return rating
+  return stats.seasonAvg ?? rating ?? null
+}
+
 async function buildHistoryAndScores(playerIds, subRatings = {}) {
   const { data: allMatches, error } = await supabase
     .from('matches')
@@ -159,13 +174,10 @@ async function buildHistoryAndScores(playerIds, subRatings = {}) {
     incRecord(partnerRecord, t2[0], t2[1], !t1Won)
   }
 
-  // Season averages via the shared scoring module. A sub has no season
-  // average, so fall back to the rating an admin set for them; only if
-  // that is missing too does the caller's default apply.
   const scores = {}
   for (const id of playerIds) {
     const stats = computeCurrentSeasonStats(id, curMatches, priorMatches)
-    scores[id]  = stats.seasonAvg ?? subRatings[id] ?? null
+    scores[id]  = effectiveScore(stats, subRatings[id])
   }
 
   return { partnerCount, oppCount, partnerRecord, scores }
@@ -358,15 +370,21 @@ export async function getPoolRatings(weekStart, subIds = []) {
   const ratings = await getSubRatings(ids)
 
   return pool.map(p => {
-    const avg = computeCurrentSeasonStats(p.id, cur, prior).seasonAvg
+    const stats  = computeCurrentSeasonStats(p.id, cur, prior)
+    const rating = ratings[p.id] ?? null
+    // Same rule the algorithm uses, so the ladder cannot promise one
+    // number and the pairings quietly use another.
+    const effective = effectiveScore(stats, rating)
     return {
       id: p.id,
       name: p.name,
       isSub: !!p.isSub,
-      seasonAvg: avg ?? null,
-      subRating: ratings[p.id] ?? null,
-      // What the scheduler will actually balance on.
-      effective: avg ?? ratings[p.id] ?? null
+      seasonAvg: stats.seasonAvg ?? null,
+      matchesPlayed: stats.matchesPlayed,
+      subRating: rating,
+      effective,
+      // True when the admin's rating is what is being used.
+      usingRating: rating != null && effective === rating
     }
   }).sort((a, b) => (b.effective ?? -Infinity) - (a.effective ?? -Infinity))
 }

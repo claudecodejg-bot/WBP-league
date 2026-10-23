@@ -102,8 +102,9 @@
 <script type="module">
   import { requireLogin, getCurrentMember, initNav } from './js/auth.js?v=3bf86c6c'
   import { generateSchedule, getUpcomingWeeks, formatWeekLabel, getSubCandidates,
-         getPoolRatings, saveSubRating } from './js/scheduler.js?v=ca69984b'
+         getPoolRatings, saveSubRating } from './js/scheduler.js?v=6e98c69e'
   import { supabase } from './js/supabase-client.js?v=2d21059e'
+  import { MIN_SEED_MATCHES } from './js/config.js?v=d0c3b471'
 
   ;(async () => {
     initNav('scheduler')
@@ -196,9 +197,9 @@
       const needing = pool.filter(p => p.effective === null || p.isSub)
 
       const ladder = rated.map(p => `
-        <li class="${p.isSub ? 'is-sub' : ''}">
+        <li class="${p.usingRating ? 'is-sub' : ''}">
           <span>${p.name}</span>
-          <span class="sub-ratings-num">${p.effective.toFixed(2)}${p.seasonAvg === null ? ' *' : ''}</span>
+          <span class="sub-ratings-num">${p.effective.toFixed(2)}${p.usingRating ? ' *' : ''}</span>
         </li>`).join('')
 
       const inputs = needing.map(p => `
@@ -219,7 +220,7 @@
           <div>
             <div class="sub-ratings-sub">Tonight, strongest first</div>
             <ul class="sub-ratings-ladder">${ladder || '<li>Nobody rated yet.</li>'}</ul>
-            ${rated.some(p => p.seasonAvg === null) ? '<div class="sub-ratings-key">* set by you, not played</div>' : ''}
+            ${rated.some(p => p.usingRating) ? '<div class="sub-ratings-key">* your rating, used until they have ' + MIN_SEED_MATCHES + ' matches</div>' : ''}
           </div>
           <div>
             <div class="sub-ratings-sub">Set a rating</div>
