@@ -5,8 +5,8 @@
 //  is read-only and public; recording attendance lives in results.html
 //  behind the admin check.
 // =============================================
-import { supabase } from './supabase-client.js'
-import { SEASON_START } from './config.js'
+import { supabase } from './supabase-client.js?v=2d21059e'
+import { SEASON_START } from './config.js?v=d0c3b471'
 
 /**
  * Attendance rows for a season, newest night first.

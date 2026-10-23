@@ -2,10 +2,10 @@
 //  Admin panel logic
 // =============================================
 
-import { supabase } from './supabase-client.js'
-import { CURRENT_SEASON } from './config.js'
-import { isWinner, matchScore, fmt } from './scoring.js'
-import { loadAdminAvailability } from './availability.js'
+import { supabase } from './supabase-client.js?v=2d21059e'
+import { CURRENT_SEASON } from './config.js?v=d0c3b471'
+import { isWinner, matchScore, fmt } from './scoring.js?v=bb2d1038'
+import { loadAdminAvailability } from './availability.js?v=5ca6be39'
 
 let allMembers = []
 

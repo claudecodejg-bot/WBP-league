@@ -2,7 +2,7 @@
 //  Auth helpers — used by all protected pages
 // =============================================
 
-import { supabase } from './supabase-client.js'
+import { supabase } from './supabase-client.js?v=2d21059e'
 
 /** Returns the current session, or null if not logged in. */
 export async function getSession() {

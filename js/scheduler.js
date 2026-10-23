@@ -2,10 +2,10 @@
 //  Match Scheduler — pairing generation logic
 // =============================================
 
-import { supabase }                from './supabase-client.js'
-import { SEASON_START, CURRENT_SEASON, MIN_SEED_MATCHES } from './config.js'
-import { upcomingWeeks } from './season-weeks.js'
-import { computeCurrentSeasonStats, isWinner } from './scoring.js'
+import { supabase }                from './supabase-client.js?v=2d21059e'
+import { SEASON_START, CURRENT_SEASON, MIN_SEED_MATCHES } from './config.js?v=d0c3b471'
+import { upcomingWeeks } from './season-weeks.js?v=5b5511c4'
+import { computeCurrentSeasonStats, isWinner } from './scoring.js?v=bb2d1038'
 
 const ITERATIONS     = 2000          // random sampling iterations
 const BALANCE_WEIGHT = 3             // penalty per 1-pt team score differential

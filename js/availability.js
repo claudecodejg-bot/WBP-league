@@ -2,9 +2,9 @@
 //  Availability page logic
 // =============================================
 
-import { supabase, escapeHtml } from './supabase-client.js'
-import { CURRENT_SEASON } from './config.js'
-import { upcomingWeeks, isUnofficialWeek } from './season-weeks.js'
+import { supabase, escapeHtml } from './supabase-client.js?v=2d21059e'
+import { CURRENT_SEASON } from './config.js?v=d0c3b471'
+import { upcomingWeeks, isUnofficialWeek } from './season-weeks.js?v=5b5511c4'
 
 /**
  * Returns the Monday of the week containing `date`.
