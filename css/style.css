@@ -2647,3 +2647,9 @@ footer {
   font-weight: 700;
   color: var(--gray-800);
 }
+
+/* The home hero ships with pre-season copy in the HTML. It stays hidden
+   until the script has decided which version is correct, so the page
+   never paints a stale banner and then corrects itself. Space is held so
+   nothing below jumps. */
+.season-welcome.is-pending { visibility: hidden; }

@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=098d1787">
+  <link rel="stylesheet" href="css/style.css?v=3a2449ac">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -79,7 +79,7 @@
   <div id="vinnys-container"></div>
 
   <!-- New season welcome -->
-  <section class="season-welcome">
+  <section class="season-welcome is-pending">
     <div class="season-welcome-eyebrow">Welcome Back</div>
     <h1 class="season-welcome-title">The <span>2026&ndash;27</span> Season Starts 12 October</h1>
     <p class="season-welcome-sub">Wee Burn &amp; Woodway &mdash; paddle tennis since 2004</p>
@@ -172,6 +172,29 @@
       </div>`).join('')
   }
 
+  // '2026-27' reads as '2026–27' in prose, matching the static copy.
+  const seasonLabel = esc(CURRENT_SEASON).replace('-', '\u2013')
+
+  // The pre-season copy below is baked into the HTML, so it paints before
+  // Supabase has answered. Once the season has started that copy is wrong,
+  // and the page was visibly correcting itself a second later. Decide from
+  // the clock first — that needs no network — and only then reveal.
+  function primeHero() {
+    const hero = document.querySelector('.season-welcome')
+    if (!hero) return
+    if (Date.now() >= NEXT_SEASON_START.getTime()) {
+      // Heading only. The body is filled in once the data lands, so nothing
+      // on screen has to be taken back.
+      hero.innerHTML = `
+        <div class="season-welcome-eyebrow">Season Underway</div>
+        <h1 class="season-welcome-title">The <span>${seasonLabel}</span> Season</h1>
+        <p class="season-welcome-sub">Wee Burn &amp; Woodway &mdash; paddle tennis since 2004</p>
+        <a href="standings.html?season=${encodeURIComponent(CURRENT_SEASON)}" class="welcome-cta">See the Full Table &rarr;</a>`
+    }
+    hero.classList.remove('is-pending')
+  }
+  primeHero()
+
   renderCountdown()
   setInterval(renderCountdown, 60000)
 
@@ -262,9 +285,6 @@
     renderLatestResult(current, nameById)
     renderVinnys(current, nameById)
   }
-
-  // '2026-27' reads as '2026–27' in prose, matching the static copy.
-  const seasonLabel = esc(CURRENT_SEASON).replace('-', '\u2013')
 
   // Between the first ball and the first result being entered.
   function justStartedHero() {
