@@ -14,7 +14,7 @@
   <meta property="og:url" content="https://wbpleague.com/scheduler.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=54a01a97">
+  <link rel="stylesheet" href="css/style.css?v=7a909b67">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -67,6 +67,7 @@
       </div>
       <div id="sub-chips" class="scheduler-sub-chips"></div>
       <div id="sub-ratings" class="sub-ratings hidden"></div>
+      <div id="sit-out-picker" class="sit-out-picker hidden"></div>
       <p class="scheduler-sub-hint">
         Optional. Add fill-ins so everyone playing is included &mdash; four players make a court.
       </p>
@@ -102,7 +103,7 @@
 <script type="module">
   import { requireLogin, getCurrentMember, initNav } from './js/auth.js?v=81b26575'
   import { generateSchedule, getUpcomingWeeks, formatWeekLabel, getSubCandidates,
-         getPoolRatings, saveSubRating } from './js/scheduler.js?v=1d366531'
+         getPoolRatings, saveSubRating } from './js/scheduler.js?v=6a095658'
   import { supabase } from './js/supabase-client.js?v=2d21059e'
   import { MIN_SEED_MATCHES } from './js/config.js?v=d0c3b471'
 
@@ -170,6 +171,63 @@
           chosenSubs.delete(btn.dataset.remove)
           renderSubChips()
           renderRatingsPanel()
+          renderSitOutPicker()
+        }))
+    }
+
+    // ── Step aside ──────────────────────────────────────────────────
+    // Someone volunteering to sit out is a decision about the night, not
+    // something to infer from outing counts — so the admin names them and
+    // the algorithm fills the rest of the sit-outs as usual. They keep
+    // their availability either way, which is what the Homie award counts.
+    const steppingAside = new Set()
+
+    async function renderSitOutPicker() {
+      const panel = document.getElementById('sit-out-picker')
+      if (!select.value) { panel.classList.add('hidden'); return }
+
+      let pool
+      try {
+        pool = await getPoolRatings(new Date(select.value + 'T12:00:00'),
+                                    [...chosenSubs.keys()])
+      } catch (e) {
+        panel.classList.add('hidden')
+        return
+      }
+      if (pool.length === 0) { panel.classList.add('hidden'); return }
+
+      // Drop anyone no longer in the pool, or the count below goes wrong.
+      const ids = new Set(pool.map(p => p.id))
+      for (const id of [...steppingAside]) if (!ids.has(id)) steppingAside.delete(id)
+
+      const remaining = pool.length - steppingAside.size
+      const courts    = Math.floor(remaining / 4)
+      const spare     = remaining - courts * 4
+
+      panel.classList.remove('hidden')
+      panel.innerHTML = `
+        <div class="sit-out-head">Anyone stepping aside?</div>
+        <p class="sit-out-note">
+          ${pool.length} available${chosenSubs.size ? ' (including subs)' : ''}.
+          Tick anyone who has offered to sit out &mdash; the rest of the
+          sit-outs are worked out from outings as usual.
+        </p>
+        <div class="sit-out-names">
+          ${pool.map(p => `
+            <label class="sit-out-pick${steppingAside.has(p.id) ? ' is-out' : ''}">
+              <input type="checkbox" data-sit="${p.id}"${steppingAside.has(p.id) ? ' checked' : ''}>
+              <span>${p.name}</span>
+            </label>`).join('')}
+        </div>
+        <div class="sit-out-maths">
+          ${remaining} playing &rarr; <strong>${courts} court${courts !== 1 ? 's' : ''}</strong>${
+            spare ? `, ${spare} more sitting out` : ''}
+        </div>`
+
+      panel.querySelectorAll('[data-sit]').forEach(cb =>
+        cb.addEventListener('change', () => {
+          cb.checked ? steppingAside.add(cb.dataset.sit) : steppingAside.delete(cb.dataset.sit)
+          renderSitOutPicker()
         }))
     }
 
@@ -252,9 +310,11 @@
       sel.value = ''
       renderSubChips()
       renderRatingsPanel()
+      renderSitOutPicker()
     })
 
-    select.addEventListener('change', renderRatingsPanel)
+    select.addEventListener('change', () => { renderRatingsPanel(); renderSitOutPicker() })
+    renderSitOutPicker()
 
     loadSubOptions()
 
@@ -272,7 +332,7 @@
 
       try {
         const weekStart = new Date(select.value + 'T12:00:00')
-        const result    = await generateSchedule(weekStart, [...chosenSubs.keys()])
+        const result    = await generateSchedule(weekStart, [...chosenSubs.keys()], [...steppingAside])
 
         if (result.error) {
           resultsDiv.innerHTML = `<div class="alert alert-error">${result.error}</div>`
@@ -396,7 +456,7 @@
   function renderResults(result, container) {
     currentResult = result
     const {
-      weekStart, available, playing, sittingOut, tiebreakUsed,
+      weekStart, available, playing, sittingOut, forced, tiebreakUsed,
       outings, options, idToName, scores, partnerCount, oppCount, partnerRecord
     } = result
 
@@ -419,10 +479,11 @@
       html += `<div class="sitout-card card">`
       html += `<div class="sitout-header">Sitting Out This Week</div>`
       html += `<div class="sitout-players">`
+      const forcedIds = new Set((forced || []).map(f => f.id))
       sittingOut.forEach(p => {
         const o = outings[p.id] || 0
         html += `<div class="sitout-player">
-          <span class="sitout-name">${p.name}</span>
+          <span class="sitout-name">${p.name}${forcedIds.has(p.id) ? ' <span class="sitout-chosen">stepped aside</span>' : ''}</span>
           <span class="sitout-outings">${o} outing${o !== 1 ? 's' : ''} this season</span>
         </div>`
       })

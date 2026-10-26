@@ -2584,3 +2584,59 @@ footer {
   text-decoration: underline;
 }
 .avail-nudge-link:hover { color: #9b1c1c; }
+
+/* ── Step aside picker (scheduler) ──────────────────────────────── */
+.sit-out-picker {
+  margin-top: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid var(--gray-400);
+  border-radius: 10px;
+  background: var(--white);
+}
+.sit-out-picker.hidden { display: none; }
+.sit-out-head { font-weight: 800; margin-bottom: 0.2rem; }
+.sit-out-note {
+  color: var(--gray-600);
+  font-size: 0.83rem;
+  line-height: 1.5;
+  margin: 0 0 0.7rem;
+}
+.sit-out-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.sit-out-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: var(--gray-100);
+}
+.sit-out-pick input { margin: 0; }
+.sit-out-pick.is-out {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+.sit-out-maths {
+  margin-top: 0.7rem;
+  font-size: 0.88rem;
+  color: var(--gray-800);
+}
+.sitout-chosen {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  margin-left: 0.35rem;
+}

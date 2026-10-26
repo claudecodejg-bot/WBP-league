@@ -294,29 +294,41 @@ function generateOptions(playerIds, partnerCount, oppCount, scores, partnerRecor
 
 // ── Sit-out logic ─────────────────────────────
 
-function determinePlayers(available, outings) {
-  const numCourts  = Math.floor(available.length / 4)
+function determinePlayers(available, outings, forcedSitOutIds = []) {
+  // Anyone the admin has stood down comes out first. Someone offering to
+  // step aside is a decision about the night, not something to work out
+  // from outing counts.
+  const forcedSet  = new Set(forcedSitOutIds)
+  const stoodDown  = available.filter(p => forcedSet.has(p.id))
+  const rest       = available.filter(p => !forcedSet.has(p.id))
+
+  const numCourts  = Math.floor(rest.length / 4)
   const numPlaying = numCourts * 4
-  const numSitOut  = available.length - numPlaying
+  const numSitOut  = rest.length - numPlaying
 
   if (numSitOut === 0) {
-    return { playing: available, sittingOut: [], tiebreakUsed: false }
+    return { playing: rest, sittingOut: stoodDown, forced: stoodDown, tiebreakUsed: false }
   }
 
-  // Sort descending by outings — those with most outings sit out
-  const sorted = [...available].sort((a, b) => {
+  // Of those left, most outings this season sit out.
+  const sorted = [...rest].sort((a, b) => {
     const diff = (outings[b.id] || 0) - (outings[a.id] || 0)
     return diff !== 0 ? diff : Math.random() - 0.5
   })
 
-  const sittingOut = sorted.slice(0, numSitOut)
+  const autoSitOut = sorted.slice(0, numSitOut)
   const playing    = sorted.slice(numSitOut)
 
   const boundaryCount = outings[sorted[numSitOut - 1]?.id] || 0
   const nextCount     = outings[sorted[numSitOut]?.id]     || 0
   const tiebreakUsed  = boundaryCount === nextCount
 
-  return { playing, sittingOut, tiebreakUsed }
+  return {
+    playing,
+    sittingOut: [...stoodDown, ...autoSitOut],
+    forced: stoodDown,
+    tiebreakUsed
+  }
 }
 
 // ── Main export ───────────────────────────────
@@ -397,7 +409,7 @@ export async function saveSubRating(memberId, rating) {
   if (error) throw new Error('Could not save rating: ' + error.message)
 }
 
-export async function generateSchedule(weekStart, subIds = []) {
+export async function generateSchedule(weekStart, subIds = [], sitOutIds = []) {
   const responded = await getAvailableMembers(weekStart)
 
   // Subs join the pool. Anyone who also marked themselves available is
@@ -426,7 +438,7 @@ export async function generateSchedule(weekStart, subIds = []) {
   const memberIds = available.map(m => m.id)
   const outings   = await getSeasonOutings(memberIds)
 
-  const { playing, sittingOut, tiebreakUsed } = determinePlayers(available, outings)
+  const { playing, sittingOut, forced, tiebreakUsed } = determinePlayers(available, outings, sitOutIds)
 
   const playerIds = playing.map(p => p.id)
   const subRatings = await getSubRatings(playerIds)
@@ -444,6 +456,7 @@ export async function generateSchedule(weekStart, subIds = []) {
     subs,
     playing,
     sittingOut,
+    forced,
     tiebreakUsed,
     outings,
     options,
