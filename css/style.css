@@ -2640,3 +2640,10 @@ footer {
   border-radius: 999px;
   margin-left: 0.35rem;
 }
+
+/* Match time in the Next Up block — was --gray-400, near-invisible */
+.upcoming-time {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gray-800);
+}

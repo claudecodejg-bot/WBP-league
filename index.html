@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=7a909b67">
+  <link rel="stylesheet" href="css/style.css?v=098d1787">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -213,7 +213,7 @@
         <div class="upcoming-match-card"${i < courts.length - 1 ? ' style="margin-bottom:0.75rem;"' : ''}>
           <div class="upcoming-meta">
             <span class="upcoming-court">🎾 Court ${i + 1} &mdash; ${esc(location)}</span>
-            <span style="font-size:0.75rem;color:var(--gray-400);">${esc(time)}</span>
+            <span class="upcoming-time">${esc(time)}</span>
           </div>
           <div class="upcoming-teams">
             <div class="upcoming-team">${esc(p1)} &amp; ${esc(p2)}</div>
