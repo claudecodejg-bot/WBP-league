@@ -24,36 +24,36 @@
       {
         "location": "Woodway CC",
         "team1": [
-          "Rayhill",
-          "D'Acunto"
-        ],
-        "team2": [
-          "Dolan",
-          "Luecke"
-        ],
-        "time": "7:00 PM"
-      },
-      {
-        "location": "Woodway CC",
-        "team1": [
-          "Grills",
-          "Walsh"
-        ],
-        "team2": [
           "Moyers",
           "Napolitano"
         ],
+        "team2": [
+          "Grills",
+          "Walsh"
+        ],
+        "time": "6:30 PM"
+      },
+      {
+        "location": "Woodway CC",
+        "team1": [
+          "Adams",
+          "McGurren"
+        ],
+        "team2": [
+          "Baum",
+          "Dolcetti"
+        ],
         "time": "7:00 PM"
       },
       {
         "location": "Woodway CC",
         "team1": [
-          "Baum",
-          "Ridder"
+          "Dolan",
+          "Luecke"
         ],
         "team2": [
-          "Dolcetti",
-          "McGurren"
+          "D'Acunto",
+          "Rayhill"
         ],
         "time": "7:00 PM"
       }
