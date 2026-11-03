@@ -39,6 +39,11 @@ TABLES = {
     "matches":           ("*", "id"),
     "member_seasons":    ("*", "id"),
     "scheduled_matches": ("*", "id"),
+    # Who went out after a match night. Added once members could record
+    # these themselves: a night is saved by clearing it and re-inserting,
+    # so any signed-in member can wipe one. This is the only snapshot
+    # standing behind that.
+    "vinnys":            ("*", "id"),
     # Restricted on purpose — these are the only member columns the public
     # key can read, and the only ones safe for a public repo.
     "members":           ("id,full_name,is_guest", "id"),
