@@ -555,6 +555,10 @@
   seasonSelect.addEventListener('change', () => {
     _activeSeason = seasonSelect.value
     localStorage.setItem('activeSeason', _activeSeason)
+    // Drop the previous season's awards before anything renders, or the
+    // table paints with them and only corrects once the fetch returns.
+    _homie = []
+    _vinnysRecorded = []
     loadStandings()
     refreshAwards()
   })
@@ -578,7 +582,10 @@
     ])
     _homie = homie
     _vinnysRecorded = recorded
-    if (_homie.length > 0 || _vinnysRecorded.length > 0) renderTables()
+    // Always redraw. A season can legitimately have no award at all now,
+    // and skipping the render on an empty result left the previous
+    // season's board on screen.
+    renderTables()
   }
 
   function loadStandings() {
