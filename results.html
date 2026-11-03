@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/results.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=c373f998">
+  <link rel="stylesheet" href="css/style.css?v=d2ea6f8e">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -93,13 +93,20 @@
   const seasonSelect   = document.getElementById('season-select')
   let _activeSeason    = localStorage.getItem('activeSeason') || CURRENT_SEASON
 
-  // ── Admin button ──────────────────────────────────────────
+  // ── Who is signed in ──────────────────────────────────────
+  // Entering a score is open to the whole league: on a night Grills is not
+  // playing, somebody still has to put the results in. Changing or deleting
+  // one stays with the admin, both here and in the database.
+  let _member = null
   getCurrentMember().then(member => {
-    if (member?.is_admin) {
-      const btn = document.getElementById('add-result-btn')
-      btn.style.display = ''
-      btn.addEventListener('click', openResultModal)
+    _member = member
+    if (!member) return
 
+    const btn = document.getElementById('add-result-btn')
+    btn.style.display = ''
+    btn.addEventListener('click', openResultModal)
+
+    if (member.is_admin) {
       const vb = document.getElementById('vinnys-btn')
       vb.style.display = ''
       vb.addEventListener('click', () => openVinnysModal())
@@ -108,7 +115,9 @@
 
   // ── Modal state ───────────────────────────────────────────
   let _schedule        = null   // scheduled_matches row
-  let _courtIdx        = 0
+  let _picked          = []    // court indexes chosen to enter, in order
+  let _pos             = 0     // how far through _picked we are
+  let _entered         = new Set()  // court indexes already in the database
   let _skipped         = []    // court numbers left unrecorded this pass
   let _members         = []     // current-season members only
   let _memberNameToId  = {}
@@ -230,6 +239,32 @@
     return d.toISOString().split('T')[0]
   }
 
+  // Which of the night's scheduled courts are already in the database.
+  // Matched on the four players rather than court order, since whoever
+  // entered it may have had the teams the other way round.
+  async function enteredCourts(playedOn) {
+    const done = new Set()
+    if (!_schedule?.courts?.length || !playedOn) return done
+
+    const { data, error } = await supabase.from('matches')
+      .select('team1_player1, team1_player2, team2_player1, team2_player2')
+      .eq('played_on', playedOn)
+    if (error) return done
+
+    const fingerprint = ids => ids.filter(Boolean).sort().join('|')
+    const recorded = new Set((data || []).map(m => fingerprint(
+      [m.team1_player1, m.team1_player2, m.team2_player1, m.team2_player2])))
+
+    _schedule.courts.forEach((court, i) => {
+      const ids = [...(court.team1 || []), ...(court.team2 || [])]
+        .map(name => _memberNameToId[name])
+      if (ids.length === 4 && ids.every(Boolean) && recorded.has(fingerprint(ids))) {
+        done.add(i)
+      }
+    })
+    return done
+  }
+
   async function openResultModal() {
     modal.style.display = 'flex'
     setTitle('Add Match Result')
@@ -260,12 +295,18 @@
 
     _members = allMembers.filter(m => activeIds.has(m.id) || scheduled.has(m.full_name))
     _memberNameToId = Object.fromEntries(allMembers.map(m => [m.full_name, m.id]))
-    _courtIdx  = 0
+    _picked    = []
+    _pos       = 0
     _skipped   = []
 
     // The week comes from the date, worked out rather than asked for.
     _playedOn  = _schedule?.played_on || todayLocal()
     _weekLabel = await weekLabelFor(_playedOn)
+
+    // Now that anyone can enter a score, two people may reach for the same
+    // court. Find what is already recorded for the night so those courts can
+    // be shown as done rather than offered again.
+    _entered = await enteredCourts(_playedOn)
 
     if (_schedule?.courts?.length > 0) {
       renderSetupStep()
@@ -278,20 +319,44 @@
   function renderSetupStep() {
     setTitle('Add Match Result')
     const courts = _schedule.courts
-    const summary = courts.map((c, i) => `
-      <div style="padding:0.35rem 0;border-bottom:1px solid var(--gray-100);font-size:0.85rem;">
-        <strong>Court ${i + 1}</strong>${c.location ? ' — ' + c.location : ''}
-        <span style="color:var(--gray-500);margin:0 0.4rem;">·</span>
-        ${c.team1.join(' & ')} <span style="color:var(--gray-400);">vs</span> ${c.team2.join(' & ')}
-      </div>`).join('')
+    // Which courts is this person entering? They may have played one of
+    // three and have no business guessing at the other two, so nothing is
+    // ticked by default except the court they are on. Check all is there
+    // for whoever is doing the whole night.
+    const myName = _member?.full_name
+    const playingOn = i => {
+      if (!myName) return false
+      const c = courts[i]
+      return [...(c.team1 || []), ...(c.team2 || [])].includes(myName)
+    }
+
+    const picker = courts.map((c, i) => {
+      const done = _entered.has(i)
+      const mine = !done && playingOn(i)
+      return `
+      <label class="court-pick${done ? ' court-pick-done' : ''}">
+        <input type="checkbox" class="s-pick" data-idx="${i}"
+               ${mine ? 'checked' : ''} ${done ? 'disabled' : ''}>
+        <span class="court-pick-body">
+          <span class="court-pick-title">Court ${i + 1}${c.location ? ' — ' + c.location : ''}${c.time ? ' · ' + c.time : ''}</span>
+          <span class="court-pick-teams">${c.team1.join(' &amp; ')} <span class="court-pick-vs">vs</span> ${c.team2.join(' &amp; ')}</span>
+        </span>
+        ${done ? '<span class="court-pick-flag">Already entered</span>' : ''}
+      </label>`
+    }).join('')
+
+    const outstanding = courts.length - _entered.size
 
     setScreen(`
       <div id="setup-alert" class="alert hidden"></div>
-      <div style="background:var(--gray-100);border-radius:var(--radius);padding:0.75rem 1rem;margin-bottom:1rem;">
-        <div style="font-size:0.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;">
-          Scheduled — ${courts.length} Court${courts.length > 1 ? 's' : ''}
+      <div class="court-pick-wrap">
+        <div class="court-pick-head">
+          <span>Which courts are you scoring?</span>
+          ${outstanding > 1 ? `<label class="court-pick-all">
+            <input type="checkbox" id="s-pick-all"> Check all
+          </label>` : ''}
         </div>
-        ${summary}
+        ${picker}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
         ${weekField('s-week-display', _weekLabel)}
@@ -301,7 +366,30 @@
         </div>
       </div>`,
     `<button id="setup-cancel" class="btn btn-secondary">Cancel</button>
-     <button id="setup-start"  class="btn btn-primary">Start Court 1 →</button>`)
+     <button id="setup-start"  class="btn btn-primary">Enter Scores →</button>`)
+
+    const boxes   = [...document.querySelectorAll('.s-pick')]
+    const pickAll = document.getElementById('s-pick-all')
+    const startBtn = document.getElementById('setup-start')
+
+    function syncStart() {
+      const n = boxes.filter(b => b.checked).length
+      startBtn.disabled = n === 0
+      startBtn.textContent = n === 0
+        ? 'Enter Scores →'
+        : `Enter ${n} Court${n > 1 ? 's' : ''} →`
+      if (pickAll) {
+        const open = boxes.filter(b => !b.disabled)
+        pickAll.checked = open.length > 0 && open.every(b => b.checked)
+      }
+    }
+
+    boxes.forEach(b => b.addEventListener('change', syncStart))
+    pickAll?.addEventListener('change', e => {
+      boxes.forEach(b => { if (!b.disabled) b.checked = e.target.checked })
+      syncStart()
+    })
+    syncStart()
 
     // The date can still be corrected — a night can be rained off to the
     // Tuesday — and the week follows it.
@@ -312,23 +400,30 @@
     })
 
     document.getElementById('setup-cancel').addEventListener('click', closeModal)
-    document.getElementById('setup-start').addEventListener('click', () => {
-      if (!_playedOn) {
+    startBtn.addEventListener('click', () => {
+      const showErr = msg => {
         const a = document.getElementById('setup-alert')
-        a.textContent = 'Please set the date this was played.'
+        a.textContent = msg
         a.className = 'alert alert-error'
         a.classList.remove('hidden')
-        return
       }
+      if (!_playedOn) return showErr('Please set the date this was played.')
+
+      _picked = boxes.filter(b => b.checked).map(b => Number(b.dataset.idx))
+      if (_picked.length === 0) return showErr('Tick at least one court to score.')
+
+      _pos     = 0
+      _skipped = []
       renderCourtStep()
     })
   }
 
   // ── Step 2+: enter scores for each court ──────────────────
   function renderCourtStep() {
-    const court  = _schedule.courts[_courtIdx]
-    const total  = _schedule.courts.length
-    const isLast = _courtIdx === total - 1
+    const idx    = _picked[_pos]
+    const court  = _schedule.courts[idx]
+    const total  = _picked.length
+    const isLast = _pos === total - 1
     const [p1, p2] = court.team1
     const [p3, p4] = court.team2
     const loc = court.location || 'Woodway CC'
@@ -343,7 +438,11 @@
       ).join('')
     }
 
-    setTitle(`Court ${_courtIdx + 1} of ${total}`)
+    // Named by its place on the night, counted by its place in this pass:
+    // "Court 3" is the court they played, "2 of 2" is how far through they are.
+    setTitle(total === 1
+      ? `Court ${idx + 1}`
+      : `Court ${idx + 1} — ${_pos + 1} of ${total}`)
     setScreen(`
       <div id="court-alert" class="alert hidden"></div>
       <div style="background:var(--gray-100);border-radius:var(--radius);padding:0.6rem 1rem;margin-bottom:1rem;font-size:0.85rem;">
@@ -393,8 +492,8 @@
       document.getElementById(id)?.addEventListener('input', updateCourtPreview))
 
     document.getElementById('court-skip').addEventListener('click', () => {
-      _skipped.push(_courtIdx + 1)
-      _courtIdx++
+      _skipped.push(idx + 1)
+      _pos++
       advanceCourt()
     })
     document.getElementById('court-save').addEventListener('click', saveCourtResult)
@@ -458,37 +557,47 @@
 
     saveBtn.disabled = false
     if (error) return showErr(friendlyInsertError(error))
-    _courtIdx++
+    _entered.add(_picked[_pos])
+    _pos++
     advanceCourt()
   }
 
   function advanceCourt() {
-    _courtIdx < _schedule.courts.length ? renderCourtStep() : renderDoneScreen()
+    _pos < _picked.length ? renderCourtStep() : renderDoneScreen()
   }
 
   function renderDoneScreen() {
-    const pending = _skipped.length > 0
+    // What is left is a question about the night, not about this person's
+    // pass through it: someone else may have entered the other courts while
+    // this one was being filled in.
+    const outstanding = _schedule
+      ? _schedule.courts.map((c, i) => i).filter(i => !_entered.has(i))
+      : []
+    const allIn = outstanding.length === 0
 
-    setTitle(pending ? 'Saved So Far' : 'Results Saved')
-    setScreen(pending
-      ? `<div style="text-align:center;padding:1.25rem 0 0.5rem;">
-           <div style="font-size:2.2rem;margin-bottom:0.5rem;">&#128221;</div>
-           <div style="font-weight:700;font-size:1rem;">
-             Court${_skipped.length > 1 ? 's' : ''} ${_skipped.join(' and ')} still to come
-           </div>
-           <div style="color:var(--gray-500);font-size:0.88rem;margin-top:0.35rem;line-height:1.5;">
-             Everything else is saved. The schedule is kept, so you can reopen
-             Add Result later and enter the rest &mdash; skip past the courts
-             you have already done.
-           </div>
-         </div>`
-      : `<div style="text-align:center;padding:1.5rem 0;">
+    setTitle(allIn ? 'Results Saved' : 'Saved So Far')
+    setScreen(allIn
+      ? `<div style="text-align:center;padding:1.5rem 0;">
            <div style="font-size:2.5rem;margin-bottom:0.75rem;">&#10003;</div>
            <div style="font-weight:700;font-size:1rem;">All courts entered</div>
            <div style="color:var(--gray-500);font-size:0.88rem;margin-top:0.25rem;">${_weekLabel}</div>
+         </div>`
+      : `<div style="text-align:center;padding:1.25rem 0 0.5rem;">
+           <div style="font-size:2.2rem;margin-bottom:0.5rem;">&#128221;</div>
+           <div style="font-weight:700;font-size:1rem;">
+             Thanks &mdash; that&rsquo;s saved
+           </div>
+           <div style="color:var(--gray-500);font-size:0.88rem;margin-top:0.35rem;line-height:1.5;">
+             Court${outstanding.length > 1 ? 's' : ''}
+             ${outstanding.map(i => i + 1).join(' and ')}
+             still to come. Whoever played ${outstanding.length > 1 ? 'those' : 'that one'}
+             can add ${outstanding.length > 1 ? 'them' : 'it'} the same way.
+           </div>
          </div>`,
-    `<button id="done-close" class="btn btn-secondary">${pending ? 'Finish for now' : 'Done'}</button>
-     <button id="done-vinnys" class="btn btn-primary">&#127867; Record Vinny&rsquo;s &rarr;</button>`)
+    `<button id="done-close" class="btn btn-secondary">${allIn ? 'Done' : 'Finish for now'}</button>
+     ${_member?.is_admin
+        ? '<button id="done-vinnys" class="btn btn-primary">&#127867; Record Vinny&rsquo;s &rarr;</button>'
+        : ''}`)
 
     // Clearing the schedule is the same whichever button is pressed, so both
     // paths go through here first.
@@ -500,7 +609,12 @@
       // Judge that on what is in the database, not on what was skipped in
       // this sitting: coming back to enter the last court skips past the ones
       // already done, which used to leave the row behind for good.
-      if (_schedule?.id && _schedule?.played_on) {
+      //
+      // Only the admin may delete a schedule row, so members simply leave it.
+      // Nothing depends on it going: the home page decides what to show by
+      // counting the matches recorded for the night, and a schedule older
+      // than recentCutoff() is ignored here.
+      if (_member?.is_admin && _schedule?.id && _schedule?.played_on) {
         const recorded = await supabase.from('matches')
           .select('id', { count: 'exact', head: true })
           .eq('played_on', _schedule.played_on)
@@ -517,7 +631,7 @@
     })
 
     // Straight on to who went out, with tonight already selected.
-    document.getElementById('done-vinnys').addEventListener('click', async () => {
+    document.getElementById('done-vinnys')?.addEventListener('click', async () => {
       const night = _playedOn
       await finish()
       openVinnysModal(night)

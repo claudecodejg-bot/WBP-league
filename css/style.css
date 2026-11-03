@@ -2648,6 +2648,109 @@ footer {
   color: var(--gray-800);
 }
 
+/* ----- Picking which courts to score ----- */
+/* Anyone in the league can enter a result, and most will only be entering
+   the one court they played, so the night is offered as a tick-list rather
+   than a forced march through all three. */
+.court-pick-wrap {
+  background: var(--gray-100);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.court-pick-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.6rem;
+}
+
+.court-pick-all {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+
+.court-pick {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.court-pick + .court-pick { margin-top: 0.4rem; }
+
+.court-pick:hover:not(.court-pick-done) { border-color: var(--accent); }
+
+.court-pick input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.court-pick-body { display: block; flex: 1; min-width: 0; }
+
+.court-pick-title {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 0.15rem;
+}
+
+.court-pick-teams {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  line-height: 1.35;
+}
+
+.court-pick-vs {
+  color: var(--gray-600);
+  font-weight: 400;
+  margin: 0 0.15rem;
+}
+
+/* A court somebody has already entered. Still listed, so the night reads
+   as a whole, but not on offer again. */
+.court-pick-done {
+  opacity: 0.6;
+  cursor: default;
+  background: var(--gray-100);
+}
+
+.court-pick-done input[type="checkbox"] { cursor: default; }
+
+.court-pick-flag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--green-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  align-self: center;
+}
+
 /* A value the form works out for itself — the week a result belongs to.
    Sized like an input so the grid still lines up, but plainly not a field:
    no border to type into, and a tinted background. */
