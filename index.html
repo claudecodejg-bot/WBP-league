@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=3a2449ac">
+  <link rel="stylesheet" href="css/style.css?v=ce47dafe">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -201,15 +201,28 @@
   // ── Next match night ──────────────────────────────────────────────────
   // Shows the courts once an admin has saved a schedule. Public, so members
   // can check who they're playing without signing in.
+  // Today's date on the reader's own calendar. `toISOString()` is UTC, which
+  // from 7pm in Connecticut has already rolled over to tomorrow — so the
+  // night's courts used to disappear from this page at exactly the moment
+  // people were heading out to play.
+  function localDate(d = new Date()) {
+    const pad = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  }
+
   async function loadUpcoming() {
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDate()
+    const grace = localDate(new Date(Date.now() - 7 * 86400000))
     let data
     try {
+      // A night that has been played but not yet entered still belongs here,
+      // so look back a week as well as forward. Newest first: a schedule for
+      // next Monday outranks one still waiting on last Monday's scores.
       const res = await supabase
         .from('scheduled_matches')
         .select('*')
-        .gte('played_on', today)
-        .order('played_on', { ascending: true })
+        .gte('played_on', grace)
+        .order('played_on', { ascending: false })
         .limit(1)
         .maybeSingle()
       if (res.error) return
@@ -219,11 +232,31 @@
     }
     if (!data || !Array.isArray(data.courts) || data.courts.length === 0) return
 
+    // The courts stay up until the results are in. The schedule row on its
+    // own does not prove they are missing — finishing off a part-entered
+    // night leaves the row behind — so count what has actually been recorded.
+    let pill = 'Next Up'
+    if (data.played_on === today) {
+      pill = 'Tonight'
+    } else if (data.played_on < today) {
+      try {
+        const res = await supabase
+          .from('matches')
+          .select('id', { count: 'exact', head: true })
+          .eq('played_on', data.played_on)
+        if (res.error) return
+        if ((res.count || 0) >= data.courts.length) return   // all entered
+      } catch (err) {
+        return
+      }
+      pill = 'Awaiting Results'
+    }
+
     const courts = data.courts
     let html = `
       <div class="upcoming-section">
         <div class="upcoming-header">
-          <span class="upcoming-pill">Next Up</span>
+          <span class="upcoming-pill">${esc(pill)}</span>
           <span class="upcoming-title">${esc(data.week_label || '')}</span>
         </div>`
 
@@ -511,7 +544,7 @@
           <div class="upcoming-meta"><span class="upcoming-court">\u{1F3BE} Court ${i + 1}</span></div>
           <div class="upcoming-teams">
             <div class="upcoming-team" style="${decided ? 'font-weight:700;' : ''}">${left.join(' &amp; ')}${decided ? ' \u2713' : ''}</div>
-            <div class="upcoming-vs">${sets.map(([a, b]) => `${a}\u2013${b}`).join(', ')}</div>
+            <div class="upcoming-score">${sets.map(([a, b]) => `${a}\u2013${b}`).join(', ')}</div>
             <div class="upcoming-team" style="text-align:right;${decided ? 'opacity:0.65;' : ''}">${right.join(' &amp; ')}</div>
           </div>
         </div>`

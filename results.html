@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/results.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=3a2449ac">
+  <link rel="stylesheet" href="css/style.css?v=ce47dafe">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -86,7 +86,7 @@
   import { initNav, getCurrentMember } from './js/auth.js?v=81b26575'
   import { supabase } from './js/supabase-client.js?v=2d21059e'
   import { CURRENT_SEASON, UNOFFICIAL_WEEKS } from './js/config.js?v=d0c3b471'
-  import { loadResults, knownSeasons } from './js/results.js?v=6e4d7efa'
+  import { loadResults, knownSeasons } from './js/results.js?v=2fa820d7'
   import { matchScore, isWinner, fmt, winnerFirst } from './js/scoring.js?v=bb2d1038'
   initNav('results')
 
@@ -210,6 +210,17 @@
     const lastLabel = lastMatchRes.data?.week_label || ''
     const match = lastLabel.match(/\d+/)
     _weekLabel = match ? `Week ${parseInt(match[0], 10) + 1}` : ''
+
+    // ...unless this night is already part-recorded. Reopening Add Result to
+    // finish off an outstanding court must not advance the week, or that
+    // court is filed under the following week while its own siblings sit in
+    // the right one — which is how one 26 October match became Week 4.
+    if (_schedule?.played_on) {
+      const sameNight = await supabase.from('matches')
+        .select('week_label').eq('played_on', _schedule.played_on)
+        .limit(1).maybeSingle()
+      if (sameNight.data?.week_label) _weekLabel = sameNight.data.week_label
+    }
 
     if (_schedule?.courts?.length > 0) {
       renderSetupStep()
@@ -438,8 +449,17 @@
       // Only clear the schedule once every court is recorded — otherwise the
       // remaining pairings (and any subs named in them) would be lost, and the
       // home page would stop showing a night that is still outstanding.
-      if (!pending && _schedule?.id) {
-        await supabase.from('scheduled_matches').delete().eq('id', _schedule.id)
+      //
+      // Judge that on what is in the database, not on what was skipped in
+      // this sitting: coming back to enter the last court skips past the ones
+      // already done, which used to leave the row behind for good.
+      if (_schedule?.id && _schedule?.played_on) {
+        const recorded = await supabase.from('matches')
+          .select('id', { count: 'exact', head: true })
+          .eq('played_on', _schedule.played_on)
+        if (!recorded.error && (recorded.count || 0) >= _schedule.courts.length) {
+          await supabase.from('scheduled_matches').delete().eq('id', _schedule.id)
+        }
       }
       loadResults(_activeSeason, { refresh: true })
     }

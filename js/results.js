@@ -104,7 +104,7 @@ export async function loadResults(season = CURRENT_SEASON, { refresh = false } =
             <div class="match-team-score">Match score: ${fmt(left.score)}</div>
           </div>
           <div class="match-score-center">
-            <div class="match-sets" style="font-size:0.95rem;font-weight:600;color:var(--gray-800);">${setStr}</div>
+            <div class="match-sets" style="font-size:0.95rem;font-weight:600;">${setStr}</div>
           </div>
           <div class="match-team team-right ${right.won ? 'team-won' : 'team-lost'}">
             ${right.won ? '<div class="winner-label">Winner</div>' : ''}

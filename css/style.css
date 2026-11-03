@@ -484,7 +484,7 @@ main.main-wide {
 
 .match-team-score {
   font-size: 0.8rem;
-  color: var(--gray-600);
+  color: var(--gray-800);
 }
 
 .match-score-center {
@@ -507,7 +507,7 @@ main.main-wide {
 
 .match-sets {
   font-size: 0.75rem;
-  color: var(--gray-600);
+  color: var(--gray-800);
   text-align: center;
 }
 
@@ -2646,6 +2646,23 @@ footer {
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--gray-800);
+}
+
+/* Set scores in the Latest Result block. These used to borrow .upcoming-vs,
+   which is styled for the word "vs" — pale grey, uppercase, letter-spaced —
+   and left the actual scores barely legible. "vs" keeps that treatment; the
+   scores get their own. */
+.upcoming-score {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .upcoming-score { align-self: center; }
 }
 
 /* The home hero ships with pre-season copy in the HTML. It stays hidden
