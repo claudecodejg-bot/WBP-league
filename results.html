@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/results.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=208bff85">
+  <link rel="stylesheet" href="css/style.css?v=3f4577d6">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -86,7 +86,7 @@
   import { initNav, getCurrentMember } from './js/auth.js?v=81b26575'
   import { supabase } from './js/supabase-client.js?v=2d21059e'
   import { CURRENT_SEASON, UNOFFICIAL_WEEKS } from './js/config.js?v=d82921ce'
-  import { loadResults, knownSeasons } from './js/results.js?v=0f93e81b'
+  import { loadResults, knownSeasons, showEnteredBy } from './js/results.js?v=856ce460'
   import { matchScore, isWinner, fmt, winnerFirst } from './js/scoring.js?v=059e4ed1'
   initNav('results')
 
@@ -110,6 +110,14 @@
     const vb = document.getElementById('vinnys-btn')
     vb.style.display = ''
     vb.addEventListener('click', () => openVinnysModal())
+
+    // Who entered a result is for the admin: it answers "who do I talk to
+    // about this score", which is not a question for the rest of the page.
+    // The list has already rendered by now, so redraw it from cache.
+    if (member.is_admin) {
+      showEnteredBy(true)
+      loadResults(_activeSeason)
+    }
   })
 
   // ── Modal state ───────────────────────────────────────────

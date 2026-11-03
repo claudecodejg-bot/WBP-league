@@ -2666,6 +2666,18 @@ footer {
   color: var(--gray-800);
 }
 
+/* Who typed a result in. Admin-only, and deliberately quiet: it is a
+   note for one reader, not part of the result. */
+.match-entered-by {
+  grid-column: 1 / -1;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--gray-200);
+  font-size: 0.72rem;
+  color: var(--gray-600);
+  text-align: right;
+}
+
 /* ----- Picking which courts to score ----- */
 /* Anyone in the league can enter a result, and most will only be entering
    the one court they played, so the night is offered as a tick-list rather

@@ -11,6 +11,26 @@ import { isWinner, matchScore, fmt, winnerFirst } from './scoring.js?v=059e4ed1'
 // a match so the new result shows up.
 let _cache = null   // { memberMap, matches } — matches ordered played_on desc
 
+// Who entered a result is shown to the admin only. Not a secret — it sits
+// in a column the API will hand to anyone who asks — but it is there so
+// Grills knows who to go to about a wrong score, and that is nobody else's
+// business on the page.
+let _showEnteredBy = false
+export function showEnteredBy(on) { _showEnteredBy = on }
+
+// A line under the card naming whoever typed the result in. Rows from
+// before the log have no name to show, so they get nothing rather than an
+// "unknown" that looks like a fault.
+function enteredByLine(m) {
+  if (!_showEnteredBy || !m.entered_by) return ''
+  const name = _cache?.memberMap[m.entered_by]
+  if (!name) return ''
+  const when = m.created_at
+    ? new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : null
+  return `<div class="match-entered-by">Entered by ${name}${when ? ` on ${when}` : ''}</div>`
+}
+
 /** Seasons present in the cached match data, newest first. */
 export function knownSeasons() {
   return _cache ? [...new Set(_cache.matches.map(m => m.season))].sort().reverse() : []
@@ -111,6 +131,7 @@ export async function loadResults(season = CURRENT_SEASON, { refresh = false } =
             <div class="match-team-names">${right.names}</div>
             <div class="match-team-score">Match score: ${fmt(right.score)}</div>
           </div>
+          ${enteredByLine(m)}
         </div>
       `
     }
