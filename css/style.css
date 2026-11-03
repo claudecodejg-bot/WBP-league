@@ -2648,6 +2648,20 @@ footer {
   color: var(--gray-800);
 }
 
+/* A value the form works out for itself — the week a result belongs to.
+   Sized like an input so the grid still lines up, but plainly not a field:
+   no border to type into, and a tinted background. */
+.form-readout {
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  background: var(--gray-200);
+  color: var(--gray-800);
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  min-height: 1.3rem;
+}
+
 /* Set scores in the Latest Result block. These used to borrow .upcoming-vs,
    which is styled for the word "vs" — pale grey, uppercase, letter-spaced —
    and left the actual scores barely legible. "vs" keeps that treatment; the

@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/results.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=ce47dafe">
+  <link rel="stylesheet" href="css/style.css?v=c373f998">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -154,6 +154,64 @@
     )
   }
 
+  // Today on the local calendar. `toISOString()` is UTC, which from 7pm
+  // Eastern is already tomorrow — a result entered on Monday night would
+  // default to Tuesday's date.
+  function todayLocal() {
+    const d = new Date()
+    const pad = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  }
+
+  // Which week a night belongs to. Worked out from the date, never typed:
+  // the schedule already says which matches belong to which night, so asking
+  // again only creates a chance to get it wrong.
+  //
+  // A night is the Nth of the season, counted from the nights already in the
+  // database. That holds however the entries arrive — finishing off an
+  // outstanding court cannot push it into the following week, a night entered
+  // late lands where it belongs, and a Monday nobody played leaves no hole in
+  // the numbering.
+  async function weekLabelFor(playedOn) {
+    if (!playedOn) return ''
+    if (UNOFFICIAL_WEEKS.includes(mondayOf(playedOn))) return 'Warm-up'
+
+    const { data, error } = await supabase.from('matches')
+      .select('played_on, week_label').eq('season', CURRENT_SEASON)
+    if (error) return ''
+    const rows = data || []
+
+    // A night already under way keeps the label its other courts carry —
+    // the prevailing one, so a night that is already inconsistent is pulled
+    // back towards the majority rather than following whichever row the
+    // database happened to return first.
+    const tally = new Map()
+    for (const m of rows) {
+      if (m.played_on !== playedOn || !m.week_label) continue
+      tally.set(m.week_label, (tally.get(m.week_label) || 0) + 1)
+    }
+    if (tally.size) {
+      return [...tally].sort((a, b) => b[1] - a[1])[0][0]
+    }
+
+    const earlier = new Set(
+      rows.filter(m => m.played_on < playedOn &&
+                       !UNOFFICIAL_WEEKS.includes(mondayOf(m.played_on)))
+          .map(m => m.played_on)
+    )
+    return `Week ${earlier.size + 1}`
+  }
+
+  // A week shown rather than asked for: same footprint as a form field, but
+  // plainly not something to fill in.
+  function weekField(id, label) {
+    return `
+      <div class="form-group" style="margin:0;">
+        <label>Week</label>
+        <div id="${id}" class="form-readout">${label || '—'}</div>
+      </div>`
+  }
+
   // Maps a Supabase insert error to a friendly message. The unique
   // constraint (matches_no_duplicates) raises Postgres code 23505.
   function friendlyInsertError(error) {
@@ -177,7 +235,7 @@
     setTitle('Add Match Result')
     setScreen('<div class="loading-state"><div class="spinner"></div> Loading schedule…</div>', '')
 
-    const [membersRes, seasonMembersRes, schedRes, lastMatchRes] = await Promise.all([
+    const [membersRes, seasonMembersRes, schedRes] = await Promise.all([
       supabase.from('members').select('id, full_name').order('full_name'),
       supabase.from('member_seasons').select('member_id').eq('season', CURRENT_SEASON),
       // Only a recent schedule. Results are normally entered the morning
@@ -186,8 +244,7 @@
       // with a March row still sitting there in October.
       supabase.from('scheduled_matches').select('*')
         .gte('played_on', recentCutoff())
-        .order('played_on', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('matches').select('week_label').eq('season', CURRENT_SEASON).order('played_on', { ascending: false }).limit(1).maybeSingle()
+        .order('played_on', { ascending: false }).limit(1).maybeSingle()
     ])
 
     _schedule  = schedRes.data || null
@@ -206,21 +263,9 @@
     _courtIdx  = 0
     _skipped   = []
 
-    // Auto-suggest next week label by incrementing the last one
-    const lastLabel = lastMatchRes.data?.week_label || ''
-    const match = lastLabel.match(/\d+/)
-    _weekLabel = match ? `Week ${parseInt(match[0], 10) + 1}` : ''
-
-    // ...unless this night is already part-recorded. Reopening Add Result to
-    // finish off an outstanding court must not advance the week, or that
-    // court is filed under the following week while its own siblings sit in
-    // the right one — which is how one 26 October match became Week 4.
-    if (_schedule?.played_on) {
-      const sameNight = await supabase.from('matches')
-        .select('week_label').eq('played_on', _schedule.played_on)
-        .limit(1).maybeSingle()
-      if (sameNight.data?.week_label) _weekLabel = sameNight.data.week_label
-    }
+    // The week comes from the date, worked out rather than asked for.
+    _playedOn  = _schedule?.played_on || todayLocal()
+    _weekLabel = await weekLabelFor(_playedOn)
 
     if (_schedule?.courts?.length > 0) {
       renderSetupStep()
@@ -249,30 +294,32 @@
         ${summary}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
-        <div class="form-group" style="margin:0;">
-          <label for="s-week-label">Week Label</label>
-          <input type="text" id="s-week-label" class="form-input" value="${_weekLabel}" placeholder="e.g. Week 20">
-        </div>
+        ${weekField('s-week-display', _weekLabel)}
         <div class="form-group" style="margin:0;">
           <label for="s-played-on">Date Played</label>
-          <input type="date" id="s-played-on" class="form-input" value="${_schedule.played_on}">
+          <input type="date" id="s-played-on" class="form-input" value="${_playedOn}">
         </div>
       </div>`,
     `<button id="setup-cancel" class="btn btn-secondary">Cancel</button>
      <button id="setup-start"  class="btn btn-primary">Start Court 1 →</button>`)
 
+    // The date can still be corrected — a night can be rained off to the
+    // Tuesday — and the week follows it.
+    document.getElementById('s-played-on').addEventListener('change', async e => {
+      _playedOn  = e.target.value
+      _weekLabel = await weekLabelFor(_playedOn)
+      document.getElementById('s-week-display').textContent = _weekLabel || '—'
+    })
+
     document.getElementById('setup-cancel').addEventListener('click', closeModal)
     document.getElementById('setup-start').addEventListener('click', () => {
-      const wl = document.getElementById('s-week-label').value.trim()
-      if (!wl) {
+      if (!_playedOn) {
         const a = document.getElementById('setup-alert')
-        a.textContent = 'Please enter a week label (e.g. Week 20).'
+        a.textContent = 'Please set the date this was played.'
         a.className = 'alert alert-error'
         a.classList.remove('hidden')
         return
       }
-      _weekLabel = wl
-      _playedOn  = document.getElementById('s-played-on').value
       renderCourtStep()
     })
   }
@@ -656,10 +703,9 @@
       <div class="alert alert-info" style="margin-bottom:1rem;font-size:0.83rem;">No upcoming schedule found — enter manually.</div>
       <div id="manual-alert" class="alert hidden"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
-        <div class="form-group" style="margin:0;"><label for="m-week-label">Week Label</label>
-          <input type="text" id="m-week-label" class="form-input" value="${_weekLabel}" placeholder="e.g. Week 20"></div>
+        ${weekField('m-week-display', _weekLabel)}
         <div class="form-group" style="margin:0;"><label for="m-played-on">Date Played</label>
-          <input type="date" id="m-played-on" class="form-input" value="${new Date().toISOString().split('T')[0]}"></div>
+          <input type="date" id="m-played-on" class="form-input" value="${_playedOn}"></div>
       </div>
       <div class="admin-grid">
         <div class="team-block">
@@ -702,18 +748,25 @@
         p.innerHTML=`<strong>Team 1:</strong> ${fmt(matchScore(t1s1,t1s2,t1s3,t2s1,t2s2,t2s3))} ${t1won?'✓ WIN':'loss'} &nbsp;|&nbsp; <strong>Team 2:</strong> ${fmt(matchScore(t2s1,t2s2,t2s3,t1s1,t1s2,t1s3))} ${!t1won?'✓ WIN':'loss'}`
       }))
 
+    // No schedule here, so the date is the only thing that fixes the week.
+    document.getElementById('m-played-on').addEventListener('change', async e => {
+      _playedOn  = e.target.value
+      _weekLabel = await weekLabelFor(_playedOn)
+      document.getElementById('m-week-display').textContent = _weekLabel || '—'
+    })
+
     document.getElementById('manual-cancel').addEventListener('click', closeModal)
     document.getElementById('manual-save').addEventListener('click', async () => {
       const alertEl = document.getElementById('manual-alert')
-      const wl = document.getElementById('m-week-label').value.trim()
       const po = document.getElementById('m-played-on').value
+      const wl = await weekLabelFor(po)
       const t1p1=document.getElementById('m-t1p1').value, t1p2=document.getElementById('m-t1p2').value
       const t2p1=document.getElementById('m-t2p1').value, t2p2=document.getElementById('m-t2p2').value
       const t1s1=getNum('m-t1s1'),t1s2=getNum('m-t1s2'),t1s3=getNum('m-t1s3')
       const t2s1=getNum('m-t2s1'),t2s2=getNum('m-t2s2'),t2s3=getNum('m-t2s3')
       const showErr = msg => { alertEl.textContent=msg; alertEl.className='alert alert-error'; alertEl.classList.remove('hidden') }
-      if (!wl) return showErr('Please enter a week label.')
       if (!po) return showErr('Please enter the date.')
+      if (!wl) return showErr('Could not work out which week that date falls in — check your connection and try again.')
       if (!t1p1||!t1p2) return showErr('Please select both players for Team 1.')
       if (!t2p1||!t2p2) return showErr('Please select both players for Team 2.')
       if (new Set([t1p1,t1p2,t2p1,t2p2]).size!==4) return showErr('Each player can only appear once.')
