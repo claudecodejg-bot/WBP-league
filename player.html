@@ -226,11 +226,19 @@
     if (sorted.length === 0) return null
     const results = sorted.map(m => {
       const onTeam1 = m.team1_player1 === memberId || m.team1_player2 === memberId
+      // An unscored match is not a result: it should neither extend a
+      // streak nor break one. isWinner() reads false for both sides of
+      // one, which would otherwise record it as a loss.
+      const score = onTeam1
+        ? matchScore(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
+        : matchScore(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
+      if (score == null) return null
       const won = onTeam1
         ? isWinner(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
         : isWinner(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
       return won ? 'W' : 'L'
-    })
+    }).filter(Boolean)
+    if (results.length === 0) return null
     const last = results[results.length - 1]
     let count = 0
     for (let i = results.length - 1; i >= 0; i--) {
@@ -391,6 +399,8 @@
         const score = onTeam1
           ? matchScore(m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3)
           : matchScore(m.team2_set1, m.team2_set2, m.team2_set3, m.team1_set1, m.team1_set2, m.team1_set3)
+
+        if (score == null) continue   // unscored: nothing to show as W or L
 
         const [ms1, ms2, ms3, os1, os2, os3] = onTeam1
           ? [m.team1_set1, m.team1_set2, m.team1_set3, m.team2_set1, m.team2_set2, m.team2_set3]
