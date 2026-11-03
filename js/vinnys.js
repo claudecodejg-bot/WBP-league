@@ -6,7 +6,7 @@
 //  behind the admin check.
 // =============================================
 import { supabase } from './supabase-client.js?v=2d21059e'
-import { SEASON_START } from './config.js?v=d0c3b471'
+import { SEASON_START } from './config.js?v=d82921ce'
 
 /**
  * Attendance rows for a season, newest night first.

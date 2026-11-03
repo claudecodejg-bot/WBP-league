@@ -3,8 +3,8 @@
 // =============================================
 
 import { supabase, escapeHtml } from './supabase-client.js?v=2d21059e'
-import { CURRENT_SEASON } from './config.js?v=d0c3b471'
-import { upcomingWeeks, isUnofficialWeek } from './season-weeks.js?v=5b5511c4'
+import { CURRENT_SEASON } from './config.js?v=d82921ce'
+import { upcomingWeeks, isUnofficialWeek } from './season-weeks.js?v=2864b9a6'
 
 /**
  * Returns the Monday of the week containing `date`.

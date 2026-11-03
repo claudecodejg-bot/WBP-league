@@ -46,6 +46,13 @@ export const NEXT_SEASON_START = new Date('2026-10-12T19:00:00')
 // something — by then anyone near the top has had a full run of Mondays.
 export const ELIGIBILITY_START = new Date('2027-01-01T00:00:00')
 
+// ── Holding top spot ────────────────────────────────────────────────────
+// How many matches a player needs before they can sit at the top of a
+// table. One good night should not win a season: a guest filling in once
+// and taking their only match 6-0 6-0 scores a perfect 8.00, which was
+// leaving one-match players on top of finished seasons for ever.
+export const MIN_RANKED_MATCHES = 4
+
 // ── Seeding a new season ────────────────────────────────────────────────
 // How many matches a season must contain before its final rank is trusted
 // as a player's carry-over seed. A one- or two-match season says very

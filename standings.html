@@ -74,9 +74,9 @@
 <script type="module">
   import { initNav } from './js/auth.js?v=81b26575'
   import { supabase, connectionErrorHtml, escapeHtml } from './js/supabase-client.js?v=2d21059e'
-  import { CURRENT_SEASON, ELIGIBILITY_START } from './js/config.js?v=d0c3b471'
-  import { computeMemberStats, computeCurrentSeasonStats, isWinner, fmt } from './js/scoring.js?v=bb2d1038'
-  import { fetchVinnys, leaderboard, nightsHeld } from './js/vinnys.js?v=efb2cbc0'
+  import { CURRENT_SEASON, ELIGIBILITY_START, MIN_RANKED_MATCHES } from './js/config.js?v=d82921ce'
+  import { computeMemberStats, computeCurrentSeasonStats, isWinner, fmt } from './js/scoring.js?v=059e4ed1'
+  import { fetchVinnys, leaderboard, nightsHeld } from './js/vinnys.js?v=d81fb108'
   import { fetchPaddleHomie, homieBoard } from './js/homie.js?v=22d405a8'
   initNav('standings')
 
@@ -226,23 +226,65 @@
   }
 
   // ── First-place eligibility rule ─────────────────────────
-  // Only for current season in default sort.
+  // Topping a table takes a minimum number of matches, in a finished season
+  // as much as in one being played. A guest filling in once and winning
+  // 6-0 6-0 scores a perfect 8.00, which had left one-match players sitting
+  // on top of old seasons permanently.
+  //
+  // `live` adds the recency rule, which only means something in the season
+  // under way: in a finished one everybody's last match was years ago.
+  //
   // Returns null if eligible, or { name, reasons[] } if not.
-  function firstPlaceIneligibility(player) {
+  function firstPlaceIneligibility(player, { live }) {
     const reasons = []
-    if (player.matchesPlayed < 4) {
-      reasons.push(`has only played ${player.matchesPlayed} match${player.matchesPlayed !== 1 ? 'es' : ''} this season (minimum 4 required)`)
+    if (player.matchesPlayed < MIN_RANKED_MATCHES) {
+      const n = player.matchesPlayed
+      reasons.push(`played only ${n} match${n !== 1 ? 'es' : ''}` +
+                   ` (minimum ${MIN_RANKED_MATCHES} to hold top spot)`)
     }
-    const sixWeeksAgo = new Date()
-    sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42)
-    const lastDate = player.lastPlayed ? new Date(player.lastPlayed + 'T00:00:00') : null
-    if (!lastDate || lastDate < sixWeeksAgo) {
-      const weeksAgo = lastDate ? Math.floor((Date.now() - lastDate.getTime()) / (7 * 86400000)) : null
-      reasons.push(weeksAgo != null
-        ? `last played ${weeksAgo} week${weeksAgo !== 1 ? 's' : ''} ago (must have played within the past 6 weeks)`
-        : `has not played this season`)
+    if (live) {
+      const sixWeeksAgo = new Date()
+      sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42)
+      const lastDate = player.lastPlayed ? new Date(player.lastPlayed + 'T00:00:00') : null
+      if (!lastDate || lastDate < sixWeeksAgo) {
+        const weeksAgo = lastDate ? Math.floor((Date.now() - lastDate.getTime()) / (7 * 86400000)) : null
+        reasons.push(weeksAgo != null
+          ? `last played ${weeksAgo} week${weeksAgo !== 1 ? 's' : ''} ago (must have played within the past 6 weeks)`
+          : `has not played this season`)
+      }
     }
     return reasons.length === 0 ? null : { name: player.name, reasons }
+  }
+
+  // Promotes the first eligible player to the top, marking everyone it
+  // steps over. Walks down rather than swapping once: if the top two are
+  // both short of the minimum, a single swap would promote the other
+  // ineligible player into first, unmarked.
+  function applyEligibility(data, live) {
+    if (data.length < 2) return { data, footnote: '' }
+
+    const skipped = []
+    let winner = -1
+    for (let i = 0; i < data.length; i++) {
+      const why = firstPlaceIneligibility(data[i], { live })
+      if (!why) { winner = i; break }
+      skipped.push(why)
+    }
+
+    // Nobody qualifies — leave the order alone, since reshuffling would
+    // only move one ineligible player above another.
+    if (winner <= 0) return { data, footnote: '' }
+
+    return {
+      data: [
+        data[winner],
+        ...data.slice(0, winner).map(s => ({ ...s, ineligibleFirst: true })),
+        ...data.slice(winner + 1)
+      ],
+      footnote: '<div class="standings-footnote">' +
+        skipped.map(s => `* ${s.name} ${s.reasons.join(' and ')}.`).join('<br>') +
+        '</div>'
+    }
   }
 
   function renderTables() {
@@ -251,44 +293,29 @@
     let html = ''
     let footnote = ''
 
+    // Whether to judge who may hold top spot. In the season being played the
+    // rule is dormant until ELIGIBILITY_START (January): early on nobody has
+    // four matches, so it would demote leaders for no meaningful reason. A
+    // finished season is always judged — there is no later date at which a
+    // one-match leader stops being wrong.
+    const isLive = _activeSeason === CURRENT_SEASON
+    const judge = isDefault && (isLive
+      ? (!_seasonNotStarted && Date.now() >= ELIGIBILITY_START.getTime())
+      : true)
+
     if (_activeSeason === 'all') {
       // Entire History: merge Members + Former Members into one table
       const combined = sortData([..._memberStats, ..._formerMemberStats])
-      html += '<h2 class="section-title">Members</h2>' + buildTable(combined, { podium: isDefault })
+      const ranked = judge ? applyEligibility(combined, false) : { data: combined, footnote: '' }
+      html += '<h2 class="section-title">Members</h2>' + buildTable(ranked.data, { podium: isDefault })
+      html += ranked.footnote
     } else {
       let memberData = sortData(_memberStats)
 
-      // First-place eligibility. Dormant until ELIGIBILITY_START (January):
-      // early on nobody has four matches yet, so the check would demote
-      // leaders for no meaningful reason.
-      const eligibilityActive = Date.now() >= ELIGIBILITY_START.getTime()
-
-      if (eligibilityActive && isDefault && !_seasonNotStarted &&
-          _activeSeason === CURRENT_SEASON && memberData.length >= 2) {
-
-        // Walk down until an eligible player is found, rather than swapping
-        // once — otherwise, if the top two are both short of the minimum,
-        // an ineligible player is promoted into first unmarked.
-        const skipped = []
-        let winner = -1
-        for (let i = 0; i < memberData.length; i++) {
-          const why = firstPlaceIneligibility(memberData[i])
-          if (!why) { winner = i; break }
-          skipped.push(why)
-        }
-
-        // If nobody qualifies, leave the order alone — reshuffling would
-        // just move one ineligible player above another.
-        if (winner > 0) {
-          memberData = [
-            memberData[winner],
-            ...memberData.slice(0, winner).map(s => ({ ...s, ineligibleFirst: true })),
-            ...memberData.slice(winner + 1)
-          ]
-          footnote = '<div class="standings-footnote">' +
-            skipped.map(s => `* ${s.name} ${s.reasons.join(' and ')}.`).join('<br>') +
-            '</div>'
-        }
+      if (judge) {
+        const ranked = applyEligibility(memberData, isLive)
+        memberData = ranked.data
+        footnote   = ranked.footnote
       }
 
       html += '<h2 class="section-title">Members</h2>' + buildTable(memberData, { podium: isDefault })
