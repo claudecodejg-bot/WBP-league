@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/results.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=d2ea6f8e">
+  <link rel="stylesheet" href="css/style.css?v=208bff85">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -106,11 +106,10 @@
     btn.style.display = ''
     btn.addEventListener('click', openResultModal)
 
-    if (member.is_admin) {
-      const vb = document.getElementById('vinnys-btn')
-      vb.style.display = ''
-      vb.addEventListener('click', () => openVinnysModal())
-    }
+    // Who went out afterwards is something anyone who was there can record.
+    const vb = document.getElementById('vinnys-btn')
+    vb.style.display = ''
+    vb.addEventListener('click', () => openVinnysModal())
   })
 
   // ── Modal state ───────────────────────────────────────────
@@ -134,6 +133,59 @@
     document.getElementById('result-modal-footer').innerHTML = footerHtml
   }
   function setTitle(t) { document.getElementById('result-modal-title').textContent = t }
+
+  // Games in a set, 0-7. A dropdown rather than a number box: quicker on a
+  // phone, and it cannot produce the "66-7" sitting in the match history.
+  function gamesOptions(selected) {
+    let out = '<option value="">\u2013</option>'
+    for (let n = 0; n <= 7; n++) {
+      const sel = selected != null && String(selected) === String(n) ? ' selected' : ''
+      out += `<option value="${n}"${sel}>${n}</option>`
+    }
+    return out
+  }
+
+  // ── Does this look like a real result? ────────────────────
+  // Checked against every set in 19 seasons: all 810 matches fit the rules
+  // below bar a lone 7-4 and a 66-7, both plainly mistyped — which is the
+  // point of checking.
+  function setProblem(a, b, n) {
+    if (a == null && b == null) return null                       // not played
+    if (a == null || b == null) return `Set ${n} needs a score for both teams.`
+    if (a === b)                return `Set ${n} cannot be a tie — somebody has to win it.`
+    const hi = Math.max(a, b), lo = Math.min(a, b)
+    if (hi < 6)  return `Set ${n} has no winner — a set is won at 6.`
+    if (hi > 7)  return `Set ${n} reads ${a}–${b}. A set cannot go past 7.`
+    if (hi === 7 && lo < 5) return `Set ${n} reads ${a}\u2013${b}. A 7 only beats a 5 or a 6.`
+    return null
+  }
+
+  // t1 / t2 are [set1, set2, set3], any of which may be null.
+  function matchProblem(t1, t2) {
+    for (let i = 0; i < 3; i++) {
+      const p = setProblem(t1[i], t2[i], i + 1)
+      if (p) return p
+    }
+    if (t1[0] == null || t1[1] == null) return 'Please enter Set 1 and Set 2 for both teams.'
+
+    const won = i => t1[i] != null && t2[i] != null && t1[i] > t2[i]
+    const lost = i => t1[i] != null && t2[i] != null && t1[i] < t2[i]
+    const w1 = [0, 1, 2].filter(won).length
+    const w2 = [0, 1, 2].filter(lost).length
+    const playedThird = t1[2] != null && t2[2] != null
+
+    // Two sets to the same team ends it. A third has never been recorded
+    // after a 2-0 in the whole history, so it is a mis-entry every time.
+    if (playedThird && (w1 === 0 || w2 === 0)) {
+      return 'The first two sets already decided this one — there should be no third set.'
+    }
+    if (w1 < 2 && w2 < 2) {
+      return playedThird
+        ? 'No winner yet — one team needs to win two sets.'
+        : 'That is one set each. Enter the deciding third set.'
+    }
+    return null
+  }
 
   function getNum(id) {
     const val = document.getElementById(id)?.value
@@ -466,14 +518,14 @@
           <div class="ces-head">Set 3</div>
 
           <div class="ces-row-label">Team 1</div>
-          <input type="number" id="c-t1s1" class="form-input ces-box" min="0" max="7" inputmode="numeric">
-          <input type="number" id="c-t1s2" class="form-input ces-box" min="0" max="7" inputmode="numeric">
-          <input type="number" id="c-t1s3" class="form-input ces-box" min="0" max="7" inputmode="numeric">
+          <select id="c-t1s1" class="form-input ces-box">${gamesOptions()}</select>
+          <select id="c-t1s2" class="form-input ces-box">${gamesOptions()}</select>
+          <select id="c-t1s3" class="form-input ces-box">${gamesOptions()}</select>
 
           <div class="ces-row-label">Team 2</div>
-          <input type="number" id="c-t2s1" class="form-input ces-box" min="0" max="7" inputmode="numeric">
-          <input type="number" id="c-t2s2" class="form-input ces-box" min="0" max="7" inputmode="numeric">
-          <input type="number" id="c-t2s3" class="form-input ces-box" min="0" max="7" inputmode="numeric">
+          <select id="c-t2s1" class="form-input ces-box">${gamesOptions()}</select>
+          <select id="c-t2s2" class="form-input ces-box">${gamesOptions()}</select>
+          <select id="c-t2s3" class="form-input ces-box">${gamesOptions()}</select>
         </div>
 
         <div class="court-entry-team">
@@ -489,7 +541,7 @@
      <button id="court-save" class="btn btn-primary">${isLast ? 'Save & Finish ✓' : 'Save & Next Court →'}</button>`)
 
     ;['c-t1s1','c-t1s2','c-t1s3','c-t2s1','c-t2s2','c-t2s3'].forEach(id =>
-      document.getElementById(id)?.addEventListener('input', updateCourtPreview))
+      document.getElementById(id)?.addEventListener('change', updateCourtPreview))
 
     document.getElementById('court-skip').addEventListener('click', () => {
       _skipped.push(idx + 1)
@@ -540,7 +592,9 @@
     if (!t1p1 || !t1p2) return showErr('Please select both players for Team 1.')
     if (!t2p1 || !t2p2) return showErr('Please select both players for Team 2.')
     if (new Set([t1p1,t1p2,t2p1,t2p2]).size !== 4) return showErr('Each player can only appear once.')
-    if (t1s1 === null || t1s2 === null || t2s1 === null || t2s2 === null) return showErr('Please enter Set 1 and Set 2 for both teams.')
+
+    const problem = matchProblem([t1s1, t1s2, t1s3], [t2s1, t2s2, t2s3])
+    if (problem) return showErr(problem)
 
     if (!confirmIfWarmUpWeek(_playedOn)) return
 
@@ -595,9 +649,7 @@
            </div>
          </div>`,
     `<button id="done-close" class="btn btn-secondary">${allIn ? 'Done' : 'Finish for now'}</button>
-     ${_member?.is_admin
-        ? '<button id="done-vinnys" class="btn btn-primary">&#127867; Record Vinny&rsquo;s &rarr;</button>'
-        : ''}`)
+     <button id="done-vinnys" class="btn btn-primary">&#127867; Record Vinny&rsquo;s &rarr;</button>`)
 
     // Clearing the schedule is the same whichever button is pressed, so both
     // paths go through here first.
@@ -828,9 +880,9 @@
           <div class="form-group"><label>Player 2</label><select id="m-t1p2" class="form-input"><option value="">— select —</option>${opts}</select></div>
           <div class="form-group"><label>Set Scores</label>
             <div class="set-scores-group">
-              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 1</label><input type="number" id="m-t1s1" class="form-input" min="0" max="7"></div>
-              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 2</label><input type="number" id="m-t1s2" class="form-input" min="0" max="7"></div>
-              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 3</label><input type="number" id="m-t1s3" class="form-input" min="0" max="7"></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 1</label><select id="m-t1s1" class="form-input">${gamesOptions()}</select></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 2</label><select id="m-t1s2" class="form-input">${gamesOptions()}</select></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 3</label><select id="m-t1s3" class="form-input">${gamesOptions()}</select></div>
             </div>
           </div>
         </div>
@@ -840,9 +892,9 @@
           <div class="form-group"><label>Player 2</label><select id="m-t2p2" class="form-input"><option value="">— select —</option>${opts}</select></div>
           <div class="form-group"><label>Set Scores</label>
             <div class="set-scores-group">
-              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 1</label><input type="number" id="m-t2s1" class="form-input" min="0" max="7"></div>
-              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 2</label><input type="number" id="m-t2s2" class="form-input" min="0" max="7"></div>
-              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 3</label><input type="number" id="m-t2s3" class="form-input" min="0" max="7"></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 1</label><select id="m-t2s1" class="form-input">${gamesOptions()}</select></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 2</label><select id="m-t2s2" class="form-input">${gamesOptions()}</select></div>
+              <div><label style="font-size:0.75rem;color:var(--gray-600);">Set 3</label><select id="m-t2s3" class="form-input">${gamesOptions()}</select></div>
             </div>
           </div>
         </div>
@@ -852,7 +904,7 @@
      <button id="manual-save"   class="btn btn-primary">Save Result</button>`)
 
     ;['m-t1s1','m-t1s2','m-t1s3','m-t2s1','m-t2s2','m-t2s3'].forEach(id =>
-      document.getElementById(id)?.addEventListener('input', () => {
+      document.getElementById(id)?.addEventListener('change', () => {
         const t1s1=getNum('m-t1s1'),t1s2=getNum('m-t1s2'),t1s3=getNum('m-t1s3')
         const t2s1=getNum('m-t2s1'),t2s2=getNum('m-t2s2'),t2s3=getNum('m-t2s3')
         const p = document.getElementById('m-preview')
@@ -884,7 +936,9 @@
       if (!t1p1||!t1p2) return showErr('Please select both players for Team 1.')
       if (!t2p1||!t2p2) return showErr('Please select both players for Team 2.')
       if (new Set([t1p1,t1p2,t2p1,t2p2]).size!==4) return showErr('Each player can only appear once.')
-      if (t1s1===null||t1s2===null||t2s1===null||t2s2===null) return showErr('Please enter Set 1 and Set 2 for both teams.')
+
+      const problem = matchProblem([t1s1,t1s2,t1s3],[t2s1,t2s2,t2s3])
+      if (problem) return showErr(problem)
       if (!confirmIfWarmUpWeek(po)) return
 
       const btn = document.getElementById('manual-save')

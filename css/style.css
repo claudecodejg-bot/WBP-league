@@ -2571,6 +2571,24 @@ footer {
 }
 .court-entry-scores .ces-box { -moz-appearance: textfield; appearance: textfield; }
 
+/* Games are picked from a 0-7 list now, not typed. The native dropdown
+   arrow eats most of a box this narrow, so it is dropped and the number
+   centred instead. */
+.court-entry-scores select.ces-box,
+.set-scores-group select.form-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none;
+  text-align: center;
+  text-align-last: center;
+  cursor: pointer;
+}
+
+.set-scores-group select.form-input {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Availability nudge, sitting under the latest result */
 .avail-nudge {
   text-align: center;
