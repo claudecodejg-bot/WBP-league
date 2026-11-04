@@ -445,9 +445,11 @@
   function buildHomieSection() {
     if (_homie.length === 0) return ''
 
-    // Guests included: Romano is flagged a guest but sat on the 2024-25
-    // roster and has a recorded total, and homieBoard drops anyone whose
-    // name it cannot resolve.
+    // Guests are folded in because a fill-in can hold a recorded total,
+    // and homieBoard drops anyone whose name it cannot resolve. No guest
+    // has one today -- Romano, who used to be the reason for this, is a
+    // member now -- but a name that fails to resolve vanishes silently,
+    // so the merge stays.
     const nameById = Object.fromEntries(
       [..._db.members, ..._db.guests].map(m => [m.id, m.full_name]))
     const board = homieBoard(_homie, nameById)
