@@ -54,6 +54,62 @@ export async function fetchRecordedTotals(season) {
   }
 }
 
+/**
+ * Every hand-kept Vinny's total, all seasons at once, for the all-time
+ * board. Returns [{ season, member_id, vinnys_nights }].
+ */
+export async function fetchAllRecordedTotals() {
+  try {
+    const { data, error } = await supabase
+      .from('season_awards')
+      .select('season, member_id, vinnys_nights')
+      .not('vinnys_nights', 'is', null)
+    if (error) return []
+    return data || []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * All-time board: the per-night rows for the seasons that have them, plus
+ * the hand-kept totals for the seasons that predate the table.
+ *
+ * Each season is counted from one source only, and a hand-kept total wins
+ * where both exist -- the two would otherwise stack and double the year.
+ * A night whose date matches no recorded match is skipped, which is how
+ * the per-season tally has always behaved.
+ *
+ * Returns { board, seasons } -- the seasons being those the figures
+ * actually cover, so the caller can say how far back the board reaches
+ * instead of guessing.
+ */
+export function allTimeBoard({ nightRows = [], recorded = [], seasonByDate = {}, nameById = {} } = {}) {
+  const totals = new Map()
+  const add = (id, n) => totals.set(id, (totals.get(id) || 0) + n)
+
+  const recordedSeasons = new Set(recorded.map(r => r.season))
+  for (const r of recorded) add(r.member_id, Number(r.vinnys_nights) || 0)
+
+  const countedSeasons = new Set()
+  for (const row of nightRows) {
+    const season = seasonByDate[row.played_on]
+    if (!season || recordedSeasons.has(season)) continue
+    countedSeasons.add(season)
+    add(row.member_id, 1)
+  }
+
+  const board = [...totals.entries()]
+    .map(([id, nights]) => ({ id, nights, name: nameById[id] || '?' }))
+    .filter(r => r.nights > 0 && r.name !== NOT_A_PERSON && r.name !== '?')
+    .sort((a, b) => b.nights - a.nights || a.name.localeCompare(b.name))
+
+  return {
+    board,
+    seasons: [...new Set([...recordedSeasons, ...countedSeasons])].sort()
+  }
+}
+
 /** Leaderboard from recorded season totals, same shape as leaderboard(). */
 export function boardFromTotals(rows, nameById) {
   return (rows || [])
