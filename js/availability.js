@@ -237,6 +237,65 @@ async function getCurrentSeasonMembers() {
 }
 
 /**
+ * The block of text behind the admin Copy button, written to be pasted
+ * straight into a group text. No markup, short labels, and the people who
+ * have not answered come last so they are the line your thumb lands on.
+ *
+ * A group with nobody in it still gets its line -- "Out (0)" is worth
+ * knowing, and a line that silently vanishes makes the paste look wrong.
+ */
+export function reminderText(label, yesNames, noNames, pendingNames) {
+  // Commas normally, because that is how a list reads in a text message --
+  // but some names carry their own comma ("Jonson, R."), and three of those
+  // separated by commas is unreadable. Switch separators only when one
+  // turns up, so the usual case stays plain.
+  const join = names =>
+    names.join(names.some(n => n.includes(',')) ? ' \u00b7 ' : ', ')
+  const line = (tag, names) =>
+    `${tag} (${names.length})${names.length ? ': ' + join(names) : ''}`
+  return [
+    `WBP availability — week of ${label}`,
+    '',
+    line('In', yesNames),
+    line('Out', noNames),
+    line('No reply', pendingNames)
+  ].join('\n')
+}
+
+/**
+ * Copies text, trying the modern clipboard first.
+ *
+ * Safari refuses the async clipboard outside a handful of contexts, and it
+ * is the browser most likely to be in play here -- this gets used on a
+ * phone, standing on a paddle court. The textarea route is the fallback,
+ * and returning false lets the caller put the text on screen to copy by
+ * hand rather than leave a dead button.
+ */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch { /* fall through */ }
+
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.cssText = 'position:fixed;top:-1000px;opacity:0;'
+    document.body.appendChild(ta)
+    ta.select()
+    ta.setSelectionRange(0, text.length)
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  } catch {
+    return false
+  }
+}
+
+/**
  * Tally view: shown to all members — aggregate counts + names per week.
  */
 /**
@@ -244,7 +303,7 @@ async function getCurrentSeasonMembers() {
  * is in on Monday, without publishing everyone's answers for the next
  * three months. Admin passes no limit and gets the lot.
  */
-export async function loadAvailabilityTally(container, { limit = null } = {}) {
+export async function loadAvailabilityTally(container, { limit = null, copy = false } = {}) {
   const weeks = limit ? upcomingWeeks().slice(0, limit) : upcomingWeeks()
   const weekKeys = weeks.map(toISO)
 
@@ -263,6 +322,8 @@ export async function loadAvailabilityTally(container, { limit = null } = {}) {
   }
 
   let html = `<h2 class="tally-title">${weeks.length === 1 ? 'Who&rsquo;s In This Week' : 'League Availability'}</h2>`
+  // weekKey -> the text its Copy button puts on the clipboard.
+  const copyTexts = {}
   for (const monday of weeks) {
     const key = toISO(monday)
     const weekAvail = (avail || []).filter(a => a.week_start === key)
@@ -271,9 +332,15 @@ export async function loadAvailabilityTally(container, { limit = null } = {}) {
     const respondedIds = new Set(weekAvail.map(a => a.member_id))
     const pendingNames = members.filter(m => !respondedIds.has(m.id)).map(m => m.full_name).sort()
 
+    if (copy) copyTexts[key] = reminderText(weekLabel(monday), yesNames, noNames, pendingNames)
+
     html += `
       <div class="tally-week card">
-        <div class="tally-week-label">${weekLabel(monday)}</div>
+        <div class="tally-week-head">
+          <div class="tally-week-label">${weekLabel(monday)}</div>
+          ${copy ? `<button type="button" class="btn btn-secondary btn-sm tally-copy-btn"
+                            data-week="${key}">Copy for text</button>` : ''}
+        </div>
         <div class="tally-rows">
           <div class="tally-yes">✓ ${yesNames.length} available${yesNames.length ? ': ' + yesNames.join(', ') : ''}</div>
           ${noNames.length ? `<div class="tally-no">✗ ${noNames.length} not available: ${noNames.join(', ')}</div>` : ''}
@@ -283,6 +350,35 @@ export async function loadAvailabilityTally(container, { limit = null } = {}) {
     `
   }
   container.innerHTML = html
+
+  // ── Copy for text (admin) ────────────────────────────────────────────
+  container.querySelectorAll('.tally-copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const text = copyTexts[btn.dataset.week]
+      if (!text) return
+      const ok = await copyText(text)
+      const label = btn.textContent
+      btn.textContent = ok ? '✓ Copied' : 'Copy failed'
+      btn.disabled = true
+
+      // Neither clipboard route worked -- put the text on the page so it
+      // can still be selected rather than leaving him stuck.
+      if (!ok) {
+        const card = btn.closest('.tally-week')
+        if (card && !card.querySelector('.tally-copy-fallback')) {
+          const ta = document.createElement('textarea')
+          ta.className = 'tally-copy-fallback'
+          ta.rows = 5
+          ta.readOnly = true
+          ta.value = text
+          card.appendChild(ta)
+          ta.select()
+        }
+      }
+
+      setTimeout(() => { btn.textContent = label; btn.disabled = false }, 2000)
+    })
+  })
 }
 
 /**

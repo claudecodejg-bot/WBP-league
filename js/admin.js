@@ -5,7 +5,7 @@
 import { supabase } from './supabase-client.js?v=2d21059e'
 import { CURRENT_SEASON } from './config.js?v=d82921ce'
 import { isWinner, matchScore, fmt } from './scoring.js?v=059e4ed1'
-import { loadAdminAvailability } from './availability.js?v=bfc15f9a'
+import { loadAdminAvailability } from './availability.js?v=e92704da'
 
 let allMembers = []
 

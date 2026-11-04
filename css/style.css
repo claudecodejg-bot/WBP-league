@@ -665,11 +665,29 @@ main.main-wide {
   padding: 0.9rem 1.25rem;
   margin-bottom: 0.75rem;
 }
+.tally-week-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
 .tally-week-label {
   font-weight: 600;
   font-size: 0.9rem;
-  margin-bottom: 0.5rem;
   color: var(--gray-800);
+}
+/* The label keeps its old spacing when there is no Copy button beside it. */
+.tally-week > .tally-week-label { margin-bottom: 0.5rem; }
+.tally-copy-btn { flex: none; }
+.tally-copy-fallback {
+  width: 100%;
+  margin-top: 0.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  padding: 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
 }
 .tally-rows {
   display: flex;

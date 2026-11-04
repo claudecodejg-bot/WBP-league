@@ -14,7 +14,7 @@
   <meta property="og:url" content="https://wbpleague.com/availability.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=3f4577d6">
+  <link rel="stylesheet" href="css/style.css?v=c9f4ed8a">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -97,7 +97,7 @@
       'Please fill in the warm-up weeks too, so we can set the courts.'
     el.hidden = false
   }
-  import { loadAvailability, loadAvailabilityTally, loadAdminAvailability } from './js/availability.js?v=bfc15f9a'
+  import { loadAvailability, loadAvailabilityTally, loadAdminAvailability } from './js/availability.js?v=e92704da'
 
   ;(async () => {
     initNav('availability')
@@ -136,7 +136,9 @@
 
       // Admin gets the full run of weeks, not just the coming one.
       document.getElementById('tally-wrap').style.display = ''
-      await loadAvailabilityTally(document.getElementById('tally-container'))
+      // copy: true adds the per-week "Copy for text" button -- admin only,
+      // since it is for chasing people rather than for reading.
+      await loadAvailabilityTally(document.getElementById('tally-container'), { copy: true })
 
       const adminEl = document.getElementById('admin-container')
       adminEl.innerHTML =
