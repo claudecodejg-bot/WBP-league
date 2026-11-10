@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Picks — Paddle Tennis League</title>
+  <meta name="description" content="Back a side for Monday night. Someone offers, someone takes the other side — play money only.">
+  <link rel="canonical" href="https://wbpleague.com/picks.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="WBP League">
+  <meta property="og:title" content="Picks — Paddle Tennis League">
+  <meta property="og:description" content="Back a side for Monday night. Someone offers, someone takes the other side — play money only.">
+  <meta property="og:url" content="https://wbpleague.com/picks.html">
+  <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="stylesheet" href="css/style.css?v=2617d3a3">
+  <link rel="icon" type="image/png" href="wbp-logo.png">
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
+  <script src="js/nav.js?v=9fd325f4" defer></script>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WBP League">
+  <meta name="mobile-web-app-capable" content="yes">
+  <script src="js/install.js?v=fe629a45" defer></script>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-brand"><img src="wbp-logo.png" alt="WBP"><span>WBP</span> League</a>
+  <ul class="nav-links">
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+    <li><a href="picks.html" data-page="picks">Picks</a></li>
+    <li><a href="standings.html" data-page="standings">Standings</a></li>
+    <li><a href="results.html" data-page="results">Results</a></li>
+    <li><a href="player.html" data-page="player">Players</a></li>
+    <li><a href="matchups.html" data-page="matchups">Matchups</a></li>
+    <li><a href="photos.html" data-page="photos">Photos</a></li>
+    <li><a href="championship.html" data-page="championship">Championship</a></li>
+    <li><a href="golf.html" data-page="golf">Golf</a></li>
+    <li id="scheduler-nav-item" style="display:none"><a href="scheduler.html" data-page="scheduler">Scheduler</a></li>
+  </ul>
+  <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
+</nav>
+
+<main>
+  <h1 class="page-title">Picks</h1>
+  <p class="page-subtitle">
+    Back a side, and someone else takes the other end of it &mdash; all of it or part.
+    Even money, play money, and the board closes when the first ball goes up.
+  </p>
+
+  <div id="picks-flash" hidden></div>
+  <div id="picks-bankroll"></div>
+
+  <div id="picks-container">
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Loading&hellip;</p>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <p>&copy; <span id="footer-year"></span> WBP Paddle Tennis League</p>
+</footer>
+
+<script type="module">
+  import { initNav, getCurrentMember } from './js/auth.js?v=81b26575'
+  import { loadPicks } from './js/picks.js?v=36f1f92c'
+
+  ;(async () => {
+    initNav('picks')
+
+    // Deliberately no requireLogin: the board is readable signed out. On a
+    // night you're sitting out, watching the book is half the point.
+    let member = null
+    try {
+      member = await getCurrentMember()
+    } catch (err) {
+      member = null   // can't tell — show the board read-only rather than nothing
+    }
+
+    if (member?.is_admin) {
+      document.getElementById('scheduler-nav-item')?.style.setProperty('display', 'block')
+    }
+
+    await loadPicks(document.getElementById('picks-container'), member)
+  })()
+</script>
+
+</body>
+</html>

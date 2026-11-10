@@ -14,7 +14,7 @@
   <meta property="og:url" content="https://wbpleague.com/scheduler.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=c9f4ed8a">
+  <link rel="stylesheet" href="css/style.css?v=2617d3a3">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -34,6 +34,7 @@
   <a href="index.html" class="nav-brand"><img src="wbp-logo.png" alt="WBP"><span>WBP</span> League</a>
   <ul class="nav-links">
     <li><a href="availability.html" data-page="availability">Availability</a></li>
+    <li><a href="picks.html" data-page="picks">Picks</a></li>
     <li><a href="standings.html" data-page="standings">Standings</a></li>
     <li><a href="results.html" data-page="results">Results</a></li>
     <li><a href="player.html" data-page="player">Players</a></li>
@@ -105,7 +106,7 @@
   import { generateSchedule, getUpcomingWeeks, formatWeekLabel, getSubCandidates,
          getPoolRatings, saveSubRating } from './js/scheduler.js?v=e5ed4a3a'
   import { supabase } from './js/supabase-client.js?v=2d21059e'
-  import { MIN_SEED_MATCHES } from './js/config.js?v=d82921ce'
+  import { MIN_SEED_MATCHES, CURRENT_SEASON } from './js/config.js?v=d82921ce'
 
   ;(async () => {
     initNav('scheduler')
@@ -397,6 +398,16 @@
       time:     timeInputs[ci].value.trim()     || '7:00 PM'
     }))
 
+    // The same courts by member id, for scheduled_courts. We have had the
+    // ids all along — opt.courts is ids, and the jsonb above only kept the
+    // names — so picks can hang off a real FK instead of free text.
+    const courtRows = opt.courts.map(([[a, b], [c, d]], ci) => ({
+      court_no: ci + 1,
+      t1p1: a, t1p2: b, t2p1: c, t2p2: d,
+      location: locationInputs[ci].value.trim() || 'Woodway CC',
+      time:     timeInputs[ci].value.trim()     || '7:00 PM'
+    }))
+
     const playedOn  = new Date(weekStart).toISOString().split('T')[0]
     const weekLabel = new Date(weekStart).toLocaleDateString('en-US',
       { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
@@ -415,6 +426,25 @@
     if (error) {
       alert('Error saving schedule: ' + error.message)
       return
+    }
+
+    // Normalised courts for the picks book. Deliberately after the upsert
+    // and non-fatal: if this fails the schedule itself is still saved and
+    // the night goes ahead, it just can't be bet on. Re-saving the same
+    // option fixes it.
+    //
+    // Regenerating a night somebody has already bet on voids and refunds
+    // those picks inside the function — they were made on a pairing that
+    // no longer exists.
+    const { error: courtsError } = await supabase.rpc('replace_scheduled_courts', {
+      p_season:     CURRENT_SEASON,
+      p_played_on:  playedOn,
+      p_week_label: weekLabel,
+      p_courts:     courtRows
+    })
+    if (courtsError) {
+      alert('Schedule saved, but the picks board could not be set up:\n' +
+            courtsError.message + '\n\nRe-saving this option will try again.')
     }
 
     document.getElementById('schedule-modal').style.display = 'none'
