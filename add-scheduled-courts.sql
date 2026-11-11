@@ -93,8 +93,12 @@ commit;
 -- distinct members, a sane close time) are enforced in one place that the
 -- publishable key cannot go around.
 
-revoke insert, update, delete on public.scheduled_courts from anon, authenticated;
-grant  select                  on public.scheduled_courts to  anon, authenticated;
+-- REVOKE ALL, not the three obvious writes: Supabase's default privileges
+-- grant ALL on tables in public to anon, and naming insert/update/delete
+-- leaves TRUNCATE, REFERENCES and TRIGGER in place. RLS does not apply to
+-- TRUNCATE, so that one would empty the table policies and all.
+revoke all    on public.scheduled_courts from anon, authenticated;
+grant  select on public.scheduled_courts to   anon, authenticated;
 
 -- Turns '7:00 PM' on a date into a real instant in league time. Falls back
 -- to 7pm if the scheduler ever hands us something unparseable, rather than

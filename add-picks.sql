@@ -162,10 +162,17 @@ create policy "Public can read fills"  on public.wager_fills  for select using (
 
 commit;
 
-revoke insert, update, delete on public.wager_offers from anon, authenticated;
-revoke insert, update, delete on public.wager_fills  from anon, authenticated;
-grant  select on public.wager_offers to anon, authenticated;
-grant  select on public.wager_fills  to anon, authenticated;
+-- REVOKE ALL, not "revoke insert, update, delete". Supabase's default
+-- privileges grant ALL on tables in public to anon, and ALL is seven
+-- privileges: naming the three obvious ones leaves TRUNCATE, REFERENCES
+-- and TRIGGER behind. TRUNCATE is the one that matters — RLS does not
+-- apply to it, so it empties the table policies and all. PostgREST offers
+-- no way to issue one today, which is why this went unnoticed; it is still
+-- not a privilege a role reachable from the internet should hold.
+revoke all    on public.wager_offers from anon, authenticated;
+revoke all    on public.wager_fills  from anon, authenticated;
+grant  select on public.wager_offers to   anon, authenticated;
+grant  select on public.wager_fills  to   anon, authenticated;
 
 -- ---------------------------------------------------------------------
 --  4. Who won a court — derived, never stored
@@ -774,8 +781,16 @@ funcs as (
          pg_get_function_identity_arguments(p.oid) || ')' as what,
          case when p.prosecdef then 'definer' else 'invoker' end ||
          ', anon execute: ' ||
-         case when has_function_privilege('anon', p.oid, 'execute')
-              then 'YES — FIX THIS' else 'no' end as detail
+         case when not has_function_privilege('anon', p.oid, 'execute')
+                then 'no'
+              -- A DEFINER function runs as its owner, so anon holding
+              -- execute on one is a way round RLS. An INVOKER function
+              -- runs as anon anyway and can do nothing anon could not
+              -- already do: pair_key and court_closes_at are pure
+              -- functions of their arguments and are granted on purpose,
+              -- because the settle views run as the caller.
+              when p.prosecdef then 'YES — FIX THIS'
+              else 'yes (fine: invoker, pure)' end as detail
     from pg_proc p
    where p.pronamespace = 'public'::regnamespace
      and p.proname in ('post_offer', 'take_offer', 'cancel_offer', 'void_court',
