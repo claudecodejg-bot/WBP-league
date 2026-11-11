@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settle Up — Paddle Tennis League</title>
+  <meta name="description" content="Who owes whom after Monday night. Play money — what the transfers would be if the picks had been for real.">
+  <link rel="canonical" href="https://wbpleague.com/settle.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="WBP League">
+  <meta property="og:title" content="Settle Up — Paddle Tennis League">
+  <meta property="og:description" content="Who owes whom after Monday night. Play money — what the transfers would be if the picks had been for real.">
+  <meta property="og:url" content="https://wbpleague.com/settle.html">
+  <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="stylesheet" href="css/style.css?v=2349ac51">
+  <link rel="icon" type="image/png" href="wbp-logo.png">
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
+  <script src="js/nav.js?v=9fd325f4" defer></script>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WBP League">
+  <meta name="mobile-web-app-capable" content="yes">
+  <script src="js/install.js?v=fe629a45" defer></script>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-brand"><img src="wbp-logo.png" alt="WBP"><span>WBP</span> League</a>
+  <ul class="nav-links">
+    <li><a href="availability.html" data-page="availability">Availability</a></li>
+    <li><a href="picks.html" data-page="picks">Picks</a></li>
+    <li><a href="settle.html" data-page="settle">Settle Up</a></li>
+    <li><a href="standings.html" data-page="standings">Standings</a></li>
+    <li><a href="results.html" data-page="results">Results</a></li>
+    <li><a href="player.html" data-page="player">Players</a></li>
+    <li><a href="matchups.html" data-page="matchups">Matchups</a></li>
+    <li><a href="photos.html" data-page="photos">Photos</a></li>
+    <li><a href="championship.html" data-page="championship">Championship</a></li>
+    <li><a href="golf.html" data-page="golf">Golf</a></li>
+    <li id="scheduler-nav-item" style="display:none"><a href="scheduler.html" data-page="scheduler">Scheduler</a></li>
+  </ul>
+  <button id="nav-hamburger" aria-label="Open menu" aria-expanded="false">&#9776;</button>
+</nav>
+
+<main>
+  <h1 class="page-title">Settle Up</h1>
+  <p class="page-subtitle">
+    What the week's picks would come to if they had been for real money.
+    Square up and it starts again at zero &mdash; there is no tab to carry.
+  </p>
+
+  <div id="settle-flash" hidden></div>
+
+  <div id="settle-container">
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Loading&hellip;</p>
+    </div>
+  </div>
+
+  <p class="settle-foot">
+    Play money. Nothing on this page moves a cent by itself &mdash; it just
+    says what the transfer would be. Make the picks on the
+    <a href="picks.html">board</a>.
+  </p>
+</main>
+
+<footer>
+  <p>&copy; <span id="footer-year"></span> WBP Paddle Tennis League</p>
+</footer>
+
+<script type="module">
+  import { initNav, getCurrentMember } from './js/auth.js?v=81b26575'
+  import { loadSettle } from './js/settle.js?v=79cbf391'
+
+  ;(async () => {
+    initNav('settle')
+
+    // No requireLogin, same as the picks board: the numbers are readable
+    // signed out. Being able to see who owes whom is half the needling.
+    let member = null
+    try {
+      member = await getCurrentMember()
+    } catch (err) {
+      member = null
+    }
+
+    if (member?.is_admin) {
+      document.getElementById('scheduler-nav-item')?.style.setProperty('display', 'block')
+    }
+
+    await loadSettle(document.getElementById('settle-container'), member)
+  })()
+</script>
+
+</body>
+</html>

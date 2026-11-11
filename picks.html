@@ -4,16 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Picks — Paddle Tennis League</title>
-  <meta name="description" content="Back a side for Monday night. Someone offers, someone takes the other side — play money only.">
+  <meta name="description" content="Back a side at your own odds for Monday night. Someone offers, someone takes the other end — play money only.">
   <link rel="canonical" href="https://wbpleague.com/picks.html">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="WBP League">
   <meta property="og:title" content="Picks — Paddle Tennis League">
-  <meta property="og:description" content="Back a side for Monday night. Someone offers, someone takes the other side — play money only.">
+  <meta property="og:description" content="Back a side at your own odds for Monday night. Someone offers, someone takes the other end — play money only.">
   <meta property="og:url" content="https://wbpleague.com/picks.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=2617d3a3">
+  <link rel="stylesheet" href="css/style.css?v=2349ac51">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -34,6 +34,7 @@
   <ul class="nav-links">
     <li><a href="availability.html" data-page="availability">Availability</a></li>
     <li><a href="picks.html" data-page="picks">Picks</a></li>
+    <li><a href="settle.html" data-page="settle">Settle Up</a></li>
     <li><a href="standings.html" data-page="standings">Standings</a></li>
     <li><a href="results.html" data-page="results">Results</a></li>
     <li><a href="player.html" data-page="player">Players</a></li>
@@ -49,12 +50,14 @@
 <main>
   <h1 class="page-title">Picks</h1>
   <p class="page-subtitle">
-    Back a side, and someone else takes the other end of it &mdash; all of it or part.
-    Even money, play money, and the board closes when the first ball goes up.
+    Back a side at your own price, and someone else takes the other end of it
+    &mdash; all of it or part. Play money, settled up
+    <a href="settle.html">after each Monday</a>, and the board closes when the
+    first ball goes up.
   </p>
 
   <div id="picks-flash" hidden></div>
-  <div id="picks-bankroll"></div>
+  <div id="picks-note"></div>
 
   <div id="picks-container">
     <div class="loading-state">
@@ -70,7 +73,7 @@
 
 <script type="module">
   import { initNav, getCurrentMember } from './js/auth.js?v=81b26575'
-  import { loadPicks } from './js/picks.js?v=36f1f92c'
+  import { loadPicks } from './js/picks.js?v=cf76e83e'
 
   ;(async () => {
     initNav('picks')

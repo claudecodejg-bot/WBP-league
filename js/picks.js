@@ -1,22 +1,34 @@
 // =============================================
 //  Picks — the peer-to-peer book for a night's courts
 // =============================================
-//  Someone offers a side for an amount; anyone else takes the other side
-//  for part or all of it. Even money, play money.
+//  Someone offers a side at a price; anyone else takes the other side for
+//  part or all of it. Play money, settled up weekly on settle.html.
 //
-//  Every write goes through an RPC (post_offer / take_offer /
-//  cancel_offer). None of these tables accept an insert from the browser,
-//  on purpose: the rules that matter — enough left on the offer, enough in
-//  your bankroll, before the court closes, not against your own team —
-//  need a row lock and three tables in one transaction, which no RLS
-//  policy can express. So the database does the deciding and this file
-//  only asks and reports back.
+//  THE PRICE HAS TWO NUMBERS
 //
-//  That also means the error messages below are the ones raised in
-//  add-wagers.sql. They are written to be shown to a member as-is.
+//  An offer says what the poster risks and what the poster wins. "Risk $5
+//  to win $10" is 2-1. The taker's end is the exact mirror — risk $10 to
+//  win $5 — so there is no third number anywhere in this file and the two
+//  ends cannot disagree about the price.
+//
+//  Everything is in CENTS. A half fill of 2-1 on $5 is $2.50, and a number
+//  that can land on a half dollar has no business being stored in whole
+//  ones. Only money() and centsFrom() know about dollars.
+//
+//  NO BANKROLL
+//
+//  Nothing is held and no balance is checked. A pick is a promise between
+//  two people, and after each Monday settle.html works out who owes whom.
+//  So the only limits are per-offer: $1–$100 to risk, $1–$500 to win, and
+//  odds inside 10-1 either way. Those are enforced in add-picks.sql — the
+//  error messages shown below come straight from it.
+//
+//  Every write goes through an RPC. None of these tables accept an insert
+//  from the browser, on purpose: "enough left on the offer, before the
+//  court closes, not against your own team" needs a row lock and two
+//  tables in one transaction, which no RLS policy can express.
 
 import { supabase, escapeHtml, connectionErrorHtml } from './supabase-client.js?v=2d21059e'
-import { CURRENT_SEASON } from './config.js?v=d82921ce'
 
 let _container = null
 let _member    = null          // { id, full_name, is_admin } or null when signed out
@@ -24,8 +36,8 @@ let _member    = null          // { id, full_name, is_admin } or null when signe
 let _courts   = []
 let _offers   = []
 let _fills    = []
+let _results  = {}             // court_id -> winning_side (1, 2 or null)
 let _nameById = {}
-let _balance  = null
 
 /** YYYY-MM-DD for today, local time — not UTC, which is a day ahead at night. */
 function todayISO() {
@@ -42,13 +54,21 @@ function pair(a, b) {
   return `${name(a)} & ${name(b)}`
 }
 
-/** A court is shut once its status moves on, or once its start time passes. */
-function isClosed(court) {
-  return court.status !== 'open' || new Date(court.closes_at) <= new Date()
-}
-
 function sideNames(court, side) {
   return side === 1 ? pair(court.t1p1, court.t1p2) : pair(court.t2p1, court.t2p2)
+}
+
+/**
+ * A court is shut once its status moves on, once its start time passes, or
+ * once it has a result. The last of those is belt and braces — a result
+ * cannot normally land before the close time, since it comes from a match
+ * that had not been played yet — but a corrected score or an early entry
+ * should not reopen the book on a court whose answer is already on screen.
+ */
+function isClosed(court) {
+  return court.status !== 'open'
+      || _results[court.id] != null
+      || new Date(court.closes_at) <= new Date()
 }
 
 /** Which side the signed-in member is playing on this court, or null. */
@@ -59,8 +79,48 @@ function mySide(court) {
   return null
 }
 
-function money(n) {
-  return `$${Number(n).toLocaleString()}`
+// ── Money ───────────────────────────────────────────────────────────────
+
+/** Cents to a readable dollar amount. Whole dollars lose the ".00". */
+function money(cents) {
+  const n = Number(cents) / 100
+  return '$' + (Number.isInteger(n)
+    ? n.toLocaleString()
+    : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+}
+
+/** Reads a dollar input as whole cents, or null if it isn't a usable amount. */
+function centsFrom(id) {
+  const raw = document.getElementById(id)?.value
+  if (raw == null) return null
+  const n = parseFloat(String(raw).replace(/[$,\s]/g, ''))
+  if (!Number.isFinite(n) || n <= 0) return null
+  return Math.round(n * 100)
+}
+
+function gcd(a, b) {
+  while (b) { [a, b] = [b, a % b] }
+  return a
+}
+
+/**
+ * "2-1", "3-2", "even money" — the shape people actually say out loud.
+ * Falls back to a decimal against 1 when the whole-number ratio would be
+ * something nobody could read, like 47-13.
+ */
+function oddsLabel(riskCents, winCents) {
+  if (!riskCents || !winCents) return ''
+  if (riskCents === winCents) return 'even money'
+
+  const g = gcd(riskCents, winCents)
+  const a = winCents  / g           // what you win
+  const b = riskCents / g           // what you risk
+  if (a <= 20 && b <= 20) return `${a}-${b}`
+
+  const trim = x => String(Number(x.toFixed(2)))
+  return winCents > riskCents
+    ? `${trim(winCents / riskCents)}-1`
+    : `1-${trim(riskCents / winCents)}`
 }
 
 // ── Data ────────────────────────────────────────────────────────────────
@@ -68,11 +128,12 @@ function money(n) {
 async function fetchAll() {
   const today = todayISO()
 
-  // Courts still to come, plus anything from today that may not be settled.
+  // Courts still to come, plus tonight's — which may already have a result.
   const [courtsRes, membersRes] = await Promise.all([
     supabase.from('scheduled_courts')
       .select('id, season, played_on, week_label, court_no, t1p1, t1p2, t2p1, t2p2, location, start_time, closes_at, status')
       .gte('played_on', today)
+      .neq('status', 'void')
       .order('played_on', { ascending: true })
       .order('court_no',  { ascending: true }),
     supabase.from('members').select('id, full_name')
@@ -85,76 +146,49 @@ async function fetchAll() {
   _nameById = Object.fromEntries((membersRes.data || []).map(m => [m.id, m.full_name]))
 
   const courtIds = _courts.map(c => c.id)
-  if (courtIds.length === 0) {
-    _offers = []
-    _fills  = []
-  } else {
-    const offersRes = await supabase.from('wager_offers')
-      .select('id, court_id, offered_by, side, amount, remaining, status, created_at')
+  _offers  = []
+  _fills   = []
+  _results = {}
+  if (courtIds.length === 0) return
+
+  // The winner is derived from `matches` rather than stored, so it is read
+  // the same way as everything else — see v_court_results in add-picks.sql.
+  const [offersRes, resultsRes] = await Promise.all([
+    supabase.from('wager_offers')
+      .select('id, court_id, offered_by, side, risk_cents, win_cents, risk_open_cents, win_open_cents, status, created_at')
       .in('court_id', courtIds)
-      .order('created_at', { ascending: true })
-    if (offersRes.error) throw offersRes.error
-    _offers = offersRes.data || []
+      .neq('status', 'void')
+      .order('created_at', { ascending: true }),
+    supabase.from('v_court_results')
+      .select('court_id, winning_side')
+      .in('court_id', courtIds)
+  ])
+  if (offersRes.error)  throw offersRes.error
+  if (resultsRes.error) throw resultsRes.error
 
-    const offerIds = _offers.map(o => o.id)
-    if (offerIds.length === 0) {
-      _fills = []
-    } else {
-      const fillsRes = await supabase.from('wager_fills')
-        .select('id, offer_id, taker, amount, outcome, created_at')
-        .in('offer_id', offerIds)
-        .order('created_at', { ascending: true })
-      if (fillsRes.error) throw fillsRes.error
-      _fills = fillsRes.data || []
-    }
-  }
+  _offers  = offersRes.data || []
+  _results = Object.fromEntries((resultsRes.data || []).map(r => [r.court_id, r.winning_side]))
 
-  // Balance comes from the ledger view — there is no stored balance.
-  if (_member) {
-    const balRes = await supabase.from('v_wager_balances')
-      .select('balance')
-      .eq('member_id', _member.id)
-      .eq('season', CURRENT_SEASON)
-      .maybeSingle()
-    _balance = balRes.error ? null : (balRes.data?.balance ?? 0)
-  } else {
-    _balance = null
-  }
+  const offerIds = _offers.map(o => o.id)
+  if (offerIds.length === 0) return
+
+  const fillsRes = await supabase.from('wager_fills')
+    .select('id, offer_id, taker, poster_risk_cents, taker_risk_cents, created_at')
+    .in('offer_id', offerIds)
+    .order('created_at', { ascending: true })
+  if (fillsRes.error) throw fillsRes.error
+  _fills = fillsRes.data || []
 }
 
 // ── Render ──────────────────────────────────────────────────────────────
 
-function renderBankroll() {
-  const el = document.getElementById('picks-bankroll')
+function renderSignedOutNote() {
+  const el = document.getElementById('picks-note')
   if (!el) return
-
-  if (!_member) {
-    el.innerHTML = `<p class="picks-bankroll-note">
-      Anyone can read the board. <a href="login.html?next=picks.html">Sign in</a> to make a pick.</p>`
-    return
-  }
-  if (_balance === null) {
-    el.innerHTML = `<p class="picks-bankroll-note">Could not read your bankroll.</p>`
-    return
-  }
-
-  // Money already committed: offers nobody has taken yet, plus matched
-  // stakes. Both are out of the balance already, so this is just so the
-  // number on screen is explainable.
-  const myOffers = _offers.filter(o => o.offered_by === _member.id)
-  const open     = myOffers.reduce((n, o) => n + (o.status === 'open' ? o.remaining : 0), 0)
-
-  el.innerHTML = `
-    <div class="picks-bankroll">
-      <div class="picks-bankroll-figure">
-        <span class="picks-bankroll-label">Your bankroll</span>
-        <strong>${money(_balance)}</strong>
-      </div>
-      ${open > 0 ? `<p class="picks-bankroll-note">${money(open)} of that is sitting on offers nobody has taken yet.</p>` : ''}
-    </div>`
+  el.innerHTML = _member ? '' : `<p class="picks-note">
+    Anyone can read the board. <a href="login.html?next=picks.html">Sign in</a> to make a pick.</p>`
 }
 
-/** The matched bets on one offer, as a sentence each. */
 function fillsFor(offerId) {
   return _fills.filter(f => f.offer_id === offerId)
 }
@@ -162,73 +196,138 @@ function fillsFor(offerId) {
 function renderOffer(court, offer, closed) {
   const backing = sideNames(court, offer.side)
   const matched = fillsFor(offer.id)
-  const taken   = matched.reduce((n, f) => n + f.amount, 0)
   const mine    = _member && offer.offered_by === _member.id
   const myTeam  = mySide(court)
+  const won     = _results[court.id] ?? null
 
   // Taking this offer means taking the side it is against. If that is the
   // side you're playing on, the database will refuse it, so don't offer a
   // button that cannot work.
   const takingSide  = offer.side === 1 ? 2 : 1
   const wouldBeVsMe = myTeam !== null && myTeam !== takingSide
+  const openToTake  = offer.status === 'open' && offer.win_open_cents > 0
 
-  const canTake = !closed && _member && !mine && offer.status === 'open'
-                  && offer.remaining > 0 && !wouldBeVsMe
+  const canTake = !closed && _member && !mine && openToTake && !wouldBeVsMe
+  const odds    = oddsLabel(offer.risk_cents, offer.win_cents)
 
-  const lines = []
-  lines.push(`<div class="pick-offer">
+  const out = []
+  out.push(`<div class="pick-offer">
     <div class="pick-offer-head">
       <span class="pick-offer-who">${escapeHtml(name(offer.offered_by))}</span>
       backs <strong>${escapeHtml(backing)}</strong>
-      for <strong>${money(offer.amount)}</strong>
+      &mdash; risks ${money(offer.risk_cents)} to win ${money(offer.win_cents)}
+      <span class="pick-odds">${escapeHtml(odds)}</span>
     </div>`)
 
-  if (taken > 0) {
-    lines.push(`<ul class="pick-matched">` + matched.map(f =>
-      `<li>${escapeHtml(name(f.taker))} took ${money(f.amount)} on
-        ${escapeHtml(sideNames(court, takingSide))}${
-          f.outcome ? ` &middot; <span class="pick-outcome">${f.outcome === 'void' ? 'void' : 'settled'}</span>` : ''
-        }</li>`).join('') + `</ul>`)
+  if (matched.length > 0) {
+    out.push(`<ul class="pick-matched">` + matched.map(f => {
+      // Who came out on top of this one. Same rule as v_pick_results: the
+      // poster's side winning means the poster collects.
+      let tail = ''
+      if (won !== null) {
+        const posterWon = won === offer.side
+        const winner    = posterWon ? offer.offered_by : f.taker
+        const amount    = posterWon ? f.taker_risk_cents : f.poster_risk_cents
+        tail = ` &middot; <span class="pick-outcome">${escapeHtml(name(winner))} +${money(amount)}</span>`
+      }
+      return `<li>${escapeHtml(name(f.taker))} risked ${money(f.taker_risk_cents)}
+        to win ${money(f.poster_risk_cents)} on
+        ${escapeHtml(sideNames(court, takingSide))}${tail}</li>`
+    }).join('') + `</ul>`)
   }
 
-  if (offer.status === 'open' && offer.remaining > 0) {
-    lines.push(`<div class="pick-offer-foot">
-      <span class="pick-remaining">${money(offer.remaining)} still open</span>`)
+  if (openToTake) {
+    out.push(`<div class="pick-offer-foot">
+      <span class="pick-remaining">${money(offer.win_open_cents)} of the other side still open</span>`)
 
     if (canTake) {
-      lines.push(`
+      // Default to the lot. The function fills whatever is left rather than
+      // failing, so an over-ask is harmless either way.
+      const dflt = (offer.win_open_cents / 100).toFixed(2).replace(/\.00$/, '')
+      out.push(`
         <span class="pick-take">
-          <label class="sr-only" for="take-amt-${offer.id}">Amount to take</label>
+          <label class="sr-only" for="take-amt-${offer.id}">Amount to risk</label>
+          <span class="pick-dollar">$</span>
           <input type="number" id="take-amt-${offer.id}" class="pick-amt"
-                 min="1" step="1" max="${offer.remaining}" value="${offer.remaining}"
-                 inputmode="numeric">
+                 min="1" step="0.01" max="${dflt}" value="${dflt}" inputmode="decimal">
           <button class="btn btn-sm btn-primary" data-take="${offer.id}">
             Take ${escapeHtml(sideNames(court, takingSide))}
           </button>
         </span>`)
     } else if (wouldBeVsMe && !closed && !mine) {
       // Only worth saying to someone who might otherwise expect a button.
-      // On your own offer it reads like a refusal of something you weren't
-      // trying to do.
-      lines.push(`<span class="pick-blocked">You're playing this court</span>`)
+      out.push(`<span class="pick-blocked">You're playing this court</span>`)
     }
 
     if (mine && !closed) {
-      lines.push(`<button class="btn btn-sm btn-secondary" data-cancel="${offer.id}">Pull back</button>`)
+      out.push(`<button class="btn btn-sm btn-secondary" data-cancel="${offer.id}">Pull back</button>`)
     }
-    lines.push(`</div>`)
-  } else if (offer.status === 'cancelled' && taken === 0) {
-    lines.push(`<div class="pick-offer-foot"><span class="pick-remaining">Pulled back</span></div>`)
+    out.push(`</div>`)
+  } else if (offer.status === 'cancelled' && matched.length === 0) {
+    out.push(`<div class="pick-offer-foot"><span class="pick-remaining">Pulled back</span></div>`)
   }
 
-  lines.push(`</div>`)
-  return lines.join('')
+  out.push(`</div>`)
+  return out.join('')
+}
+
+/**
+ * The form for putting a side up. Two amounts rather than an odds box:
+ * "risk 5 to win 10" is how the price gets said out loud, and it cannot be
+ * read the wrong way round the way a bare "2-1" can.
+ */
+function renderOfferForm(court, myTeam) {
+  const sides = [1, 2].filter(side => myTeam === null || myTeam === side)
+
+  return `<div class="pick-new">
+    <span class="pick-new-label">Back a side</span>
+    <div class="pick-new-row">
+      <label class="pick-field">
+        <span>I risk</span>
+        <span class="pick-dollar">$</span>
+        <input type="number" id="post-risk-${court.id}" class="pick-amt" data-preview="${court.id}"
+               min="1" max="100" step="0.01" value="20" inputmode="decimal">
+      </label>
+      <label class="pick-field">
+        <span>to win</span>
+        <span class="pick-dollar">$</span>
+        <input type="number" id="post-win-${court.id}" class="pick-amt" data-preview="${court.id}"
+               min="1" max="500" step="0.01" value="20" inputmode="decimal">
+      </label>
+      <span class="pick-new-on">on</span>
+      ${sides.map(side => `
+        <button class="btn btn-sm btn-outline" data-post="${court.id}" data-side="${side}">
+          ${escapeHtml(sideNames(court, side))}
+        </button>`).join('')}
+    </div>
+    <p class="pick-preview" id="post-preview-${court.id}"></p>
+    ${myTeam !== null
+      ? `<p class="pick-new-note">You're playing this court, so you can back your own team but not against it.</p>`
+      : ''}
+  </div>`
+}
+
+/** Spells out both ends of the price being typed, so nobody has to guess. */
+function updatePreview(courtId) {
+  const el = document.getElementById(`post-preview-${courtId}`)
+  if (!el) return
+
+  const risk = centsFrom(`post-risk-${courtId}`)
+  const win  = centsFrom(`post-win-${courtId}`)
+  if (!risk || !win) { el.textContent = ''; return }
+
+  const odds = oddsLabel(risk, win)
+  el.textContent =
+    `${odds === 'even money' ? 'Even money' : odds} — you win ${money(win)} if your side takes it,` +
+    ` and pay ${money(risk)} if it doesn't.` +
+    ` Whoever takes the other end risks ${money(win)} to win ${money(risk)}.`
 }
 
 function renderCourt(court) {
   const closed  = isClosed(court)
   const offers  = _offers.filter(o => o.court_id === court.id)
   const myTeam  = mySide(court)
+  const won     = _results[court.id] ?? null
   const closeAt = new Date(court.closes_at)
     .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
@@ -236,34 +335,21 @@ function renderCourt(court) {
     ? offers.map(o => renderOffer(court, o, closed)).join('')
     : `<p class="pick-empty">No picks on this court yet.</p>`
 
-  // Offering is only possible on your own side if you're playing.
-  const offerForm = (!closed && _member)
-    ? `<div class="pick-new">
-         <span class="pick-new-label">Back a side</span>
-         <div class="pick-new-row">
-           <label class="sr-only" for="post-amt-${court.id}">Amount to put up</label>
-           <input type="number" id="post-amt-${court.id}" class="pick-amt"
-                  min="1" step="1" value="20" inputmode="numeric">
-           <span class="pick-new-on">on</span>
-           ${[1, 2].map(side => (myTeam !== null && myTeam !== side)
-             ? ''
-             : `<button class="btn btn-sm btn-outline" data-post="${court.id}" data-side="${side}">
-                  ${escapeHtml(sideNames(court, side))}
-                </button>`).join('')}
-         </div>
-         ${myTeam !== null
-           ? `<p class="pick-new-note">You're playing this court, so you can back your own team but not against it.</p>`
-           : ''}
-       </div>`
-    : ''
+  let state
+  if (won !== null) {
+    state = ` &middot; <strong>${escapeHtml(sideNames(court, won))} won</strong>`
+  } else if (closed) {
+    state = ' &middot; <strong>closed</strong>'
+  } else {
+    state = ` &middot; closes ${escapeHtml(closeAt)}`
+  }
 
   return `
     <article class="pick-court${closed ? ' pick-court-closed' : ''}">
       <header class="pick-court-head">
         <h3>Court ${court.court_no}</h3>
         <span class="pick-court-meta">
-          ${escapeHtml(court.start_time || '')}${court.location ? ' &middot; ' + escapeHtml(court.location) : ''}
-          ${closed ? ' &middot; <strong>closed</strong>' : ` &middot; closes ${escapeHtml(closeAt)}`}
+          ${escapeHtml(court.start_time || '')}${court.location ? ' &middot; ' + escapeHtml(court.location) : ''}${state}
         </span>
       </header>
       <p class="pick-court-teams">
@@ -271,19 +357,20 @@ function renderCourt(court) {
         <span class="pick-vs">vs</span>
         <strong>${escapeHtml(sideNames(court, 2))}</strong>
       </p>
-      ${offerForm}
+      ${(!closed && _member) ? renderOfferForm(court, myTeam) : ''}
       <div class="pick-book">${book}</div>
     </article>`
 }
 
 function render() {
+  renderSignedOutNote()
+
   if (!_courts.length) {
     _container.innerHTML = `
       <div class="empty-state">
         <p>No courts on the board yet.</p>
         <p class="pick-empty">Picks open as soon as the pairings for the next Monday are posted.</p>
       </div>`
-    renderBankroll()
     return
   }
 
@@ -304,16 +391,10 @@ function render() {
       ${night.courts.map(renderCourt).join('')}
     </section>`).join('')
 
-  renderBankroll()
+  for (const court of _courts) updatePreview(court.id)
 }
 
 // ── Actions ─────────────────────────────────────────────────────────────
-
-function amountFrom(id) {
-  const input = document.getElementById(id)
-  const n     = parseInt(input?.value, 10)
-  return Number.isFinite(n) && n > 0 ? n : null
-}
 
 async function refresh() {
   await fetchAll()
@@ -328,40 +409,48 @@ function flash(message, kind = 'error') {
   el.textContent = message
   el.hidden      = false
   window.clearTimeout(flash._t)
-  flash._t = window.setTimeout(() => { el.hidden = true }, 6000)
+  flash._t = window.setTimeout(() => { el.hidden = true }, 7000)
 }
 
 async function onPost(courtId, side) {
-  const amount = amountFrom(`post-amt-${courtId}`)
-  if (!amount) return flash('Put in an amount first.')
+  const risk = centsFrom(`post-risk-${courtId}`)
+  const win  = centsFrom(`post-win-${courtId}`)
+  if (!risk) return flash('Put in what you want to risk.')
+  if (!win)  return flash('Put in what you want to win.')
 
   const { error } = await supabase.rpc('post_offer', {
-    p_court_id: courtId,
-    p_side:     side,
-    p_amount:   amount
+    p_court_id:   courtId,
+    p_side:       side,
+    p_risk_cents: risk,
+    p_win_cents:  win
   })
   if (error) return flash(error.message)
 
-  flash('Offer posted — somebody has to take it now.', 'success')
+  flash(risk === win
+    ? `Up at even money — ${money(risk)}. Somebody has to take it now.`
+    : `Up at ${oddsLabel(risk, win)} — you risk ${money(risk)} to win ${money(win)}.`, 'success')
   await refresh()
 }
 
 async function onTake(offerId) {
-  const asked = amountFrom(`take-amt-${offerId}`)
-  if (!asked) return flash('Put in an amount first.')
+  const asked = centsFrom(`take-amt-${offerId}`)
+  if (!asked) return flash('Put in what you want to risk.')
 
   const { data, error } = await supabase.rpc('take_offer', {
-    p_offer_id: offerId,
-    p_amount:   asked
+    p_offer_id:   offerId,
+    p_risk_cents: asked
   })
   if (error) return flash(error.message)
 
-  // The function fills whatever is left rather than failing, so the amount
-  // that actually went on can be less than the one asked for — say so.
-  const filled = Number(data)
-  flash(filled < asked
-    ? `Only ${money(filled)} was left on that offer, so that's what you took.`
-    : `You're on for ${money(filled)}.`, 'success')
+  // The function fills whatever is left rather than failing, and absorbs a
+  // sub-dollar sliver rather than leaving it, so what actually went on can
+  // differ from what was asked for in either direction. Say what happened.
+  const risked = Number(data?.taker_risk_cents ?? 0)
+  const toWin  = Number(data?.poster_risk_cents ?? 0)
+
+  flash(risked !== asked
+    ? `${money(risked)} was what was left on that offer, so that's what you're on for — risking ${money(risked)} to win ${money(toWin)}.`
+    : `You're on — risking ${money(risked)} to win ${money(toWin)}.`, 'success')
   await refresh()
 }
 
@@ -370,7 +459,7 @@ async function onCancel(offerId) {
   if (error) return flash(error.message)
 
   flash(Number(data) > 0
-    ? `${money(data)} back in your bankroll. Anything already taken stays live.`
+    ? `Pulled back the ${money(data)} nobody had taken. Anything already matched stays live.`
     : 'Nothing left to pull back.', 'success')
   await refresh()
 }
@@ -404,5 +493,10 @@ export async function loadPicks(container, member) {
     if (post)   { event.preventDefault(); await onPost(post.dataset.post, Number(post.dataset.side)) }
     if (take)   { event.preventDefault(); await onTake(take.dataset.take) }
     if (cancel) { event.preventDefault(); await onCancel(cancel.dataset.cancel) }
+  })
+
+  _container.addEventListener('input', event => {
+    const field = event.target.closest('[data-preview]')
+    if (field) updatePreview(field.dataset.preview)
   })
 }
