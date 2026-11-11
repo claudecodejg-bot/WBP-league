@@ -167,7 +167,7 @@ begin
 end;
 $$;
 
-revoke all     on function public.replace_scheduled_courts(text, date, text, jsonb) from public;
+revoke all     on function public.replace_scheduled_courts(text, date, text, jsonb) from public, anon;
 grant  execute on function public.replace_scheduled_courts(text, date, text, jsonb) to   authenticated;
 
 -- ---------------------------------------------------------------------

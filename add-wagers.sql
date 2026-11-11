@@ -167,7 +167,7 @@ as $$
    where member_id = p_member and season = p_season;
 $$;
 
-revoke all     on function public.wager_me()                   from public;
+revoke all     on function public.wager_me()                   from public, anon;
 revoke all     on function public.wager_balance(uuid, text)    from public;
 grant  execute on function public.wager_me()                   to   authenticated;
 grant  execute on function public.wager_balance(uuid, text)     to   anon, authenticated;
@@ -661,13 +661,13 @@ $$;
 --  Only signed-in members can move money
 -- ---------------------------------------------------------------------
 
-revoke all on function public.post_offer(uuid, smallint, int)                 from public;
-revoke all on function public.take_offer(uuid, int)                           from public;
-revoke all on function public.cancel_offer(uuid)                              from public;
-revoke all on function public.settle_court(uuid, smallint)                    from public;
-revoke all on function public.void_court(uuid)                                from public;
-revoke all on function public.grant_season_bankroll(text, int)                from public;
-revoke all on function public.replace_scheduled_courts(text, date, text, jsonb) from public;
+revoke all on function public.post_offer(uuid, smallint, int)                 from public, anon;
+revoke all on function public.take_offer(uuid, int)                           from public, anon;
+revoke all on function public.cancel_offer(uuid)                              from public, anon;
+revoke all on function public.settle_court(uuid, smallint)                    from public, anon;
+revoke all on function public.void_court(uuid)                                from public, anon;
+revoke all on function public.grant_season_bankroll(text, int)                from public, anon;
+revoke all on function public.replace_scheduled_courts(text, date, text, jsonb) from public, anon;
 
 grant execute on function public.post_offer(uuid, smallint, int)                 to authenticated;
 grant execute on function public.take_offer(uuid, int)                           to authenticated;
