@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/settle.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=4d856397">
+  <link rel="stylesheet" href="css/style.css?v=65591ad1">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -50,8 +50,8 @@
 <main>
   <h1 class="page-title">Settle Up</h1>
   <p class="page-subtitle">
-    What the week's picks would come to if they had been for real money.
-    Square up and it starts again at zero &mdash; there is no tab to carry.
+    A running tab. Every Monday is added to what was already owed, and it
+    keeps running until the money changes hands and someone clears it.
   </p>
 
   <div id="settle-flash" hidden></div>
@@ -76,7 +76,7 @@
 
 <script type="module">
   import { initNav, getCurrentMember } from './js/auth.js?v=81b26575'
-  import { loadSettle } from './js/settle.js?v=d71e0ba3'
+  import { loadSettle } from './js/settle.js?v=93f0fac2'
 
   ;(async () => {
     initNav('settle')
