@@ -2901,18 +2901,37 @@ footer {
   box-shadow: var(--shadow-lg);
 }
 
-/* A coral glow behind the wordmark. Purely decorative, so it must not
-   swallow clicks on anything layered over it. */
+/* Monday night under the lights, sitting behind the wordmark. ::after is
+   painted above ::before by default, so both layers carry an explicit
+   z-index: photo at 1, scrim at 2, words at 3. */
+.picks-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-image: url('../picks-banner.jpg');
+  background-size: cover;
+  background-position: center 55%;
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+/* The coral glow, plus a scrim dark enough to keep the slogan legible over
+   whatever part of the photo the crop lands on. Both are decorative, so
+   neither may swallow a click. */
 .picks-hero::before {
   content: '';
   position: absolute;
-  inset: -60% -10% auto -10%;
-  height: 200%;
-  background: radial-gradient(ellipse at 50% 30%,
-              rgba(244,132,95,0.30) 0%, rgba(244,132,95,0) 60%);
+  inset: 0;
+  z-index: 2;
+  background:
+    radial-gradient(ellipse at 50% 30%,
+      rgba(244,132,95,0.22) 0%, rgba(244,132,95,0) 60%),
+    linear-gradient(180deg,
+      rgba(14,14,14,0.30) 0%, rgba(14,14,14,0.72) 100%);
   pointer-events: none;
 }
-.picks-hero > * { position: relative; }
+.picks-hero > * { position: relative; z-index: 3; }
 
 .picks-hero-title {
   font-size: clamp(2rem, 9vw, 3.1rem);

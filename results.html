@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/results.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=4117d430">
+  <link rel="stylesheet" href="css/style.css?v=6cdee31d">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -146,9 +146,12 @@
 
   // Games in a set, 0-7. A dropdown rather than a number box: quicker on a
   // phone, and it cannot produce the "66-7" sitting in the match history.
+  // Counts DOWN from 7. Almost every set ends 6-something or 7-something,
+  // so the two numbers that get picked most sit at the top of the list
+  // instead of after a scroll past five that almost never get used.
   function gamesOptions(selected) {
     let out = '<option value="">\u2013</option>'
-    for (let n = 0; n <= 7; n++) {
+    for (let n = 7; n >= 0; n--) {
       const sel = selected != null && String(selected) === String(n) ? ' selected' : ''
       out += `<option value="${n}"${sel}>${n}</option>`
     }
