@@ -73,8 +73,9 @@ async function fetchAll() {
       .eq('season', CURRENT_SEASON),
     supabase.from('members').select('id, full_name'),
     // Matched picks with no result yet. A past night still showing these
-    // means a court could not be tied to a recorded match — a substitution,
-    // usually — and somebody has to decide rather than guess.
+    // means a court could not be tied to a recorded match — the four
+    // recorded players differ from the four scheduled, whether through a
+    // fill-in or a partner swap — and somebody has to decide, not guess.
     supabase.from('v_pick_results')
       .select('court_id, played_on, court_no, poster, taker, poster_risk_cents, taker_risk_cents')
       .eq('season', CURRENT_SEASON)
@@ -173,8 +174,9 @@ function renderSeason() {
 /**
  * Courts that were played but whose picks cannot be settled, because no
  * recorded match has the same four players in the same two partnerships.
- * A substitution does this. Voiding is the honest answer — the picks were
- * made on a pairing that did not take the court — and only an admin can.
+ * A fill-in does this, and so does the same four swapping partners.
+ * Voiding is the honest answer — the picks were made on a pairing that did
+ * not take the court — and only an admin can.
  */
 function renderUnresolved() {
   if (!_unresolved.length) return ''
@@ -190,11 +192,11 @@ function renderUnresolved() {
   return `<section class="settle-section settle-unresolved">
     <h2>Waiting on a result</h2>
     <p class="settle-sub">
-      These courts have picks on them but no result that matches the four
-      players who were scheduled &mdash; usually a substitution. They are not
-      in any number above. Once the score is entered for the pairing people
-      actually bet on they settle themselves; if that pairing never took the
-      court, it needs voiding.
+      These courts have picks on them but no recorded result with the same
+      four players in the same two partnerships &mdash; a fill-in, or the
+      pairs swapped at the courts. They are not in any number above. Once a
+      score is entered for the pairing people actually bet on they settle
+      themselves; if that pairing never took the court, it needs voiding.
     </p>
     <ul class="settle-open-list">
       ${[...courts.values()].map(c => `<li>

@@ -46,6 +46,24 @@ function todayISO() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/**
+ * Do two clock times mean the same thing? toLocaleTimeString puts a NARROW
+ * NO-BREAK SPACE (U+202F) before AM/PM on current ICU, while start_time is
+ * typed by hand with an ordinary space, so a plain === quietly says no.
+ */
+function sameTime(a, b) {
+  const norm = s => String(s ?? '').replace(/\s+/gu, ' ').trim().toUpperCase()
+  return norm(a) !== '' && norm(a) === norm(b)
+}
+
+/** "Monday, November 16" — parsed as local, so it can't slip back a day. */
+function prettyDate(iso) {
+  const [y, m, d] = String(iso).split('-').map(Number)
+  if (!y || !m || !d) return String(iso ?? '')
+  return new Date(y, m - 1, d).toLocaleDateString('en-US',
+    { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
 function name(id) {
   return _nameById[id] || 'Unknown'
 }
@@ -263,8 +281,16 @@ function renderOffer(court, offer, closed) {
       out.push(`<button class="btn btn-sm btn-secondary" data-cancel="${offer.id}">Pull back</button>`)
     }
     out.push(`</div>`)
-  } else if (offer.status === 'cancelled' && matched.length === 0) {
+  } else if (offer.status === 'cancelled') {
+    // cancel_offer only leaves 'cancelled' when nothing was ever matched;
+    // pulling back a part-filled offer marks it 'filled' instead.
     out.push(`<div class="pick-offer-foot"><span class="pick-remaining">Pulled back</span></div>`)
+  } else if (matched.length > 0) {
+    // Every other offer says how much is open, so one that says nothing
+    // reads as unfinished. Deliberately not "matched in full": an offer
+    // pulled back after a part fill ends up here too, and the row cannot
+    // tell the two apart.
+    out.push(`<div class="pick-offer-foot"><span class="pick-remaining">Nothing left to take</span></div>`)
   }
 
   out.push(`</div>`)
@@ -340,6 +366,11 @@ function renderCourt(court) {
     state = ` &middot; <strong>${escapeHtml(sideNames(court, won))} won</strong>`
   } else if (closed) {
     state = ' &middot; <strong>closed</strong>'
+  } else if (sameTime(closeAt, court.start_time)) {
+    // The board normally closes at first serve, so printing the same time
+    // twice ("7:00 PM · Woodway · closes 7:00 PM") just reads as a mistake.
+    // The page subtitle already says when it closes.
+    state = ''
   } else {
     state = ` &middot; closes ${escapeHtml(closeAt)}`
   }
@@ -387,7 +418,11 @@ function render() {
 
   _container.innerHTML = nights.map(night => `
     <section class="pick-night">
-      <h2 class="pick-night-title">${escapeHtml(night.week_label || night.played_on)}</h2>
+      <h2 class="pick-night-title">${escapeHtml(night.week_label || '')}${
+        night.week_label
+          ? `<span class="pick-night-date">${escapeHtml(prettyDate(night.played_on))}</span>`
+          : escapeHtml(prettyDate(night.played_on))
+      }</h2>
       ${night.courts.map(renderCourt).join('')}
     </section>`).join('')
 

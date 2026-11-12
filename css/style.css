@@ -12,6 +12,10 @@
   --gray-100:     #f8f9fa;
   --gray-200:     #e9ecef;
   --gray-400:     #ced4da;
+  /* Was referenced in three places but never defined, so those fell back to
+     near-black body text instead of the muted grey they wanted. 4.7:1 on
+     white, so it still passes AA for normal text. */
+  --gray-500:     #6c757d;
   --gray-600:     #4a4a4a;
   --gray-800:     #1a1a1a;
   --text:         #1a1a1a;
@@ -96,14 +100,24 @@ a.nav-brand:hover { text-decoration: none; color: var(--white); }
   gap: 0.25rem;
   list-style: none;
   align-items: center;
+  /* Eleven or twelve items no longer fit on one row on a laptop, and the
+     overflow was being clipped off the right edge rather than shown. The
+     bar is 120px tall, so a second row costs nothing and never hides a
+     link. Rows stay right-aligned under the brand. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 0.3rem;
 }
 
 .nav-links a {
   color: var(--white);
-  padding: 0.4rem 0.85rem;
+  padding: 0.4rem 0.7rem;
   border-radius: var(--radius);
   font-size: 0.9rem;
   font-weight: 600;
+  /* Two-word labels — "Settle Up", "Sign Out" — were breaking mid-label
+     and stacking to two lines, which also split the active pill in half. */
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s;
   text-shadow: -1px -1px 0 rgba(0,0,0,0.6), 1px -1px 0 rgba(0,0,0,0.6),
                -1px  1px 0 rgba(0,0,0,0.6), 1px  1px 0 rgba(0,0,0,0.6);
@@ -2878,6 +2892,14 @@ footer {
   font-size: 1.1rem; margin: 0 0 0.75rem;
   color: var(--gray-600); font-weight: 600;
 }
+
+/* "Week 6" alone doesn't say which Monday. The date sits beside it, lighter,
+   so the label still leads. */
+.pick-night-date {
+  font-weight: 500;
+  color: var(--gray-500);
+}
+.pick-night-date::before { content: "\00b7"; margin: 0 0.4em; }
 
 .pick-court {
   background: var(--white);
