@@ -2886,6 +2886,104 @@ footer {
   color: var(--gray-600); font-size: 0.9rem;
 }
 
+/* ── The board's banner ─────────────────────── */
+/* The one deliberately flashy thing on the site. It stays inside the two
+   colours the rest of the site already uses — charcoal and coral — so it
+   reads as this league's page dressed up, not a different website. */
+.picks-hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #141414 0%, #2b2b2b 58%, #3a2823 100%);
+  border-radius: 14px;
+  padding: 2rem 1.5rem 1.7rem;
+  margin: 0 0 1.4rem;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+
+/* A coral glow behind the wordmark. Purely decorative, so it must not
+   swallow clicks on anything layered over it. */
+.picks-hero::before {
+  content: '';
+  position: absolute;
+  inset: -60% -10% auto -10%;
+  height: 200%;
+  background: radial-gradient(ellipse at 50% 30%,
+              rgba(244,132,95,0.30) 0%, rgba(244,132,95,0) 60%);
+  pointer-events: none;
+}
+.picks-hero > * { position: relative; }
+
+.picks-hero-title {
+  font-size: clamp(2rem, 9vw, 3.1rem);
+  font-weight: 900;
+  line-height: 1.02;
+  letter-spacing: -1px;
+  margin: 0;
+}
+
+/* The wordmark. -webkit-background-clip is what paints a gradient into the
+   glyphs themselves; the plain colour is set first, so if that is not
+   supported the text is still coral rather than invisible. The glow is a
+   drop-shadow on the element, not a text-shadow — with a transparent text
+   fill a text-shadow shows through the letters as a smear. */
+.picks-hero-mark {
+  display: inline-block;
+  color: var(--green-light);
+  background: linear-gradient(100deg,
+              #ffe3d4 0%, #f6a07f 30%, #f4845f 55%, #ff5f1f 80%, #ffe3d4 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 22px rgba(244,132,95,0.45));
+  animation: pick-sheen 9s ease-in-out infinite;
+}
+
+/* A slow sweep across the letters. Nine seconds and no movement of layout,
+   so it reads as a sheen rather than something demanding attention. */
+@keyframes pick-sheen {
+  0%, 100% { background-position:   0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* "wagers" sits under the wordmark as the second half of a lockup, which is
+   why it is not simply the same size on one line: at phone width
+   "ROCK'n'Roll wagers" either wraps where it likes or shrinks to nothing. */
+.picks-hero-kicker {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: clamp(0.72rem, 2.6vw, 0.9rem);
+  font-weight: 700;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;          /* the last letter's tracking, centred back */
+  text-transform: uppercase;
+  color: var(--green-pale);
+  opacity: 0.85;
+}
+
+.picks-hero-slogan {
+  margin: 0.9rem auto 0;
+  max-width: 34ch;
+  color: var(--white);
+  font-size: clamp(0.95rem, 3.4vw, 1.08rem);
+  font-weight: 600;
+  line-height: 1.45;
+  /* Three short sentences: let the browser even out the lines rather than
+     break after "Someone". Ignored where unsupported, which only costs the
+     tidier break. */
+  text-wrap: balance;
+}
+
+/* Someone who has asked the system to stop animations gets the wordmark
+   standing still, mid-sweep, where the gradient looks best. */
+@media (prefers-reduced-motion: reduce) {
+  .picks-hero-mark {
+    animation: none;
+    background-position: 50% 50%;
+  }
+}
+
 /* ── A night, and the courts in it ──────────── */
 .pick-night { margin-bottom: 2rem; }
 .pick-night-title {
