@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/standings.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=b2f0df13">
+  <link rel="stylesheet" href="css/style.css?v=47786165">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -83,6 +83,8 @@
   import { fetchVinnys, leaderboard, nightsHeld, fetchRecordedTotals, boardFromTotals,
            fetchAllRecordedTotals, allTimeBoard } from './js/vinnys.js?v=67aac246'
   import { fetchPaddleHomie, homieBoard } from './js/homie.js?v=22d405a8'
+  import { fetchWagerAwards, wagerRows, wagerBoards, money as wagerMoney }
+    from './js/wager-awards.js?v=b8cad4a1'
   import { startHero } from './js/hero.js?v=5f4eef9b'
   initNav('standings')
   startHero(document.querySelector('.page-hero'))
@@ -109,6 +111,7 @@
   let _homie             = []   // paddle_homie totals for the active season
   let _vinnysRecorded    = []   // hand-kept Vinny's totals for a past season
   let _vinnysAllTime     = []   // hand-kept totals for every season, for the all-time board
+  let _wager             = { picks: [], nets: [] }   // the three ROCK'n'Roll titles
 
   function getCols() {
     const cols = [
@@ -344,6 +347,7 @@
 
     html += buildVinnysSection()
     html += buildHomieSection()
+    html += buildWagerSection()
     container.innerHTML = html
 
     container.querySelectorAll('th[data-sort]').forEach(th => {
@@ -467,6 +471,103 @@
           <tbody>${body}</tbody>
         </table>
       </div>`
+  }
+
+  // ── ROCK'n'Roll Wagers ────────────────────────────────────────
+  // Three season-long titles off the picks board. Computed in
+  // js/wager-awards.js from views that already existed, so none of this
+  // needed a line of SQL.
+  function buildWagerSection() {
+    const nameById = Object.fromEntries(
+      [..._db.members, ..._db.guests].map(m => [m.id, m.full_name]))
+    const rows = wagerRows(_wager, nameById)
+    if (rows.length === 0) return ''
+
+    const { king, action, maker } = wagerBoards(rows)
+
+    // A title with nobody holding it yet still gets a card, so the three
+    // are always on screen and everyone can see what is in play.
+    const card = (icon, title, blurb, board, key, fmt) => {
+      const held = board.leaders.length > 0
+      const who  = held
+        ? board.leaders.map(r => escapeHtml(r.name)).join(' & ')
+        : 'Up for grabs'
+      return `
+        <div class="wager-award${held ? '' : ' wager-award-open'}">
+          <span class="wager-award-icon" aria-hidden="true">${icon}</span>
+          <span class="wager-award-title">${title}</span>
+          <span class="wager-award-name">${who}</span>
+          <span class="wager-award-stat">${held ? fmt(board.top) : blurb}</span>
+        </div>`
+    }
+
+    const cards = `
+      <div class="wager-awards">
+        ${card('\u{1F451}', 'Wager King', 'Win one and it is yours',
+               king, 'won', c => '+' + wagerMoney(c) + ' on the season')}
+        ${card('\u{1F3B2}', 'Most Action', 'Get a bet matched',
+               action, 'action', c => wagerMoney(c) + ' matched')}
+        ${card('\u{1F4E3}', 'Market Maker', 'Put a price up that sticks',
+               maker, 'made', c => wagerMoney(c) + ' off their prices')}
+      </div>`
+
+    // One table, three columns, sorted by the headline title. The leader
+    // of each column is marked in place rather than given a table of its
+    // own — three boards of the same eleven names is three times the
+    // scrolling for the same information.
+    const mark = (value, board) =>
+      board.leaders.length && value === board.top && value > 0
+        ? ' class="wager-lead"' : ''
+
+    const body = [...rows]
+      .sort((a, b) => b.won - a.won || b.action - a.action || a.name.localeCompare(b.name))
+      .map(r => `
+        <tr>
+          <td class="player-name">
+            <a href="player.html?id=${r.id}" class="player-link">${escapeHtml(r.name)}</a>
+          </td>
+          <td${mark(r.won, king)} style="text-align:right;font-variant-numeric:tabular-nums;">
+            <span class="${r.won > 0 ? 'settle-up' : r.won < 0 ? 'settle-down' : ''}">${
+              r.won > 0 ? '+' : r.won < 0 ? '\u2212' : ''}${wagerMoney(r.won)}</span>
+          </td>
+          <td${mark(r.action, action)} style="text-align:right;font-variant-numeric:tabular-nums;">
+            ${wagerMoney(r.action)}
+            <span class="wager-sub">${r.bets} bet${r.bets === 1 ? '' : 's'}</span>
+          </td>
+          <td${mark(r.made, maker)} style="text-align:right;font-variant-numeric:tabular-nums;">
+            ${r.made > 0 ? wagerMoney(r.made) : '\u2014'}
+            ${r.offers > 0
+              ? `<span class="wager-sub">${r.offers} price${r.offers === 1 ? '' : 's'}</span>`
+              : ''}
+          </td>
+        </tr>`).join('')
+
+    return `
+      <h2 class="section-title" style="margin-top:2rem;">&#127922; ROCK&rsquo;n&rsquo;Roll Wagers</h2>
+      <p class="vinnys-lead-note">
+        Three titles, running all season. They are won on the
+        <a href="picks.html">board</a> &mdash; play money, squared up on
+        <a href="settle.html">Settle Up</a>.
+      </p>
+      ${cards}
+      <div class="table-scroll">
+        <table class="standings-table">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th style="text-align:right;">Won</th>
+              <th style="text-align:right;">Action</th>
+              <th style="text-align:right;">Made</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+      <p class="vinnys-lead-note" style="margin-top:0.5rem;">
+        <strong>Won</strong> is the season net, once a court has a score.
+        <strong>Action</strong> is everything matched, either end of it.
+        <strong>Made</strong> is money taken off a price you put up.
+      </p>`
   }
 
   // ── Paddle Homie Award ────────────────────────────────────────
@@ -593,6 +694,7 @@
     _homie = []
     _vinnysRecorded = []
     _vinnysAllTime = []
+    _wager = { picks: [], nets: [] }
     loadStandings()
     refreshAwards()
   })
@@ -610,16 +712,19 @@
     if (_activeSeason === 'all') {
       _homie = []
       _vinnysRecorded = []
+      _wager = { picks: [], nets: [] }
       _vinnysAllTime = await fetchAllRecordedTotals()
       renderTables()
       return
     }
-    const [homie, recorded] = await Promise.all([
+    const [homie, recorded, wager] = await Promise.all([
       fetchPaddleHomie(_activeSeason),
-      fetchRecordedTotals(_activeSeason)
+      fetchRecordedTotals(_activeSeason),
+      fetchWagerAwards(_activeSeason)
     ])
     _homie = homie
     _vinnysRecorded = recorded
+    _wager = wager
     _vinnysAllTime = []
     // Always redraw. A season can legitimately have no award at all now,
     // and skipping the render on an empty result left the previous

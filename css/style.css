@@ -3118,6 +3118,48 @@ footer {
 .help-dialog-body li { margin-bottom: 0.2rem; }
 .help-dialog-body strong { color: var(--text); }
 
+/* ── The three wager titles ─────────────────── */
+/* Three cards above the table, so the titles are visible before anyone
+   reads a number. A title nobody holds yet still gets a card — people
+   only chase what they can see is in play. */
+.wager-awards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+}
+.wager-award {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.1rem;
+  padding: 0.85rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.wager-award-icon  { font-size: 1.6rem; line-height: 1.2; }
+.wager-award-title {
+  font-size: 0.68rem; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--accent);
+}
+.wager-award-name  { font-size: 1.05rem; font-weight: 800; }
+.wager-award-stat  { font-size: 0.8rem; color: var(--gray-600); }
+/* Vacant: muted, and the stat line says how to win it instead of what
+   the leader has. */
+.wager-award-open .wager-award-name { color: var(--gray-500); font-weight: 600; }
+.wager-award-open .wager-award-icon { opacity: 0.45; }
+
+/* The leader of a column, marked in the table rather than given a board
+   of its own — three boards of the same eleven names is three times the
+   scrolling for the same information. */
+.wager-lead { background: var(--green-pale); font-weight: 700; }
+.wager-sub {
+  display: block;
+  font-size: 0.7rem; color: var(--gray-500); font-weight: 400;
+}
+
 /* ── A page banner with photographs behind it ── */
 /* The picks hero's quieter sibling, for Standings and Results. A band
    rather than a wall: 150px against the picks hero's 300, because those
