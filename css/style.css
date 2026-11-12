@@ -3293,6 +3293,22 @@ footer {
 .live-board-taken .live-board-count { color: #cfe4ff; }
 .live-board-taken .live-bet-price   { color: #cfe4ff; }
 
+/* Accepted wagers are grouped by court. The hairline runs off the end of
+   the label rather than boxing it, so a group reads as a band across the
+   panel without adding a second frame inside the first. */
+.live-board-group + .live-board-group { margin-top: 0.9rem; }
+.live-board-group-title {
+  display: flex; align-items: center; gap: 0.6rem;
+  margin: 0 0 0.45rem;
+  font-size: 0.7rem; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(207,228,255,0.8);
+}
+.live-board-group-title::after {
+  content: ''; flex: 1; height: 1px;
+  background: rgba(207,228,255,0.22);
+}
+
 /* The sticky nav would otherwise sit on top of the court just jumped to.
    Measured, not guessed: the bar wraps to two rows of links above 640px
    and runs to 120px, so the first try at 5.5rem landed the court heading

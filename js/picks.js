@@ -351,37 +351,56 @@ function renderAcceptedBoard() {
       return court ? { fill: f, offer, court } : null
     })
     .filter(Boolean)
-    // Newest first. The bet somebody just took is the one worth seeing.
-    .sort((x, y) => (x.fill.created_at < y.fill.created_at ? 1 : -1))
 
   if (!rows.length) return ''
 
-  const cards = rows.map(({ fill, offer, court }) => {
-    const takingSide = offer.side === 1 ? 2 : 1
-    const won        = _results[court.id] ?? null
+  // Grouped by court, in the order the courts themselves run — _courts
+  // comes back sorted by night and then court number, so walking it is
+  // what keeps the two halves of the page in the same order.
+  const groups = []
+  for (const court of _courts) {
+    const mine = rows
+      .filter(r => r.court.id === court.id)
+      // Newest first inside a court: the bet somebody just took is the
+      // one worth seeing.
+      .sort((x, y) => (x.fill.created_at < y.fill.created_at ? 1 : -1))
+    if (mine.length) groups.push({ court, rows: mine })
+  }
 
-    // Same rule as v_pick_results: the poster's side winning means the
-    // poster collects.
-    let tail = ''
-    if (won !== null) {
-      const posterWon = won === offer.side
-      const winner    = posterWon ? offer.offered_by : fill.taker
-      const amount    = posterWon ? fill.taker_risk_cents : fill.poster_risk_cents
-      tail = `<span class="live-bet-won">${escapeHtml(name(winner))} +${money(amount)}</span>`
-    }
+  const body = groups.map(({ court, rows: inCourt }) => {
+    const cards = inCourt.map(({ fill, offer }) => {
+      const takingSide = offer.side === 1 ? 2 : 1
+      const won        = _results[court.id] ?? null
 
-    const mine = _member && (fill.taker === _member.id || offer.offered_by === _member.id)
+      // Same rule as v_pick_results: the poster's side winning means the
+      // poster collects.
+      let tail = ''
+      if (won !== null) {
+        const posterWon = won === offer.side
+        const winner    = posterWon ? offer.offered_by : fill.taker
+        const amount    = posterWon ? fill.taker_risk_cents : fill.poster_risk_cents
+        tail = `<span class="live-bet-won">${escapeHtml(name(winner))} +${money(amount)}</span>`
+      }
 
-    return `<li class="live-bet">
-      <div class="live-bet-card${mine ? ' live-bet-mine' : ''}">
-        <span class="live-bet-team">${escapeHtml(sideNames(court, takingSide))}</span>
-        <span class="live-bet-price">${escapeHtml(name(fill.taker))} &middot; ${
-          money(fill.taker_risk_cents)} to win ${money(fill.poster_risk_cents)}</span>
-        <span class="live-bet-from">${courtLabel(court)} &middot; v ${
-          escapeHtml(name(offer.offered_by))}</span>
-        ${tail}
-      </div>
-    </li>`
+      const mine = _member && (fill.taker === _member.id || offer.offered_by === _member.id)
+
+      // No court on the card any more — the heading above it says so
+      // once for the whole group.
+      return `<li class="live-bet">
+        <div class="live-bet-card${mine ? ' live-bet-mine' : ''}">
+          <span class="live-bet-team">${escapeHtml(sideNames(court, takingSide))}</span>
+          <span class="live-bet-price">${escapeHtml(name(fill.taker))} &middot; ${
+            money(fill.taker_risk_cents)} to win ${money(fill.poster_risk_cents)}</span>
+          <span class="live-bet-from">v ${escapeHtml(name(offer.offered_by))}</span>
+          ${tail}
+        </div>
+      </li>`
+    }).join('')
+
+    return `<div class="live-board-group">
+      <h3 class="live-board-group-title">${courtLabel(court)}</h3>
+      <ul class="live-board-list">${cards}</ul>
+    </div>`
   }).join('')
 
   return `
@@ -392,7 +411,7 @@ function renderAcceptedBoard() {
           Accepted wagers!
           <span class="live-board-count">${rows.length} on the line</span>
         </h2>
-        <ul class="live-board-list">${cards}</ul>
+        ${body}
       </div>
     </section>`
 }
