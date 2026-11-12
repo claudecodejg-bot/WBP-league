@@ -220,6 +220,77 @@ function fillsFor(offerId) {
 }
 
 /**
+ * The marquee: every price going right now, across all the courts, above
+ * everything else on the page.
+ *
+ * It does NOT repeat the Take control. There is one place to strike a
+ * bet — the court it belongs to — and a second set of amount boxes would
+ * mean two elements answering to take-amt-<offer>, which is how the wrong
+ * number gets read off the wrong input. Each row is a link down to its
+ * own court instead.
+ *
+ * Hidden entirely when nothing is going. A box of chasing lights around
+ * the words "nothing available" is worse than no box.
+ */
+function renderLive() {
+  const el = document.getElementById('picks-live')
+  if (!el) return
+
+  const live = _offers
+    .filter(o => o.status === 'open' && o.win_open_cents > 0)
+    .map(o => ({ offer: o, court: _courts.find(c => c.id === o.court_id) }))
+    .filter(x => x.court && !isClosed(x.court))
+    // Biggest first. The one worth walking over to is the one that should
+    // be read first.
+    .sort((x, y) => y.offer.win_open_cents - x.offer.win_open_cents)
+
+  if (!live.length) {
+    el.innerHTML = ''
+    return
+  }
+
+  // A headline, not a second copy of the board. Four courts with a few
+  // prices each would otherwise push the courts themselves off a phone
+  // screen entirely, which defeats the point of putting this at the top.
+  const SHOWN = 6
+  const rest  = live.length - SHOWN
+
+  const rows = live.slice(0, SHOWN).map(({ offer, court }) => {
+    // Same rule as the board below: name the side a TAKER ends up on, and
+    // show the taker's two numbers.
+    const takingSide = offer.side === 1 ? 2 : 1
+    const risk = offer.win_open_cents
+    const win  = offer.risk_open_cents
+    const mine = _member && offer.offered_by === _member.id
+
+    return `<li class="live-bet">
+      <a href="#court-${escapeHtml(court.id)}">
+        <span class="live-bet-team">${escapeHtml(sideNames(court, takingSide))}</span>
+        <span class="live-bet-price">${money(risk)} to win ${money(win)}</span>
+        <span class="pick-odds">${escapeHtml(oddsLabel(risk, win))}</span>
+        <span class="live-bet-from">Court ${court.court_no} &middot; ${
+          mine ? 'yours' : 'from ' + escapeHtml(name(offer.offered_by))}</span>
+      </a>
+    </li>`
+  }).join('')
+
+  el.innerHTML = `
+    <section class="live-board">
+      <div class="live-board-inner">
+        <h2 class="live-board-title">
+          <span class="live-board-dot" aria-hidden="true"></span>
+          Up for grabs
+          <span class="live-board-count">${live.length} going</span>
+        </h2>
+        <ul class="live-board-list">${rows}</ul>
+        ${rest > 0
+          ? `<p class="live-board-more">and ${rest} more on the board below</p>`
+          : ''}
+      </div>
+    </section>`
+}
+
+/**
  * One price you could take, drawn in the column of the team it would put
  * you on.
  *
@@ -465,7 +536,8 @@ function renderCourt(court) {
   }
 
   return `
-    <article class="pick-court${closed ? ' pick-court-closed' : ''}">
+    <article class="pick-court${closed ? ' pick-court-closed' : ''}"
+             id="court-${escapeHtml(court.id)}">
       <header class="pick-court-head">
         <h3>Court ${court.court_no}</h3>
         <span class="pick-court-meta">
@@ -497,6 +569,7 @@ function nightHeading(night) {
 
 function render() {
   renderSignedOutNote()
+  renderLive()
 
   if (!_courts.length) {
     _container.innerHTML = `

@@ -3115,6 +3115,139 @@ footer {
 .help-dialog-body li { margin-bottom: 0.2rem; }
 .help-dialog-body strong { color: var(--text); }
 
+/* ── Up for grabs: the marquee ──────────────── */
+/* Every price going right now, above everything else, inside a border of
+   chasing bulbs. The only unashamedly loud thing on the site, and it is
+   loud on purpose: it exists to say "there is action here" from across
+   the room. It draws nothing at all when nothing is going. */
+.live-board {
+  position: relative;
+  margin: 0 0 1.4rem;
+  padding: 1.15rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #171717 0%, #241a17 55%, #30200f 100%);
+  box-shadow: var(--shadow-lg), 0 0 30px rgba(244,132,95,0.28);
+  overflow: hidden;
+}
+
+/* The bulbs: four strips of dots just inside the edge, chasing clockwise.
+   The halo is built into the gradient itself rather than added with a
+   drop-shadow filter — filtering a repeating pattern every frame is the
+   expensive way to get the same glow, and this runs on phones. */
+.live-board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, #fff6e6 0.9px, #ffb86c 2px, rgba(255,184,108,0.35) 3.2px, rgba(255,184,108,0) 4.2px),
+    radial-gradient(circle, #fff6e6 0.9px, #ffb86c 2px, rgba(255,184,108,0.35) 3.2px, rgba(255,184,108,0) 4.2px),
+    radial-gradient(circle, #fff6e6 0.9px, #ffb86c 2px, rgba(255,184,108,0.35) 3.2px, rgba(255,184,108,0) 4.2px),
+    radial-gradient(circle, #fff6e6 0.9px, #ffb86c 2px, rgba(255,184,108,0.35) 3.2px, rgba(255,184,108,0) 4.2px);
+  background-size: 18px 10px, 18px 10px, 10px 18px, 10px 18px;
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-position: 0 3px, 0 calc(100% - 3px), 3px 0, calc(100% - 3px) 0;
+  animation: bulb-chase 1.8s linear infinite;
+}
+
+/* Top runs right, right runs down, bottom runs left, left runs up —
+   which together read as one light travelling round the frame. */
+@keyframes bulb-chase {
+  to {
+    background-position:
+      18px 3px,
+      -18px calc(100% - 3px),
+      3px -18px,
+      calc(100% - 3px) 18px;
+  }
+}
+
+/* The pseudo-element is positioned, so in-flow content needs a layer of
+   its own or the bulbs paint over the words. */
+.live-board-inner { position: relative; z-index: 1; }
+
+.live-board-title {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  color: var(--white);
+  font-size: 0.95rem; font-weight: 800;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.8);
+}
+.live-board-dot {
+  width: 0.5rem; height: 0.5rem;
+  border-radius: 999px;
+  background: #ff5f1f;
+  box-shadow: 0 0 8px 2px rgba(255,95,31,0.8);
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%      { opacity: 0.45; transform: scale(0.75); }
+}
+.live-board-count {
+  margin-left: auto;
+  color: var(--green-pale);
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.live-board-list {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+.live-bet a {
+  display: block;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--white);
+  text-decoration: none;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.live-bet a:hover,
+.live-bet a:focus-visible {
+  background: rgba(244,132,95,0.22);
+  border-color: var(--accent);
+  text-decoration: none;
+}
+.live-bet-team {
+  display: block;
+  font-weight: 700; font-size: 0.95rem; line-height: 1.3;
+}
+.live-bet-price { font-size: 0.88rem; font-weight: 600; color: #ffd9a8; }
+.live-bet-from {
+  display: block; margin-top: 0.15rem;
+  font-size: 0.75rem; color: rgba(255,255,255,0.62);
+}
+.live-board-more {
+  margin: 0.6rem 0 0;
+  color: rgba(255,255,255,0.6);
+  font-size: 0.78rem; text-align: center;
+}
+
+/* The sticky nav would otherwise sit on top of the court just jumped to.
+   Measured, not guessed: the bar wraps to two rows of links above 640px
+   and runs to 120px, so the first try at 5.5rem landed the court heading
+   underneath it. Below 640px it collapses to a single hamburger bar.
+   The flash is what says "this is the one", since a scroll that lands
+   mid-page looks the same as no scroll at all. */
+.pick-court { scroll-margin-top: 9rem; }
+@media (max-width: 640px) { .pick-court { scroll-margin-top: 6rem; } }
+.pick-court:target { animation: court-ping 1.8s ease-out 1; }
+@keyframes court-ping {
+  0%, 100% { box-shadow: var(--shadow); }
+  12%, 55% { box-shadow: 0 0 0 3px var(--accent), var(--shadow); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-board::before,
+  .live-board-dot,
+  .pick-court:target { animation: none; }
+}
+
 /* ── A night, and the courts in it ──────────── */
 .pick-night { margin-bottom: 2rem; }
 .pick-night-title {
