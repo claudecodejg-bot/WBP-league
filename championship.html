@@ -50,6 +50,13 @@
 
   <!-- Champion Hero -->
   <div class="champ-hero">
+    <!-- One photo, fixed: the pair this page is about. No rotation here —
+         a page with a single subject should not cycle other people's
+         nights behind it. Markup rather than js/hero.js, because a still
+         image needs no module; it reuses the same .hero-img layer the
+         rotating banners use, so it looks identical to them. -->
+    <div class="hero-img is-on" aria-hidden="true"
+         style="background-image:url('banners/champs-2026.jpg');background-position:center 18%"></div>
     <div class="champ-hero-icon">&#127942;</div>
     <div class="champ-hero-title">2026 WBP Champions</div>
     <div class="champ-hero-names">Dolan / Napolitano</div>
@@ -288,11 +295,7 @@
 
 <script type="module">
   import { initNav } from './js/auth.js?v=81b26575'
-  import { startHero, CHAMPIONS } from './js/hero.js?v=cdd7c354'
   initNav('championship')
-  // Trophies and finals only. A clubhouse group shot is a fine banner
-  // for Standings; over "2026 WBP Champions" it is the wrong picture.
-  startHero(document.querySelector('.champ-hero'), CHAMPIONS)
 </script>
 </body>
 </html>

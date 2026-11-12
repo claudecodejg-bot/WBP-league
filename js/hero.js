@@ -45,16 +45,6 @@ const PHOTOS = [
   { src: 'banners/champs-2026.jpg',     position: 'center 45%' },
 ]
 
-/**
- * Trophies and finals only, for championship.html. A group shot in the
- * clubhouse is a fine banner for Standings; over the words "2026 WBP
- * Champions" it is the wrong picture.
- */
-export const CHAMPIONS = PHOTOS.filter(p => /champs|cage|finalists/.test(p.src))
-
-/** Everything, which is what a page gets when it asks for nothing. */
-export const ALL = PHOTOS
-
 const DWELL = 7000    // how long a photo holds
 const FADE  = 1200    // must match --hero-fade in the stylesheet
 
