@@ -3115,6 +3115,38 @@ footer {
 .help-dialog-body li { margin-bottom: 0.2rem; }
 .help-dialog-body strong { color: var(--text); }
 
+/* ── Down to the betting ────────────────────── */
+/* Takes the posting panel's green and gold rather than the board's
+   amber, because it is a pointer AT that panel: you follow a colour
+   down the page and land on the thing wearing it. */
+.picks-jump {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  margin: 0 0 0.8rem;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0c3a2a 0%, #12553d 55%, #0a3025 100%);
+  border: 1px solid rgba(255,216,107,0.45);
+  color: var(--white);
+  font-size: 0.82rem; font-weight: 800;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  text-decoration: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.picks-jump:hover,
+.picks-jump:focus-visible {
+  text-decoration: none;
+  border-color: #ffd86b;
+  box-shadow: 0 0 18px rgba(42,190,120,0.45);
+}
+.picks-jump-dot {
+  width: 0.45rem; height: 0.45rem; border-radius: 999px;
+  background: #ffd86b;
+  box-shadow: 0 0 8px 2px rgba(255,216,107,0.8);
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+.picks-jump-arrow { font-size: 1rem; color: #ffd86b; }
+@media (prefers-reduced-motion: reduce) { .picks-jump-dot { animation: none; } }
+
 /* ── Up for grabs: the marquee ──────────────── */
 /* Every price going right now, above everything else, inside a border of
    chasing bulbs. The only unashamedly loud thing on the site, and it is
@@ -3197,21 +3229,38 @@ footer {
   display: grid; gap: 0.5rem;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
 }
-.live-bet a {
+.live-bet-card {
   display: block;
   padding: 0.6rem 0.7rem;
   border-radius: 10px;
   background: rgba(255,255,255,0.07);
   border: 1px solid rgba(255,255,255,0.15);
   color: var(--white);
-  text-decoration: none;
-  transition: background 150ms ease, border-color 150ms ease;
 }
-.live-bet a:hover,
-.live-bet a:focus-visible {
-  background: rgba(244,132,95,0.22);
-  border-color: var(--accent);
-  text-decoration: none;
+/* A bet you are on one end of, so you can find yourself without reading
+   every name. */
+.live-bet-mine { border-color: rgba(255,216,107,0.6); }
+
+/* The Take control. This is the only place a bet can be struck now, so
+   it is here and nowhere else — which is also what makes the id
+   take-amt-<offer> unique again. */
+.live-bet-act {
+  display: flex; align-items: center; gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.live-bet-act .pick-amt {
+  width: 4rem; padding: 0.28rem 0.4rem; font-size: 0.85rem;
+  border-color: rgba(255,255,255,0.35);
+}
+.live-bet-dollar { color: rgba(255,255,255,0.7); font-size: 0.85rem; }
+.live-bet-note {
+  font-size: 0.75rem; font-style: italic;
+  color: rgba(255,255,255,0.55);
+}
+.live-bet-act .live-bet-note { font-style: normal; }
+.live-bet-won {
+  display: block; margin-top: 0.35rem;
+  font-size: 0.82rem; font-weight: 700; color: #8ff0bb;
 }
 .live-bet-team {
   display: block;
@@ -3222,11 +3271,27 @@ footer {
   display: block; margin-top: 0.15rem;
   font-size: 0.75rem; color: rgba(255,255,255,0.62);
 }
-.live-board-more {
-  margin: 0.6rem 0 0;
-  color: rgba(255,255,255,0.6);
-  font-size: 0.78rem; text-align: center;
+/* ── Accepted wagers: the same sign, in navy ── */
+/* Three lit boxes on one page only work if no two of them are the same
+   colour. Open prices are charcoal under amber, posting is green under
+   gold, and a struck bet is navy under cool white. */
+.live-board-taken {
+  background: linear-gradient(135deg, #0d1526 0%, #17264d 55%, #101a33 100%);
+  box-shadow: var(--shadow-lg), 0 0 30px rgba(96,150,255,0.26);
 }
+.live-board-taken::before {
+  background-image:
+    radial-gradient(circle, #ffffff 0.9px, #cfe4ff 2px, rgba(207,228,255,0.35) 3.2px, rgba(207,228,255,0) 4.2px),
+    radial-gradient(circle, #ffffff 0.9px, #cfe4ff 2px, rgba(207,228,255,0.35) 3.2px, rgba(207,228,255,0) 4.2px),
+    radial-gradient(circle, #ffffff 0.9px, #cfe4ff 2px, rgba(207,228,255,0.35) 3.2px, rgba(207,228,255,0) 4.2px),
+    radial-gradient(circle, #ffffff 0.9px, #cfe4ff 2px, rgba(207,228,255,0.35) 3.2px, rgba(207,228,255,0) 4.2px);
+}
+.live-board-taken .live-board-dot {
+  background: #7fb6ff;
+  box-shadow: 0 0 8px 2px rgba(127,182,255,0.8);
+}
+.live-board-taken .live-board-count { color: #cfe4ff; }
+.live-board-taken .live-bet-price   { color: #cfe4ff; }
 
 /* The sticky nav would otherwise sit on top of the court just jumped to.
    Measured, not guessed: the bar wraps to two rows of links above 640px
@@ -3409,119 +3474,31 @@ footer {
   font-size: 0.95rem; font-family: inherit;
 }
 
-/* ── The book ───────────────────────────────── */
-.pick-book { border-top: 1px solid var(--gray-200); padding-top: 0.75rem; }
-
-.pick-offer-who  { font-weight: 600; }
-/* Without this the name runs straight into the side it backs and reads as
-   one thing: "Dolan Ridder & Dolan". */
-.pick-offer-who::after { content: " \00b7"; color: var(--gray-400); font-weight: 400; }
-
-/* ── A column per team ──────────────────────── */
-/* The two sides of the court, side by side, and a price sits under the
-   team it would put YOU on. That is the one convention every board shares
-   — a sportsbook's lines grid has the teams as rows and the price in the
-   cell next to the team you'd be backing; a prediction market puts the
-   price on the face of each outcome's button. It means nobody has to turn
-   an offer round in their head to see what they would be getting.
-   (The exception is your own offer, which sits under the side you backed:
-   see .pick-line-mine.)
-   This replaced an Open/Taken split, which divided the card by an offer's
-   status — something no real book does, because "is any of it left" is a
-   property of a price, not a category beside it. */
-.pick-sides {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 1.25rem;
-}
-.pick-side + .pick-side {
-  border-left: 1px solid var(--gray-200);
-  padding-left: 1.25rem;
-}
-.pick-side-team {
-  margin: 0 0 0.45rem;
-  font-size: 0.95rem; font-weight: 700; line-height: 1.3;
-}
-
-/* A finished court should read without anybody doing the names: the winner
-   is labelled, the loser fades. */
-.pick-side-won .pick-side-team::after {
-  content: " won";
-  color: var(--accent); font-weight: 800;
-  font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
-}
-.pick-side-lost { opacity: 0.5; }
-
-@media (max-width: 640px) {
-  .pick-sides { grid-template-columns: 1fr; gap: 0.9rem; }
-  .pick-side + .pick-side {
-    border-left: 0; padding-left: 0;
-    border-top: 1px solid var(--gray-200); padding-top: 0.85rem;
-  }
-}
-
-/* One price. The big number is what you would risk, and it is also all
-   that is left on the offer, so there is no second line saying how much
-   is open. */
-.pick-line { padding: 0.5rem 0; border-bottom: 1px solid var(--gray-100); }
-.pick-line:last-child { border-bottom: 0; padding-bottom: 0; }
-.pick-line-top {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem;
+/* ── Who is playing ─────────────────────────── */
+/* All that is left of the old two-column book. The prices moved to the
+   board at the top of the page; what a court card still has to say is
+   who is on it, and — once there is a score — which pair won. */
+.pick-court-teams {
+  margin: 0.35rem 0 0;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 0.5rem;
   line-height: 1.4;
 }
-.pick-line-price { font-weight: 600; font-size: 0.95rem; }
-.pick-line-bot {
-  display: flex; flex-wrap: wrap; align-items: center;
-  gap: 0.45rem; margin-top: 0.35rem;
+.pick-team { font-weight: 700; font-size: 0.95rem; }
+.pick-vs   { color: var(--gray-500); font-size: 0.8rem; }
+.pick-team-won::after {
+  content: " won";
+  color: var(--accent); font-weight: 800;
+  font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
 }
-.pick-line-from { font-size: 0.8rem; color: var(--gray-500); }
-
-/* Your own offer, so you can find it without reading the names. */
-.pick-line-mine { border-left: 3px solid var(--accent); padding-left: 0.6rem; }
-
-/* ── What is already struck ─────────────────── */
-/* Under the market, not beside it: a matched bet is a record rather than a
-   decision, which is where a sportsbook keeps it too. Absent entirely when
-   there is none, instead of a line whose whole message is "nothing yet". */
-.pick-matched {
-  margin-top: 0.85rem;
-  border-top: 1px solid var(--gray-200);
-  padding-top: 0.6rem;
-}
-.pick-matched-title {
-  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--gray-500);
-  margin: 0 0 0.35rem;
-}
-
-/* A bet that is struck. One line, with the poster and any outcome hanging
-   off the end of it in smaller type. */
-.pick-took-list { list-style: none; margin: 0; padding: 0; }
-.pick-took {
-  padding: 0.45rem 0;
-  border-bottom: 1px solid var(--gray-100);
-  line-height: 1.45;
-}
-.pick-took:last-child { border-bottom: 0; }
-.pick-took-line { display: block; }
-.pick-took-amt  { font-size: 0.85rem; color: var(--gray-600); white-space: nowrap; }
-.pick-took-v    { font-size: 0.8rem; color: var(--gray-500); }
-.pick-outcome   { font-style: italic; font-size: 0.85rem; }
-
-.pick-take      { display: flex; align-items: center; gap: 0.4rem; }
-/* A column is half a card wide, so the amount box gives up room to the
-   button rather than pushing it out of the column. */
-.pick-take .pick-amt { width: 4.2rem; }
-.pick-blocked   { font-size: 0.8rem; color: var(--gray-600); font-style: italic; }
-
-.pick-empty { color: var(--gray-600); font-size: 0.9rem; margin: 0; }
+.pick-team-lost { opacity: 0.5; font-weight: 600; }
 
 @media (max-width: 480px) {
-  .pick-take  { width: 100%; }
-  .pick-take .btn { flex: 1; }
   .pick-new-row .btn { flex: 1 1 auto; }
 }
 .pick-new-on { color: var(--gray-600); font-size: 0.9rem; }
+
+/* The empty state, the one grey line left on a page with no courts. */
+.pick-empty { color: var(--gray-600); font-size: 0.9rem; margin: 0; }
 
 /* ── A price with two ends ──────────────────── */
 .pick-odds {

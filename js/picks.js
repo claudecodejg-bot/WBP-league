@@ -215,66 +215,115 @@ function renderSignedOutNote() {
     Anyone can read the board. <a href="login.html?next=picks.html">Sign in</a> to make a pick.</p>`
 }
 
-function fillsFor(offerId) {
-  return _fills.filter(f => f.offer_id === offerId)
-}
-
 /**
- * The marquee: every price going right now, across all the courts, above
- * everything else on the page.
+ * Everything that is going, at the top of the page: the prices still
+ * open, and the ones already struck.
  *
- * It does NOT repeat the Take control. There is one place to strike a
- * bet — the court it belongs to — and a second set of amount boxes would
- * mean two elements answering to take-amt-<offer>, which is how the wrong
- * number gets read off the wrong input. Each row is a link down to its
- * own court instead.
+ * THIS IS THE BOOK. The court cards below used to carry both as well;
+ * they do not any more, because the same bet printed twice on one screen
+ * reads as two bets. A court card is now only the place you PUT a price
+ * up, and that is what the jump link points at.
  *
- * Hidden entirely when nothing is going. A box of chasing lights around
- * the words "nothing available" is worse than no box.
+ * Because each offer appears exactly once again, the Take control can
+ * live here. It could not while the courts also listed prices — two
+ * elements answering to take-amt-<offer> is how the wrong number gets
+ * read off the wrong input.
  */
 function renderLive() {
   const el = document.getElementById('picks-live')
   if (!el) return
+  el.innerHTML = renderJump() + renderOpenBoard() + renderAcceptedBoard()
+}
 
+/** Courts still taking prices, soonest first. */
+function openCourts() {
+  return _courts.filter(c => !isClosed(c))
+}
+
+/**
+ * More than one Monday on the board at once makes "Court 2" ambiguous,
+ * so the date joins it. With a single night it would be noise on every
+ * card.
+ */
+function courtLabel(court) {
+  const nights = new Set(_courts.map(c => c.played_on))
+  const where  = `Court ${court.court_no}`
+  return nights.size > 1
+    ? `${escapeHtml(prettyDate(court.played_on))} &middot; ${where}`
+    : where
+}
+
+/** Down to the first court you can actually post on. */
+function renderJump() {
+  if (!_member) return ''
+  const first = openCourts()[0]
+  if (!first) return ''
+
+  return `<a class="picks-jump" href="#court-${escapeHtml(first.id)}">
+    <span class="picks-jump-dot" aria-hidden="true"></span>
+    Place your bets
+    <span class="picks-jump-arrow" aria-hidden="true">&darr;</span>
+  </a>`
+}
+
+/**
+ * Open prices. Uncapped on purpose: this is now the ONLY place a bet can
+ * be taken, so a cap would hide money that is genuinely going.
+ */
+function renderOpenBoard() {
   const live = _offers
     .filter(o => o.status === 'open' && o.win_open_cents > 0)
     .map(o => ({ offer: o, court: _courts.find(c => c.id === o.court_id) }))
     .filter(x => x.court && !isClosed(x.court))
-    // Biggest first. The one worth walking over to is the one that should
-    // be read first.
+    // Biggest first: the one worth reading first.
     .sort((x, y) => y.offer.win_open_cents - x.offer.win_open_cents)
 
-  if (!live.length) {
-    el.innerHTML = ''
-    return
-  }
+  // A box of chasing lights around the words "nothing available" is
+  // worse than no box.
+  if (!live.length) return ''
 
-  // A headline, not a second copy of the board. Four courts with a few
-  // prices each would otherwise push the courts themselves off a phone
-  // screen entirely, which defeats the point of putting this at the top.
-  const SHOWN = 6
-  const rest  = live.length - SHOWN
-
-  const rows = live.slice(0, SHOWN).map(({ offer, court }) => {
-    // Same rule as the board below: name the side a TAKER ends up on, and
-    // show the taker's two numbers.
+  const rows = live.map(({ offer, court }) => {
+    // Name the side a TAKER ends up on, with the taker's two numbers.
     const takingSide = offer.side === 1 ? 2 : 1
-    const risk = offer.win_open_cents
-    const win  = offer.risk_open_cents
-    const mine = _member && offer.offered_by === _member.id
+    const risk   = offer.win_open_cents
+    const win    = offer.risk_open_cents
+    const mine   = _member && offer.offered_by === _member.id
+    const myTeam = mySide(court)
+    // Playing this court? You can only ever be on your own team.
+    const blocked = myTeam !== null && myTeam !== takingSide
+    const dflt    = (risk / 100).toFixed(2).replace(/\.00$/, '')
+
+    let action = ''
+    if (mine) {
+      action = `<span class="live-bet-act">
+        <span class="live-bet-note">yours</span>
+        <button class="btn btn-sm btn-secondary" data-cancel="${offer.id}">Pull back</button>
+      </span>`
+    } else if (blocked) {
+      action = `<span class="live-bet-note">You're on the other side</span>`
+    } else if (_member) {
+      action = `<span class="live-bet-act">
+        <label class="sr-only" for="take-amt-${offer.id}">Amount to risk</label>
+        <span class="live-bet-dollar">$</span>
+        <input type="number" id="take-amt-${offer.id}" class="pick-amt"
+               min="1" step="0.01" max="${dflt}" value="${dflt}" inputmode="decimal">
+        <button class="btn btn-sm btn-primary" data-take="${offer.id}">Take it</button>
+      </span>`
+    }
 
     return `<li class="live-bet">
-      <a href="#court-${escapeHtml(court.id)}">
+      <div class="live-bet-card">
         <span class="live-bet-team">${escapeHtml(sideNames(court, takingSide))}</span>
         <span class="live-bet-price">${money(risk)} to win ${money(win)}</span>
         <span class="pick-odds">${escapeHtml(oddsLabel(risk, win))}</span>
-        <span class="live-bet-from">Court ${court.court_no} &middot; ${
-          mine ? 'yours' : 'from ' + escapeHtml(name(offer.offered_by))}</span>
-      </a>
+        <span class="live-bet-from">${courtLabel(court)}${
+          mine ? '' : ' &middot; from ' + escapeHtml(name(offer.offered_by))}</span>
+        ${action}
+      </div>
     </li>`
   }).join('')
 
-  el.innerHTML = `
+  return `
     <section class="live-board">
       <div class="live-board-inner">
         <h2 class="live-board-title">
@@ -283,143 +332,69 @@ function renderLive() {
           <span class="live-board-count">${live.length} going</span>
         </h2>
         <ul class="live-board-list">${rows}</ul>
-        ${rest > 0
-          ? `<p class="live-board-more">and ${rest} more on the board below</p>`
-          : ''}
       </div>
     </section>`
 }
 
 /**
- * One price you could take, drawn in the column of the team it would put
- * you on.
- *
- * THE COLUMN IS THE SIDE YOU GET. Every board worth copying works this
- * way — a sportsbook's lines grid has the two teams as rows and the price
- * in the cell beside the team you'd be backing; a prediction market has
- * the two outcomes as a pair of buttons with the price on the face of
- * each. Nobody labels a price with the name of the person on the other
- * end, and nobody makes you turn it round in your head. So an offer
- * backing Walsh & Napolitano appears under Smith & Grills, and the two
- * numbers shown are the TAKER'S, not the poster's.
- *
- * The amount is what is LEFT on the offer, so the headline number is both
- * the price and the size, and no second line has to say how much is open.
- * An offer with nothing left is not drawn at all — it survives as the
- * fills it produced, under Matched.
+ * Bets already struck, in their own livery. Navy where the open board is
+ * charcoal and the posting panel is green: three lit boxes on a page
+ * only work if no two of them are the same colour.
  */
-function renderTakeLine(court, offer, takingSide, closed) {
-  const myTeam  = mySide(court)
-  // Playing this court? You can only ever be on your own team, so a price
-  // in the other column has no button — the database would refuse it.
-  const blocked = myTeam !== null && myTeam !== takingSide
-  const canTake = !closed && _member && !blocked
-
-  // The taker's end is the exact mirror of the poster's: risk what the
-  // poster stands to win, to win what the poster is risking.
-  const risk = offer.win_open_cents
-  const win  = offer.risk_open_cents
-
-  // Default to the lot. take_offer fills whatever is left rather than
-  // failing, so an over-ask is harmless either way.
-  const dflt = (risk / 100).toFixed(2).replace(/\.00$/, '')
-
-  const out = [`<div class="pick-line">
-    <div class="pick-line-top">
-      <span class="pick-line-price">${money(risk)} to win ${money(win)}</span>
-      <span class="pick-odds">${escapeHtml(oddsLabel(risk, win))}</span>
-    </div>
-    <div class="pick-line-bot">
-      <span class="pick-line-from">from ${escapeHtml(name(offer.offered_by))}</span>`]
-
-  if (canTake) {
-    out.push(`
-      <span class="pick-take">
-        <label class="sr-only" for="take-amt-${offer.id}">Amount to risk</label>
-        <span class="pick-dollar">$</span>
-        <input type="number" id="take-amt-${offer.id}" class="pick-amt"
-               min="1" step="0.01" max="${dflt}" value="${dflt}" inputmode="decimal">
-        <button class="btn btn-sm btn-primary" data-take="${offer.id}">Take</button>
-      </span>`)
-  } else if (blocked && !closed) {
-    // Only worth saying to someone who might otherwise expect a button.
-    out.push(`<span class="pick-blocked">You're on the other side</span>`)
-  }
-
-  out.push(`</div></div>`)
-  return out.join('')
-}
-
-/**
- * Your own offer, drawn under the side you BACKED rather than the side on
- * offer — the one row on the board that speaks from the poster's seat,
- * because it is the only one with your money already on it and the only
- * one you can pull back. It therefore sits in the same column as every
- * other price that puts money on that team, which is where you would look
- * for it.
- */
-function renderMineLine(court, offer, closed) {
-  const risk = offer.risk_open_cents
-  const win  = offer.win_open_cents
-
-  return `<div class="pick-line pick-line-mine">
-    <div class="pick-line-top">
-      <span class="pick-line-price">${money(risk)} to win ${money(win)}</span>
-      <span class="pick-odds">${escapeHtml(oddsLabel(risk, win))}</span>
-    </div>
-    <div class="pick-line-bot">
-      <span class="pick-line-from">yours, nobody on it yet</span>
-      ${closed ? '' : `<button class="btn btn-sm btn-secondary" data-cancel="${offer.id}">Pull back</button>`}
-    </div>
-  </div>`
-}
-
-/**
- * Bets that are struck, one line each. Below the market rather than beside
- * it, because a matched bet is a record and not a decision — which is
- * where a sportsbook puts it too ("My bets", not the lines grid). Returns
- * '' when nothing is matched: a line on every card whose whole message is
- * that there is nothing to say is just noise.
- *
- * A fill is the thing that settles, so this is the half of the card that
- * turns into money on settle.html.
- */
-function renderMatched(court, offers, won) {
-  const byOffer = Object.fromEntries(offers.map(o => [o.id, o]))
+function renderAcceptedBoard() {
+  const byOffer = Object.fromEntries(_offers.map(o => [o.id, o]))
 
   const rows = _fills
-    .filter(f => byOffer[f.offer_id])
     .map(f => {
-      const offer      = byOffer[f.offer_id]
-      const takingSide = offer.side === 1 ? 2 : 1
-
-      // Who came out on top. Same rule as v_pick_results: the poster's
-      // side winning means the poster collects.
-      let tail = ''
-      if (won !== null) {
-        const posterWon = won === offer.side
-        const winner    = posterWon ? offer.offered_by : f.taker
-        const amount    = posterWon ? f.taker_risk_cents : f.poster_risk_cents
-        tail = `<span class="pick-outcome">${escapeHtml(name(winner))} +${money(amount)}</span>`
-      }
-
-      return `<li class="pick-took">
-        <span class="pick-took-line">
-          <span class="pick-offer-who">${escapeHtml(name(f.taker))}</span>
-          <strong>${escapeHtml(sideNames(court, takingSide))}</strong>
-          <span class="pick-took-amt">${money(f.taker_risk_cents)} to win ${money(f.poster_risk_cents)}</span>
-        </span>
-        <span class="pick-took-v">v ${escapeHtml(name(offer.offered_by))}</span>
-        ${tail}
-      </li>`
+      const offer = byOffer[f.offer_id]
+      const court = offer && _courts.find(c => c.id === offer.court_id)
+      return court ? { fill: f, offer, court } : null
     })
+    .filter(Boolean)
+    // Newest first. The bet somebody just took is the one worth seeing.
+    .sort((x, y) => (x.fill.created_at < y.fill.created_at ? 1 : -1))
 
   if (!rows.length) return ''
 
-  return `<div class="pick-matched">
-    <h4 class="pick-matched-title">Matched</h4>
-    <ul class="pick-took-list">${rows.join('')}</ul>
-  </div>`
+  const cards = rows.map(({ fill, offer, court }) => {
+    const takingSide = offer.side === 1 ? 2 : 1
+    const won        = _results[court.id] ?? null
+
+    // Same rule as v_pick_results: the poster's side winning means the
+    // poster collects.
+    let tail = ''
+    if (won !== null) {
+      const posterWon = won === offer.side
+      const winner    = posterWon ? offer.offered_by : fill.taker
+      const amount    = posterWon ? fill.taker_risk_cents : fill.poster_risk_cents
+      tail = `<span class="live-bet-won">${escapeHtml(name(winner))} +${money(amount)}</span>`
+    }
+
+    const mine = _member && (fill.taker === _member.id || offer.offered_by === _member.id)
+
+    return `<li class="live-bet">
+      <div class="live-bet-card${mine ? ' live-bet-mine' : ''}">
+        <span class="live-bet-team">${escapeHtml(sideNames(court, takingSide))}</span>
+        <span class="live-bet-price">${escapeHtml(name(fill.taker))} &middot; ${
+          money(fill.taker_risk_cents)} to win ${money(fill.poster_risk_cents)}</span>
+        <span class="live-bet-from">${courtLabel(court)} &middot; v ${
+          escapeHtml(name(offer.offered_by))}</span>
+        ${tail}
+      </div>
+    </li>`
+  }).join('')
+
+  return `
+    <section class="live-board live-board-taken">
+      <div class="live-board-inner">
+        <h2 class="live-board-title">
+          <span class="live-board-dot" aria-hidden="true"></span>
+          Accepted wagers!
+          <span class="live-board-count">${rows.length} on the line</span>
+        </h2>
+        <ul class="live-board-list">${cards}</ul>
+      </div>
+    </section>`
 }
 
 /**
@@ -478,56 +453,31 @@ function updatePreview(courtId) {
     ` They risk ${money(win)} to win ${money(risk)}.`
 }
 
+/**
+ * A court card is now only two things: who is playing, and the panel
+ * where you put a price up. The prices themselves — open and accepted
+ * alike — live in the board at the top of the page. They used to be in
+ * both places, and the same bet printed twice on one screen reads as
+ * two bets.
+ */
 function renderCourt(court) {
   const closed  = isClosed(court)
-  const offers  = _offers.filter(o => o.court_id === court.id)
   const myTeam  = mySide(court)
   const won     = _results[court.id] ?? null
   const closeAt = new Date(court.closes_at)
     .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
-  // A column per team, with the prices that put money on that team. This
-  // replaced an Open/Taken split, which divided the board by an offer's
-  // STATUS; no book anywhere does that, because the reader's question is
-  // "which side, at what price" and whether something is still going is a
-  // property of the price rather than a category of its own.
-  const live = offers.filter(o => o.status === 'open' && o.win_open_cents > 0)
-
-  const sides = [1, 2].map(side => {
-    // A price on this side comes from an offer backing the OTHER one.
-    const takeable = live.filter(o =>
-      o.side !== side && !(_member && o.offered_by === _member.id))
-    const mine = _member
-      ? live.filter(o => o.side === side && o.offered_by === _member.id)
-      : []
-
-    // Once a court is shut, an offer nobody took is a price that never
-    // happened. The columns stay, because they carry the names and the
-    // result, but they empty out and Matched is the whole story.
-    const rows = closed ? [] : [
-      ...takeable.map(o => renderTakeLine(court, o, side, closed)),
-      ...mine.map(o => renderMineLine(court, o, closed))
-    ]
-
-    // Dim the side that lost rather than only crowning the winner, so a
-    // finished court reads at a glance without anybody doing the names.
-    const outcome = won === null ? '' : (won === side ? ' pick-side-won' : ' pick-side-lost')
-
-    return `
-      <section class="pick-side${outcome}">
-        <h4 class="pick-side-team">${escapeHtml(sideNames(court, side))}</h4>
-        ${rows.length ? rows.join('')
-          : (closed ? '' : `<p class="pick-empty">Nothing up.</p>`)}
-      </section>`
-  }).join('')
-
-  const book = `<div class="pick-sides">${sides}</div>
-    ${renderMatched(court, offers, won)}`
+  // Dim the side that lost rather than only crowning the winner, so a
+  // finished court reads at a glance without anybody doing the names.
+  const teams = [1, 2].map(side => {
+    const outcome = won === null ? '' : (won === side ? ' pick-team-won' : ' pick-team-lost')
+    return `<span class="pick-team${outcome}">${escapeHtml(sideNames(court, side))}</span>`
+  }).join('<span class="pick-vs">vs</span>')
 
   let state
   if (won !== null) {
-    // Not "X won": the winning column is labelled and the losing one is
-    // dimmed, so the name would be a third printing of itself.
+    // Not "X won": the winning name is marked and the loser is dimmed,
+    // so saying it here would be a third printing of the same fact.
     state = ' &middot; <strong>final</strong>'
   } else if (closed) {
     state = ' &middot; <strong>closed</strong>'
@@ -549,8 +499,8 @@ function renderCourt(court) {
           ${escapeHtml(court.start_time || '')}${court.location ? ' &middot; ' + escapeHtml(court.location) : ''}${state}
         </span>
       </header>
+      <p class="pick-court-teams">${teams}</p>
       ${(!closed && _member) ? renderOfferForm(court, myTeam) : ''}
-      <div class="pick-book">${book}</div>
     </article>`
 }
 
@@ -694,9 +644,13 @@ export async function loadPicks(container, member) {
     return
   }
 
-  // One delegated listener for the whole board, so it survives every
-  // re-render without rebinding.
-  _container.addEventListener('click', async event => {
+  // On the DOCUMENT, not on the container. The board is two separate
+  // elements now — the Take and Pull back buttons live in #picks-live at
+  // the top of the page, the posting panels in #picks-container below —
+  // and a listener bound to one of them silently ignores every click in
+  // the other. Delegating from the document covers both and still
+  // survives every re-render without rebinding.
+  document.addEventListener('click', async event => {
     const post   = event.target.closest('[data-post]')
     const take   = event.target.closest('[data-take]')
     const cancel = event.target.closest('[data-cancel]')
@@ -706,7 +660,7 @@ export async function loadPicks(container, member) {
     if (cancel) { event.preventDefault(); await onCancel(cancel.dataset.cancel) }
   })
 
-  _container.addEventListener('input', event => {
+  document.addEventListener('input', event => {
     const field = event.target.closest('[data-preview]')
     if (field) updatePreview(field.dataset.preview)
   })
