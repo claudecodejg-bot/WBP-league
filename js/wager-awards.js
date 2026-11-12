@@ -127,6 +127,10 @@ export function wagerBoards(rows) {
     // no king. Everyone still appears in the table below it.
     king:   board('won',    r => r.won > 0),
     action: board('action', r => r.action > 0),
-    maker:  board('made',   r => r.made > 0)
+    // Ranked on the COUNT of markets somebody took, not their size. The
+    // point of the title is making markets people want, and one $100
+    // price taken is one market, the same as one $5 price taken. Ranking
+    // it by dollars would just be Most Action with extra steps.
+    maker:  board('offers', r => r.offers > 0)
   }
 }
