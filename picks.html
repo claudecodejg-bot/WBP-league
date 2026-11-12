@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/picks.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=f601c908">
+  <link rel="stylesheet" href="css/style.css?v=38b44837">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -49,6 +49,8 @@
 
 <main>
   <header class="picks-hero">
+    <button type="button" class="picks-help-btn" id="help-open"
+            aria-label="How the board works" title="How the board works">?</button>
     <h1 class="picks-hero-title">
       <span class="picks-hero-mark">ROCK&rsquo;n&rsquo;Roll</span>
       <span class="picks-hero-kicker">Wagers</span>
@@ -57,10 +59,41 @@
   </header>
 
   <p class="page-subtitle">
-    All of it or part, at whatever price you name. Play money, settled up
-    <a href="settle.html">after each Monday</a>, and the board closes when the
-    first ball goes up.
+    Play money, <a href="settle.html">settled up</a> after each Monday.
+    The rest is behind the <strong>?</strong>.
   </p>
+
+  <dialog class="help-dialog" id="help-dialog" aria-labelledby="help-title">
+    <div class="help-dialog-head">
+      <h2 id="help-title">How the board works</h2>
+      <button type="button" class="modal-close-btn" id="help-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="help-dialog-body">
+      <h3>Putting one up</h3>
+      <p>Pick a side and name your own price: what you&rsquo;ll risk, and what you
+        want to win. Risk $5 to win $10 and you&rsquo;ve offered 2-1.</p>
+
+      <h3>Taking one</h3>
+      <p>Each court shows its two teams side by side, and every price sits under
+        the team <strong>you&rsquo;d be backing</strong>. Take it and you&rsquo;re on
+        that team for that amount &mdash; all of it or part of it. Whoever put it
+        up is on the other end, and their name is under the price.</p>
+
+      <h3>Settling</h3>
+      <p>Nothing is held and no balance is checked. A pick is a promise between
+        two people, and <a href="settle.html">Settle Up</a> adds each Monday
+        together and says who owes whom.</p>
+
+      <h3>The rules</h3>
+      <ul>
+        <li>The board shuts when the first ball goes up.</li>
+        <li>Playing that night? You can only back your own team.</li>
+        <li>$1 to $100 to risk, up to $500 to win, nothing longer than 10-1
+          either way.</li>
+        <li>Anyone can read the board. You need to be signed in to make a pick.</li>
+      </ul>
+    </div>
+  </dialog>
 
   <div id="picks-flash" hidden></div>
   <div id="picks-note"></div>
@@ -79,12 +112,21 @@
 
 <script type="module">
   import { initNav, getCurrentMember } from './js/auth.js?v=81b26575'
-  import { loadPicks } from './js/picks.js?v=faf74636'
+  import { loadPicks } from './js/picks.js?v=8b92d0b3'
   import { startHero } from './js/hero.js?v=395365a3'
 
   ;(async () => {
     initNav('picks')
     startHero(document.querySelector('.picks-hero'))
+
+    // A native <dialog> handles Esc and the focus trap on its own; this is
+    // only the opening, the X, and the backdrop. A click whose target IS
+    // the dialog landed on the backdrop, since the panel has no padding of
+    // its own for a stray click to hit.
+    const help = document.getElementById('help-dialog')
+    document.getElementById('help-open')?.addEventListener('click', () => help?.showModal())
+    document.getElementById('help-close')?.addEventListener('click', () => help?.close())
+    help?.addEventListener('click', event => { if (event.target === help) help.close() })
 
     // Deliberately no requireLogin: the board is readable signed out. On a
     // night you're sitting out, watching the book is half the point.

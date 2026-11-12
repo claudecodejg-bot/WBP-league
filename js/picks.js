@@ -219,38 +219,46 @@ function fillsFor(offerId) {
 }
 
 /**
- * One offer with money still on it, in the "Open" column. Deliberately
- * terse: who, which side, the price, how much is left. Everything a taker
- * has to decide with, and nothing else.
+ * One price you could take, drawn in the column of the team it would put
+ * you on.
  *
- * An offer with nothing left is NOT drawn here. It survives as the fills
- * it produced, in the "Taken" column, which is where the money actually
- * is — so there is no row whose whole message is that it is finished.
+ * THE COLUMN IS THE SIDE YOU GET. Every board worth copying works this
+ * way — a sportsbook's lines grid has the two teams as rows and the price
+ * in the cell beside the team you'd be backing; a prediction market has
+ * the two outcomes as a pair of buttons with the price on the face of
+ * each. Nobody labels a price with the name of the person on the other
+ * end, and nobody makes you turn it round in your head. So an offer
+ * backing Walsh & Napolitano appears under Smith & Grills, and the two
+ * numbers shown are the TAKER'S, not the poster's.
+ *
+ * The amount is what is LEFT on the offer, so the headline number is both
+ * the price and the size, and no second line has to say how much is open.
+ * An offer with nothing left is not drawn at all — it survives as the
+ * fills it produced, under Matched.
  */
-function renderOpenOffer(court, offer, closed) {
-  const backing = sideNames(court, offer.side)
-  const mine    = _member && offer.offered_by === _member.id
+function renderTakeLine(court, offer, takingSide, closed) {
   const myTeam  = mySide(court)
+  // Playing this court? You can only ever be on your own team, so a price
+  // in the other column has no button — the database would refuse it.
+  const blocked = myTeam !== null && myTeam !== takingSide
+  const canTake = !closed && _member && !blocked
 
-  // Taking this offer means taking the side it is against. If that is the
-  // side you're playing on, the database will refuse it, so don't offer a
-  // button that cannot work.
-  const takingSide  = offer.side === 1 ? 2 : 1
-  const wouldBeVsMe = myTeam !== null && myTeam !== takingSide
-  const canTake     = !closed && _member && !mine && !wouldBeVsMe
+  // The taker's end is the exact mirror of the poster's: risk what the
+  // poster stands to win, to win what the poster is risking.
+  const risk = offer.win_open_cents
+  const win  = offer.risk_open_cents
 
-  // Default to the lot. The function fills whatever is left rather than
+  // Default to the lot. take_offer fills whatever is left rather than
   // failing, so an over-ask is harmless either way.
-  const dflt = (offer.win_open_cents / 100).toFixed(2).replace(/\.00$/, '')
+  const dflt = (risk / 100).toFixed(2).replace(/\.00$/, '')
 
-  const out = [`<div class="pick-offer${mine ? ' pick-offer-mine' : ''}">
-    <div class="pick-offer-head">
-      <span class="pick-offer-who">${escapeHtml(name(offer.offered_by))}</span>
-      <strong>${escapeHtml(backing)}</strong>
-      <span class="pick-odds">${escapeHtml(oddsLabel(offer.risk_cents, offer.win_cents))}</span>
+  const out = [`<div class="pick-line">
+    <div class="pick-line-top">
+      <span class="pick-line-price">${money(risk)} to win ${money(win)}</span>
+      <span class="pick-odds">${escapeHtml(oddsLabel(risk, win))}</span>
     </div>
-    <div class="pick-offer-foot">
-      <span class="pick-remaining">${money(offer.win_open_cents)} open</span>`]
+    <div class="pick-line-bot">
+      <span class="pick-line-from">from ${escapeHtml(name(offer.offered_by))}</span>`]
 
   if (canTake) {
     out.push(`
@@ -259,15 +267,11 @@ function renderOpenOffer(court, offer, closed) {
         <span class="pick-dollar">$</span>
         <input type="number" id="take-amt-${offer.id}" class="pick-amt"
                min="1" step="0.01" max="${dflt}" value="${dflt}" inputmode="decimal">
-        <button class="btn btn-sm btn-primary" data-take="${offer.id}">
-          Take ${escapeHtml(sideNames(court, takingSide))}
-        </button>
+        <button class="btn btn-sm btn-primary" data-take="${offer.id}">Take</button>
       </span>`)
-  } else if (mine && !closed) {
-    out.push(`<button class="btn btn-sm btn-secondary" data-cancel="${offer.id}">Pull back</button>`)
-  } else if (wouldBeVsMe && !closed) {
+  } else if (blocked && !closed) {
     // Only worth saying to someone who might otherwise expect a button.
-    out.push(`<span class="pick-blocked">You're on this court</span>`)
+    out.push(`<span class="pick-blocked">You're on the other side</span>`)
   }
 
   out.push(`</div></div>`)
@@ -275,11 +279,40 @@ function renderOpenOffer(court, offer, closed) {
 }
 
 /**
- * The "Taken" column: bets that are struck, one line each. A fill is the
- * thing that settles, so this is the half of the card that turns into
- * money on settle.html.
+ * Your own offer, drawn under the side you BACKED rather than the side on
+ * offer — the one row on the board that speaks from the poster's seat,
+ * because it is the only one with your money already on it and the only
+ * one you can pull back. It therefore sits in the same column as every
+ * other price that puts money on that team, which is where you would look
+ * for it.
  */
-function renderTaken(court, offers, won) {
+function renderMineLine(court, offer, closed) {
+  const risk = offer.risk_open_cents
+  const win  = offer.win_open_cents
+
+  return `<div class="pick-line pick-line-mine">
+    <div class="pick-line-top">
+      <span class="pick-line-price">${money(risk)} to win ${money(win)}</span>
+      <span class="pick-odds">${escapeHtml(oddsLabel(risk, win))}</span>
+    </div>
+    <div class="pick-line-bot">
+      <span class="pick-line-from">yours, nobody on it yet</span>
+      ${closed ? '' : `<button class="btn btn-sm btn-secondary" data-cancel="${offer.id}">Pull back</button>`}
+    </div>
+  </div>`
+}
+
+/**
+ * Bets that are struck, one line each. Below the market rather than beside
+ * it, because a matched bet is a record and not a decision — which is
+ * where a sportsbook puts it too ("My bets", not the lines grid). Returns
+ * '' when nothing is matched: a line on every card whose whole message is
+ * that there is nothing to say is just noise.
+ *
+ * A fill is the thing that settles, so this is the half of the card that
+ * turns into money on settle.html.
+ */
+function renderMatched(court, offers, won) {
   const byOffer = Object.fromEntries(offers.map(o => [o.id, o]))
 
   const rows = _fills
@@ -309,9 +342,12 @@ function renderTaken(court, offers, won) {
       </li>`
     })
 
-  return rows.length
-    ? `<ul class="pick-took-list">${rows.join('')}</ul>`
-    : `<p class="pick-empty">Nothing taken yet.</p>`
+  if (!rows.length) return ''
+
+  return `<div class="pick-matched">
+    <h4 class="pick-matched-title">Matched</h4>
+    <ul class="pick-took-list">${rows.join('')}</ul>
+  </div>`
 }
 
 /**
@@ -373,33 +409,55 @@ function renderCourt(court) {
   const closeAt = new Date(court.closes_at)
     .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
-  // Left: what you can still take. Right: what is already struck. An
-  // offer that is part taken belongs in both, which is the honest answer
-  // — there is money left on it AND money riding on it.
-  const open = offers.filter(o => o.status === 'open' && o.win_open_cents > 0)
-  const book = `
-    <div class="pick-cols">
-      <section class="pick-col">
-        <h4 class="pick-col-title">Open</h4>
-        ${open.length
-          ? open.map(o => renderOpenOffer(court, o, closed)).join('')
-          : `<p class="pick-empty">Nothing open.</p>`}
-      </section>
-      <section class="pick-col">
-        <h4 class="pick-col-title">Taken</h4>
-        ${renderTaken(court, offers, won)}
-      </section>
-    </div>`
+  // A column per team, with the prices that put money on that team. This
+  // replaced an Open/Taken split, which divided the board by an offer's
+  // STATUS; no book anywhere does that, because the reader's question is
+  // "which side, at what price" and whether something is still going is a
+  // property of the price rather than a category of its own.
+  const live = offers.filter(o => o.status === 'open' && o.win_open_cents > 0)
+
+  const sides = [1, 2].map(side => {
+    // A price on this side comes from an offer backing the OTHER one.
+    const takeable = live.filter(o =>
+      o.side !== side && !(_member && o.offered_by === _member.id))
+    const mine = _member
+      ? live.filter(o => o.side === side && o.offered_by === _member.id)
+      : []
+
+    // Once a court is shut, an offer nobody took is a price that never
+    // happened. The columns stay, because they carry the names and the
+    // result, but they empty out and Matched is the whole story.
+    const rows = closed ? [] : [
+      ...takeable.map(o => renderTakeLine(court, o, side, closed)),
+      ...mine.map(o => renderMineLine(court, o, closed))
+    ]
+
+    // Dim the side that lost rather than only crowning the winner, so a
+    // finished court reads at a glance without anybody doing the names.
+    const outcome = won === null ? '' : (won === side ? ' pick-side-won' : ' pick-side-lost')
+
+    return `
+      <section class="pick-side${outcome}">
+        <h4 class="pick-side-team">${escapeHtml(sideNames(court, side))}</h4>
+        ${rows.length ? rows.join('')
+          : (closed ? '' : `<p class="pick-empty">Nothing up.</p>`)}
+      </section>`
+  }).join('')
+
+  const book = `<div class="pick-sides">${sides}</div>
+    ${renderMatched(court, offers, won)}`
 
   let state
   if (won !== null) {
-    state = ` &middot; <strong>${escapeHtml(sideNames(court, won))} won</strong>`
+    // Not "X won": the winning column is labelled and the losing one is
+    // dimmed, so the name would be a third printing of itself.
+    state = ' &middot; <strong>final</strong>'
   } else if (closed) {
     state = ' &middot; <strong>closed</strong>'
   } else if (sameTime(closeAt, court.start_time)) {
     // The board normally closes at first serve, so printing the same time
     // twice ("7:00 PM · Woodway · closes 7:00 PM") just reads as a mistake.
-    // The page subtitle already says when it closes.
+    // The "?" at the top of the page says so once, in words.
     state = ''
   } else {
     state = ` &middot; closes ${escapeHtml(closeAt)}`
@@ -413,11 +471,6 @@ function renderCourt(court) {
           ${escapeHtml(court.start_time || '')}${court.location ? ' &middot; ' + escapeHtml(court.location) : ''}${state}
         </span>
       </header>
-      <p class="pick-court-teams">
-        <strong>${escapeHtml(sideNames(court, 1))}</strong>
-        <span class="pick-vs">vs</span>
-        <strong>${escapeHtml(sideNames(court, 2))}</strong>
-      </p>
       ${(!closed && _member) ? renderOfferForm(court, myTeam) : ''}
       <div class="pick-book">${book}</div>
     </article>`
