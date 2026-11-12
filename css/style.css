@@ -3024,17 +3024,23 @@ footer {
   }
 }
 
-/* ── The "?" in the corner of the banner ────── */
-/* SPECIFICITY: `.picks-hero > :not(.picks-hero-img)` above is (0,2,0) and
-   sets position: relative, so a bare `.picks-help-btn` would lose to it,
-   land in the flow and shove the wordmark down the banner. Matched at the
-   same weight and placed later, which is what makes the absolute stick. */
-.picks-hero > .picks-help-btn {
+/* ── The "?" beside the wordmark ────────────── */
+/* It rides just off the end of ROCK'n'Roll, where it reads as help with
+   THIS, rather than floating in the corner of the photograph.
+   Absolute, not in the flow: in the flow it would join the line box and
+   push the wordmark left of centre while WAGERS below stayed centred, and
+   the two lines of the lockup would visibly disagree. */
+.picks-hero-lockup { position: relative; display: inline-block; }
+
+.picks-help-btn {
   position: absolute;
-  top: 0.8rem; right: 0.8rem;
+  left: 100%; top: 50%;
+  transform: translateY(-54%);
+  margin-left: 0.5rem;
   z-index: 4;
   width: 2.15rem; height: 2.15rem;
   display: grid; place-items: center;
+  letter-spacing: normal;      /* the title's -1px is not for one glyph */
   border: 1px solid rgba(255,255,255,0.5);
   border-radius: 999px;
   background: rgba(18,18,18,0.45);
@@ -3045,10 +3051,20 @@ footer {
   cursor: pointer;
   transition: background 150ms ease, border-color 150ms ease;
 }
-.picks-hero > .picks-help-btn:hover,
-.picks-hero > .picks-help-btn:focus-visible {
+.picks-help-btn:hover,
+.picks-help-btn:focus-visible {
   background: var(--accent);
   border-color: var(--accent);
+}
+
+/* On a narrow phone the wordmark nearly fills the banner, so the circle
+   has to give up a few pixels or it runs into the rounded corner. */
+@media (max-width: 430px) {
+  .picks-help-btn {
+    width: 1.75rem; height: 1.75rem;
+    margin-left: 0.35rem;
+    font-size: 0.9rem;
+  }
 }
 
 /* ── How-it-works dialog ────────────────────── */
