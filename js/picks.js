@@ -176,6 +176,13 @@ async function fetchAll() {
       .select('id, court_id, offered_by, side, risk_cents, win_cents, risk_open_cents, win_open_cents, status, created_at')
       .in('court_id', courtIds)
       .neq('status', 'void')
+      // Pulled-back offers are left off the board entirely. cancel_offer
+      // only leaves 'cancelled' when nothing was ever matched, so such a
+      // row has no fills hanging off it and nobody owes anybody over it —
+      // it is just noise between the picks that still stand. An offer
+      // pulled back after a PART fill is marked 'filled', not 'cancelled',
+      // so it stays: those matched picks are real and still settle.
+      .neq('status', 'cancelled')
       .order('created_at', { ascending: true }),
     supabase.from('v_court_results')
       .select('court_id, winning_side')
@@ -281,10 +288,6 @@ function renderOffer(court, offer, closed) {
       out.push(`<button class="btn btn-sm btn-secondary" data-cancel="${offer.id}">Pull back</button>`)
     }
     out.push(`</div>`)
-  } else if (offer.status === 'cancelled') {
-    // cancel_offer only leaves 'cancelled' when nothing was ever matched;
-    // pulling back a part-filled offer marks it 'filled' instead.
-    out.push(`<div class="pick-offer-foot"><span class="pick-remaining">Pulled back</span></div>`)
   } else if (matched.length > 0) {
     // Every other offer says how much is open, so one that says nothing
     // reads as unfinished. Deliberately not "matched in full": an offer
