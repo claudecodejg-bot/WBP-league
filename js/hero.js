@@ -1,8 +1,9 @@
 // =============================================
-//  The picks banner — league photos, rotating
+//  Page banners — league photos, rotating
 // =============================================
-//  Five photographs cross-fade behind the wordmark so the banner reads as
-//  a picture of this league rather than stock art.
+//  League photographs cross-fade behind a page's banner so it reads as a
+//  picture of THIS league rather than stock art. Used by the picks board,
+//  Standings, Results and the Championship page.
 //
 //  WHY IT IS NOT IN THE CSS
 //
@@ -44,6 +45,16 @@ const PHOTOS = [
   { src: 'banners/champs-2026.jpg',     position: 'center 45%' },
 ]
 
+/**
+ * Trophies and finals only, for championship.html. A group shot in the
+ * clubhouse is a fine banner for Standings; over the words "2026 WBP
+ * Champions" it is the wrong picture.
+ */
+export const CHAMPIONS = PHOTOS.filter(p => /champs|cage|finalists/.test(p.src))
+
+/** Everything, which is what a page gets when it asks for nothing. */
+export const ALL = PHOTOS
+
 const DWELL = 7000    // how long a photo holds
 const FADE  = 1200    // must match --hero-fade in the stylesheet
 
@@ -64,31 +75,35 @@ function paint(layer, photo) {
   layer.style.backgroundPosition = photo.position
 }
 
-export function startHero(hero) {
-  if (!hero || !PHOTOS.length) return
+/**
+ * `photos` lets a page choose its own set — see CHAMPIONS. Left out, it
+ * gets all of them.
+ */
+export function startHero(hero, photos = PHOTOS) {
+  if (!hero || !photos.length) return
 
   const layers = [document.createElement('div'), document.createElement('div')]
   for (const el of layers) {
-    el.className = 'picks-hero-img'
+    el.className = 'hero-img'
     el.setAttribute('aria-hidden', 'true')   // decoration, not content
     hero.prepend(el)
   }
 
   // Start somewhere different each visit, so the page isn't always the
   // same photograph to anyone who opens it twice in a night.
-  let index = Math.floor(Math.random() * PHOTOS.length)
+  let index = Math.floor(Math.random() * photos.length)
   let front = 0
 
-  paint(layers[front], PHOTOS[index])
+  paint(layers[front], photos[index])
   layers[front].classList.add('is-on')
 
   // One photo, held still, for anyone who has asked for less movement.
-  if (PHOTOS.length === 1 || reduceMotion()) return
+  if (photos.length === 1 || reduceMotion()) return
 
   let timer = null
 
   async function advance() {
-    const next  = PHOTOS[(index + 1) % PHOTOS.length]
+    const next  = photos[(index + 1) % photos.length]
     const back  = 1 - front
 
     // Fetch before fading. Swapping to a URL that has not arrived shows a
@@ -101,7 +116,7 @@ export function startHero(hero) {
     layers[front].classList.remove('is-on')
 
     front = back
-    index = (index + 1) % PHOTOS.length
+    index = (index + 1) % photos.length
   }
 
   function stop()  { window.clearInterval(timer); timer = null }

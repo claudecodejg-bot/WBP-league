@@ -2893,7 +2893,7 @@ footer {
 /* The one deliberately flashy thing on the site. It stays inside the two
    colours the rest of the site already uses — charcoal and coral — so it
    reads as this league's page dressed up, not a different website. */
-.picks-hero {
+.picks-hero, .page-hero, .champ-hero {
   --hero-fade: 1200ms;          /* js/hero.js assumes this number */
   position: relative;
   overflow: hidden;
@@ -2912,7 +2912,7 @@ footer {
 /* The photographs. js/hero.js makes two of these and cross-fades between
    them; with no JS the gradient above is what shows, which is a finished
    design rather than an empty box. */
-.picks-hero-img {
+.hero-img {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -2922,12 +2922,13 @@ footer {
   transition: opacity var(--hero-fade) ease-in-out;
   pointer-events: none;
 }
-.picks-hero-img.is-on { opacity: 0.86; }
+.hero-img.is-on { opacity: 0.86; }
 
 /* The coral glow, and just enough shade to hold the words. Kept light on
    purpose: the photo is meant to be readable as OUR court and OUR players,
    not a texture. The words carry their own shadows instead. */
-.picks-hero::before {
+.picks-hero::before,
+.page-hero::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -2941,13 +2942,15 @@ footer {
       rgba(12,12,12,0.26) 0%, rgba(12,12,12,0.10) 45%, rgba(12,12,12,0.55) 100%);
   pointer-events: none;
 }
-/* Not the photo layers: `> *` has the same specificity as .picks-hero-img
-   and comes later, so it would quietly turn them back into zero-height
+/* Not the photo layers: `> *` has the same specificity as .hero-img and
+   comes later, so it would quietly turn them back into zero-height
    in-flow boxes and the banner would show no photograph at all. */
-.picks-hero > :not(.picks-hero-img) { position: relative; z-index: 3; }
+.picks-hero > :not(.hero-img),
+.page-hero  > :not(.hero-img),
+.champ-hero > :not(.hero-img) { position: relative; z-index: 3; }
 
 @media (prefers-reduced-motion: reduce) {
-  .picks-hero-img { transition: none; }
+  .hero-img { transition: none; }
 }
 
 @media (max-width: 640px) {
@@ -3114,6 +3117,69 @@ footer {
 .help-dialog-body ul { margin: 0.25rem 0 0 1.15rem; }
 .help-dialog-body li { margin-bottom: 0.2rem; }
 .help-dialog-body strong { color: var(--text); }
+
+/* ── A page banner with photographs behind it ── */
+/* The picks hero's quieter sibling, for Standings and Results. A band
+   rather than a wall: 150px against the picks hero's 300, because those
+   pages are tables people came to read and a banner that fills the
+   screen puts the first row below the fold. Shares the photo layers,
+   the scrim and the fade with .picks-hero above. */
+.page-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 150px;
+  background: linear-gradient(135deg, #141414 0%, #2b2b2b 58%, #3a2823 100%);
+  border-radius: 14px;
+  padding: 1.5rem 1.4rem;
+  margin: 0 0 1.25rem;
+  box-shadow: var(--shadow);
+}
+.page-hero .page-title {
+  margin: 0;
+  color: var(--white);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+}
+.page-hero .page-subtitle {
+  margin: 0.3rem 0 0;
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 1px 8px rgba(0,0,0,0.9);
+}
+/* A pool of shade under the words, which .page-title centres — so the
+   pool is centred too, and the edges of the photograph stay bright. */
+.page-hero::before {
+  background:
+    radial-gradient(ellipse at 50% 50%,
+      rgba(10,10,10,0.68) 0%, rgba(10,10,10,0.34) 52%, rgba(10,10,10,0.04) 78%),
+    linear-gradient(180deg,
+      rgba(12,12,12,0.22) 0%, rgba(12,12,12,0.06) 50%, rgba(12,12,12,0.42) 100%);
+}
+@media (max-width: 640px) {
+  .page-hero { min-height: 128px; padding: 1.2rem 1.1rem; }
+}
+
+/* The championship page already had a hero. It keeps its coral gradient
+   as the backdrop the photographs sit on, so a slow connection shows the
+   design it has always had rather than an empty box. */
+.champ-hero { position: relative; overflow: hidden; }
+.champ-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%,
+      rgba(10,10,10,0.55) 0%, rgba(10,10,10,0.28) 55%, rgba(10,10,10,0.05) 78%),
+    linear-gradient(180deg,
+      rgba(12,12,12,0.20) 0%, rgba(12,12,12,0.05) 45%, rgba(12,12,12,0.45) 100%);
+}
+.champ-hero .champ-hero-icon,
+.champ-hero .champ-hero-title,
+.champ-hero .champ-hero-names,
+.champ-hero .champ-hero-tagline { text-shadow: 0 2px 10px rgba(0,0,0,0.75); }
 
 /* ── Down to the betting ────────────────────── */
 /* Takes the posting panel's green and gold rather than the board's

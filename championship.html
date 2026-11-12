@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/championship.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=cc2365c2">
+  <link rel="stylesheet" href="css/style.css?v=b2f0df13">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -288,7 +288,11 @@
 
 <script type="module">
   import { initNav } from './js/auth.js?v=81b26575'
+  import { startHero, CHAMPIONS } from './js/hero.js?v=cdd7c354'
   initNav('championship')
+  // Trophies and finals only. A clubhouse group shot is a fine banner
+  // for Standings; over "2026 WBP Champions" it is the wrong picture.
+  startHero(document.querySelector('.champ-hero'), CHAMPIONS)
 </script>
 </body>
 </html>

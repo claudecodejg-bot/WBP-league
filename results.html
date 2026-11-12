@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/results.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=cc2365c2">
+  <link rel="stylesheet" href="css/style.css?v=b2f0df13">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -47,11 +47,12 @@
 </nav>
 
 <main>
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.25rem;">
-    <div>
-      <h1 class="page-title" style="margin-bottom:0.15rem;">Match Results</h1>
-      <p class="page-subtitle" style="margin:0;">All matches, grouped by week — most recent first.</p>
-    </div>
+  <header class="page-hero">
+    <h1 class="page-title">Match Results</h1>
+    <p class="page-subtitle">All matches, grouped by week &mdash; most recent first.</p>
+  </header>
+
+  <div style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.25rem;">
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
       <button id="vinnys-btn" class="btn btn-secondary" style="display:none;">&#127867; Vinny&rsquo;s</button>
       <button id="add-result-btn" class="btn btn-primary" style="display:none;">+ Add Result</button>
@@ -90,7 +91,9 @@
   import { CURRENT_SEASON, UNOFFICIAL_WEEKS } from './js/config.js?v=d82921ce'
   import { loadResults, knownSeasons, showEnteredBy } from './js/results.js?v=856ce460'
   import { matchScore, isWinner, fmt, winnerFirst } from './js/scoring.js?v=059e4ed1'
+  import { startHero } from './js/hero.js?v=cdd7c354'
   initNav('results')
+  startHero(document.querySelector('.page-hero'))
 
   const seasonSelect   = document.getElementById('season-select')
   let _activeSeason    = localStorage.getItem('activeSeason') || CURRENT_SEASON

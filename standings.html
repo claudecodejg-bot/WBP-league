@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/standings.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=cc2365c2">
+  <link rel="stylesheet" href="css/style.css?v=b2f0df13">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -47,8 +47,10 @@
 </nav>
 
 <main>
-  <h1 class="page-title">Season Standings</h1>
-  <p class="page-subtitle" id="standings-subtitle">Season average score, ranked highest to lowest.</p>
+  <header class="page-hero">
+    <h1 class="page-title">Season Standings</h1>
+    <p class="page-subtitle" id="standings-subtitle">Season average score, ranked highest to lowest.</p>
+  </header>
 
   <div class="season-bar">
     <label for="season-select">Season:</label>
@@ -81,7 +83,9 @@
   import { fetchVinnys, leaderboard, nightsHeld, fetchRecordedTotals, boardFromTotals,
            fetchAllRecordedTotals, allTimeBoard } from './js/vinnys.js?v=67aac246'
   import { fetchPaddleHomie, homieBoard } from './js/homie.js?v=22d405a8'
+  import { startHero } from './js/hero.js?v=cdd7c354'
   initNav('standings')
+  startHero(document.querySelector('.page-hero'))
 
   const container    = document.getElementById('standings-container')
   const seasonSelect = document.getElementById('season-select')
