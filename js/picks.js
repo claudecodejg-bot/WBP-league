@@ -2,7 +2,8 @@
 //  Picks — the peer-to-peer book for a night's courts
 // =============================================
 //  Someone offers a side at a price; anyone else takes the other side for
-//  part or all of it. Play money, settled up weekly on settle.html.
+//  part or all of it. Play money, carried on a running tab on settle.html
+//  until somebody says it has been paid.
 //
 //  THE PRICE HAS TWO NUMBERS
 //

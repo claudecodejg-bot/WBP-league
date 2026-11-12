@@ -197,8 +197,13 @@ function renderTab() {
 
   let body
   if (!nights.length) {
-    body = `<p class="settle-empty">All square. Nothing has been played since the tab
-      was cleared.</p>`
+    // Two different nothings. Before the first result of the season there
+    // is nothing to settle; after a clearing there is nothing LEFT. Saying
+    // "since the tab was cleared" when it never has been is a small lie
+    // that makes the whole page look like it is guessing.
+    body = `<p class="settle-empty">${_settledThrough
+      ? 'All square. Nothing has been played since the tab was cleared.'
+      : 'Nothing has settled yet. This fills in once a Monday has a score on it.'}</p>`
   } else if (!rows.length) {
     body = `<p class="settle-empty">Everyone has come out level &mdash; nothing to move.</p>`
   } else {
@@ -318,7 +323,11 @@ function renderLog() {
 
         let out
         if (p.winner === null) {
-          out = `<span class="settle-log-out settle-log-pending">not settled</span>`
+          // A pick on a Monday still to come is riding, not stuck. Only
+          // one on a night that has been and gone is waiting on anything,
+          // and that is the case the panel above is about.
+          out = `<span class="settle-log-out settle-log-pending">${
+            p.played_on >= todayISO() ? 'riding' : 'no result yet'}</span>`
         } else {
           const won = p.winner === p.taker
           out = `<span class="settle-log-out ${won ? 'settle-up' : 'settle-down'}">
