@@ -3282,18 +3282,21 @@ footer {
 
 /* ── Posting an offer ───────────────────────── */
 /* The one place on a court card where you give something rather than
-   read it, so it is the one place lit up. Same dark panel and same
-   bulbs as the marquee at the top of the page, deliberately: that box
-   means "action here", and this is where the action starts.
-   The bulbs do NOT chase here. One travelling light on a page reads as
-   a sign; one per court reads as a fruit machine. These sit still and
-   the panel breathes instead. */
+   read it, so it is the one place lit up.
+   DELIBERATELY NOT THE MARQUEE'S COLOURS. The box at the top of the
+   page is charcoal under amber bulbs and it reports what other people
+   have done; this one is card-table green under white-gold bulbs and it
+   is where you do something. Two lit boxes in the same livery would
+   read as the same control twice.
+   The bulbs do not chase here either. One travelling light on a page is
+   a sign; one per court is a fruit machine. These sit still and the
+   panel breathes instead. */
 .pick-new {
   position: relative;
   margin: 0.85rem 0 0.9rem;
   padding: 0.95rem 1rem;
   border-radius: 12px;
-  background: linear-gradient(135deg, #171717 0%, #241a17 55%, #30200f 100%);
+  background: linear-gradient(135deg, #0c3a2a 0%, #12553d 55%, #0a3025 100%);
   animation: wager-breathe 3.4s ease-in-out infinite;
 }
 .pick-new::before {
@@ -3302,20 +3305,33 @@ footer {
   inset: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(circle, #fff6e6 0.8px, #ffb86c 1.7px, rgba(255,184,108,0.3) 2.8px, rgba(255,184,108,0) 3.6px),
-    radial-gradient(circle, #fff6e6 0.8px, #ffb86c 1.7px, rgba(255,184,108,0.3) 2.8px, rgba(255,184,108,0) 3.6px),
-    radial-gradient(circle, #fff6e6 0.8px, #ffb86c 1.7px, rgba(255,184,108,0.3) 2.8px, rgba(255,184,108,0) 3.6px),
-    radial-gradient(circle, #fff6e6 0.8px, #ffb86c 1.7px, rgba(255,184,108,0.3) 2.8px, rgba(255,184,108,0) 3.6px);
+    radial-gradient(circle, #ffffff 0.8px, #ffe9a8 1.7px, rgba(255,233,168,0.32) 2.8px, rgba(255,233,168,0) 3.6px),
+    radial-gradient(circle, #ffffff 0.8px, #ffe9a8 1.7px, rgba(255,233,168,0.32) 2.8px, rgba(255,233,168,0) 3.6px),
+    radial-gradient(circle, #ffffff 0.8px, #ffe9a8 1.7px, rgba(255,233,168,0.32) 2.8px, rgba(255,233,168,0) 3.6px),
+    radial-gradient(circle, #ffffff 0.8px, #ffe9a8 1.7px, rgba(255,233,168,0.32) 2.8px, rgba(255,233,168,0) 3.6px);
   background-size: 16px 9px, 16px 9px, 9px 16px, 9px 16px;
   background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
   background-position: 0 3px, 0 calc(100% - 3px), 3px 0, calc(100% - 3px) 0;
 }
 @keyframes wager-breathe {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 0 14px rgba(244,132,95,0.20); }
-  50%      { box-shadow: 0 0 0 1px rgba(255,255,255,0.16), 0 0 26px rgba(244,132,95,0.46); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255,233,168,0.14), 0 0 14px rgba(42,190,120,0.22); }
+  50%      { box-shadow: 0 0 0 1px rgba(255,233,168,0.28), 0 0 26px rgba(42,190,120,0.5);  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pick-new { animation: none; box-shadow: 0 0 0 1px rgba(255,255,255,0.14), 0 0 18px rgba(244,132,95,0.32); }
+  .pick-new { animation: none; box-shadow: 0 0 0 1px rgba(255,233,168,0.22), 0 0 18px rgba(42,190,120,0.36); }
+}
+
+/* Gold, where the marquee's is red: the two signs blink in their own
+   colours so neither is mistaken for the other at a glance. */
+.pick-new-dot {
+  width: 0.5rem; height: 0.5rem;
+  border-radius: 999px;
+  background: #ffd86b;
+  box-shadow: 0 0 8px 2px rgba(255,216,107,0.85);
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pick-new-dot { animation: none; }
 }
 
 /* The pseudo-element is positioned, so the form needs its own layer. */
@@ -3343,16 +3359,17 @@ footer {
 .pick-new .pick-preview { color: rgba(255,255,255,0.72); }
 .pick-new .pick-amt     { border-color: rgba(255,255,255,0.35); }
 
-/* The side buttons are the thing to press, so they are outlined in the
-   accent rather than left as plain white boxes on a dark field. */
+/* The side buttons are the thing to press. Edged and filled in the
+   panel's own gold rather than the site's coral, which on this green
+   would be the one jarring pair of colours on the page. */
 .pick-new .btn-outline {
-  border: 1px solid var(--accent);
+  border: 1px solid #ffd86b;
   font-weight: 700;
 }
 .pick-new .btn-outline:hover:not(:disabled) {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--white);
+  background: #ffd86b;
+  border-color: #ffd86b;
+  color: #0a3025;
 }
 
 .pick-amt {

@@ -433,8 +433,8 @@ function renderOfferForm(court, myTeam) {
   return `<div class="pick-new">
     <div class="pick-new-inner">
       <span class="pick-new-label">
-        <span class="live-board-dot" aria-hidden="true"></span>
-        Put a price up
+        <span class="pick-new-dot" aria-hidden="true"></span>
+        Place your bets!
       </span>
       <div class="pick-new-row">
         <label class="pick-field">
