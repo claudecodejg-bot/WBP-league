@@ -3093,12 +3093,53 @@ footer {
 
 .pick-offer-head { line-height: 1.45; }
 .pick-offer-who  { font-weight: 600; }
+/* Without this the name runs straight into the side it backs and reads as
+   one thing: "Dolan Ridder & Dolan". */
+.pick-offer-who::after { content: " \00b7"; color: var(--gray-400); font-weight: 400; }
 
-.pick-matched {
-  margin: 0.4rem 0 0; padding-left: 1.1rem;
-  font-size: 0.88rem; color: var(--gray-600);
+/* ── Open on the left, taken on the right ───── */
+/* Two halves of the same court: what you can still get into, and what is
+   already struck. Side by side they answer "anything going?" at a glance;
+   stacked, Open comes first, which is the one with a button on it. */
+.pick-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1.5rem;
 }
-.pick-outcome { font-style: italic; }
+.pick-col + .pick-col {
+  border-left: 1px solid var(--gray-200);
+  padding-left: 1.5rem;
+}
+.pick-col-title {
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--gray-500);
+  margin: 0 0 0.5rem;
+}
+
+@media (max-width: 720px) {
+  .pick-cols { grid-template-columns: 1fr; gap: 1rem; }
+  .pick-col + .pick-col {
+    border-left: 0; padding-left: 0;
+    border-top: 1px solid var(--gray-200); padding-top: 0.85rem;
+  }
+}
+
+/* A bet that is struck. One line, with the poster and any outcome hanging
+   off the end of it in smaller type. */
+.pick-took-list { list-style: none; margin: 0; padding: 0; }
+.pick-took {
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--gray-100);
+  line-height: 1.45;
+}
+.pick-took:last-child { border-bottom: 0; }
+.pick-took-line { display: block; }
+.pick-took-amt  { font-size: 0.85rem; color: var(--gray-600); white-space: nowrap; }
+.pick-took-v    { font-size: 0.8rem; color: var(--gray-500); }
+.pick-outcome   { font-style: italic; font-size: 0.85rem; }
+
+/* Your own offer, so you can find it without reading the names. */
+.pick-offer-mine { border-left: 3px solid var(--accent); padding-left: 0.6rem; }
 
 .pick-offer-foot {
   display: flex; flex-wrap: wrap; align-items: center;

@@ -218,86 +218,100 @@ function fillsFor(offerId) {
   return _fills.filter(f => f.offer_id === offerId)
 }
 
-function renderOffer(court, offer, closed) {
+/**
+ * One offer with money still on it, in the "Open" column. Deliberately
+ * terse: who, which side, the price, how much is left. Everything a taker
+ * has to decide with, and nothing else.
+ *
+ * An offer with nothing left is NOT drawn here. It survives as the fills
+ * it produced, in the "Taken" column, which is where the money actually
+ * is — so there is no row whose whole message is that it is finished.
+ */
+function renderOpenOffer(court, offer, closed) {
   const backing = sideNames(court, offer.side)
-  const matched = fillsFor(offer.id)
   const mine    = _member && offer.offered_by === _member.id
   const myTeam  = mySide(court)
-  const won     = _results[court.id] ?? null
 
   // Taking this offer means taking the side it is against. If that is the
   // side you're playing on, the database will refuse it, so don't offer a
   // button that cannot work.
   const takingSide  = offer.side === 1 ? 2 : 1
   const wouldBeVsMe = myTeam !== null && myTeam !== takingSide
-  const openToTake  = offer.status === 'open' && offer.win_open_cents > 0
+  const canTake     = !closed && _member && !mine && !wouldBeVsMe
 
-  const canTake = !closed && _member && !mine && openToTake && !wouldBeVsMe
-  const odds    = oddsLabel(offer.risk_cents, offer.win_cents)
+  // Default to the lot. The function fills whatever is left rather than
+  // failing, so an over-ask is harmless either way.
+  const dflt = (offer.win_open_cents / 100).toFixed(2).replace(/\.00$/, '')
 
-  const out = []
-  out.push(`<div class="pick-offer">
+  const out = [`<div class="pick-offer${mine ? ' pick-offer-mine' : ''}">
     <div class="pick-offer-head">
       <span class="pick-offer-who">${escapeHtml(name(offer.offered_by))}</span>
-      backs <strong>${escapeHtml(backing)}</strong>
-      &mdash; risks ${money(offer.risk_cents)} to win ${money(offer.win_cents)}
-      <span class="pick-odds">${escapeHtml(odds)}</span>
-    </div>`)
+      <strong>${escapeHtml(backing)}</strong>
+      <span class="pick-odds">${escapeHtml(oddsLabel(offer.risk_cents, offer.win_cents))}</span>
+    </div>
+    <div class="pick-offer-foot">
+      <span class="pick-remaining">${money(offer.win_open_cents)} open</span>`]
 
-  if (matched.length > 0) {
-    out.push(`<ul class="pick-matched">` + matched.map(f => {
-      // Who came out on top of this one. Same rule as v_pick_results: the
-      // poster's side winning means the poster collects.
+  if (canTake) {
+    out.push(`
+      <span class="pick-take">
+        <label class="sr-only" for="take-amt-${offer.id}">Amount to risk</label>
+        <span class="pick-dollar">$</span>
+        <input type="number" id="take-amt-${offer.id}" class="pick-amt"
+               min="1" step="0.01" max="${dflt}" value="${dflt}" inputmode="decimal">
+        <button class="btn btn-sm btn-primary" data-take="${offer.id}">
+          Take ${escapeHtml(sideNames(court, takingSide))}
+        </button>
+      </span>`)
+  } else if (mine && !closed) {
+    out.push(`<button class="btn btn-sm btn-secondary" data-cancel="${offer.id}">Pull back</button>`)
+  } else if (wouldBeVsMe && !closed) {
+    // Only worth saying to someone who might otherwise expect a button.
+    out.push(`<span class="pick-blocked">You're on this court</span>`)
+  }
+
+  out.push(`</div></div>`)
+  return out.join('')
+}
+
+/**
+ * The "Taken" column: bets that are struck, one line each. A fill is the
+ * thing that settles, so this is the half of the card that turns into
+ * money on settle.html.
+ */
+function renderTaken(court, offers, won) {
+  const byOffer = Object.fromEntries(offers.map(o => [o.id, o]))
+
+  const rows = _fills
+    .filter(f => byOffer[f.offer_id])
+    .map(f => {
+      const offer      = byOffer[f.offer_id]
+      const takingSide = offer.side === 1 ? 2 : 1
+
+      // Who came out on top. Same rule as v_pick_results: the poster's
+      // side winning means the poster collects.
       let tail = ''
       if (won !== null) {
         const posterWon = won === offer.side
         const winner    = posterWon ? offer.offered_by : f.taker
         const amount    = posterWon ? f.taker_risk_cents : f.poster_risk_cents
-        tail = ` &middot; <span class="pick-outcome">${escapeHtml(name(winner))} +${money(amount)}</span>`
+        tail = `<span class="pick-outcome">${escapeHtml(name(winner))} +${money(amount)}</span>`
       }
-      return `<li>${escapeHtml(name(f.taker))} risked ${money(f.taker_risk_cents)}
-        to win ${money(f.poster_risk_cents)} on
-        ${escapeHtml(sideNames(court, takingSide))}${tail}</li>`
-    }).join('') + `</ul>`)
-  }
 
-  if (openToTake) {
-    out.push(`<div class="pick-offer-foot">
-      <span class="pick-remaining">${money(offer.win_open_cents)} of the other side still open</span>`)
+      return `<li class="pick-took">
+        <span class="pick-took-line">
+          <span class="pick-offer-who">${escapeHtml(name(f.taker))}</span>
+          <strong>${escapeHtml(sideNames(court, takingSide))}</strong>
+          <span class="pick-took-amt">${money(f.taker_risk_cents)} to win ${money(f.poster_risk_cents)}</span>
+        </span>
+        <span class="pick-took-v">v ${escapeHtml(name(offer.offered_by))}</span>
+        ${tail}
+      </li>`
+    })
 
-    if (canTake) {
-      // Default to the lot. The function fills whatever is left rather than
-      // failing, so an over-ask is harmless either way.
-      const dflt = (offer.win_open_cents / 100).toFixed(2).replace(/\.00$/, '')
-      out.push(`
-        <span class="pick-take">
-          <label class="sr-only" for="take-amt-${offer.id}">Amount to risk</label>
-          <span class="pick-dollar">$</span>
-          <input type="number" id="take-amt-${offer.id}" class="pick-amt"
-                 min="1" step="0.01" max="${dflt}" value="${dflt}" inputmode="decimal">
-          <button class="btn btn-sm btn-primary" data-take="${offer.id}">
-            Take ${escapeHtml(sideNames(court, takingSide))}
-          </button>
-        </span>`)
-    } else if (wouldBeVsMe && !closed && !mine) {
-      // Only worth saying to someone who might otherwise expect a button.
-      out.push(`<span class="pick-blocked">You're playing this court</span>`)
-    }
-
-    if (mine && !closed) {
-      out.push(`<button class="btn btn-sm btn-secondary" data-cancel="${offer.id}">Pull back</button>`)
-    }
-    out.push(`</div>`)
-  } else if (matched.length > 0) {
-    // Every other offer says how much is open, so one that says nothing
-    // reads as unfinished. Deliberately not "matched in full": an offer
-    // pulled back after a part fill ends up here too, and the row cannot
-    // tell the two apart.
-    out.push(`<div class="pick-offer-foot"><span class="pick-remaining">Nothing left to take</span></div>`)
-  }
-
-  out.push(`</div>`)
-  return out.join('')
+  return rows.length
+    ? `<ul class="pick-took-list">${rows.join('')}</ul>`
+    : `<p class="pick-empty">Nothing taken yet.</p>`
 }
 
 /**
@@ -331,7 +345,7 @@ function renderOfferForm(court, myTeam) {
     </div>
     <p class="pick-preview" id="post-preview-${court.id}"></p>
     ${myTeam !== null
-      ? `<p class="pick-new-note">You're playing this court, so you can back your own team but not against it.</p>`
+      ? `<p class="pick-new-note">You're playing &mdash; you can only back your own team.</p>`
       : ''}
   </div>`
 }
@@ -347,9 +361,8 @@ function updatePreview(courtId) {
 
   const odds = oddsLabel(risk, win)
   el.textContent =
-    `${odds === 'even money' ? 'Even money' : odds} — you win ${money(win)} if your side takes it,` +
-    ` and pay ${money(risk)} if it doesn't.` +
-    ` Whoever takes the other end risks ${money(win)} to win ${money(risk)}.`
+    `${odds === 'even money' ? 'Even money' : odds} — win ${money(win)}, or pay ${money(risk)}.` +
+    ` The other end risks ${money(win)} to win ${money(risk)}.`
 }
 
 function renderCourt(court) {
@@ -360,9 +373,23 @@ function renderCourt(court) {
   const closeAt = new Date(court.closes_at)
     .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 
-  const book = offers.length
-    ? offers.map(o => renderOffer(court, o, closed)).join('')
-    : `<p class="pick-empty">No picks on this court yet.</p>`
+  // Left: what you can still take. Right: what is already struck. An
+  // offer that is part taken belongs in both, which is the honest answer
+  // — there is money left on it AND money riding on it.
+  const open = offers.filter(o => o.status === 'open' && o.win_open_cents > 0)
+  const book = `
+    <div class="pick-cols">
+      <section class="pick-col">
+        <h4 class="pick-col-title">Open</h4>
+        ${open.length
+          ? open.map(o => renderOpenOffer(court, o, closed)).join('')
+          : `<p class="pick-empty">Nothing open.</p>`}
+      </section>
+      <section class="pick-col">
+        <h4 class="pick-col-title">Taken</h4>
+        ${renderTaken(court, offers, won)}
+      </section>
+    </div>`
 
   let state
   if (won !== null) {
