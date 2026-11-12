@@ -432,11 +432,11 @@ function renderOfferForm(court, myTeam) {
 
   return `<div class="pick-new">
     <div class="pick-new-inner">
-      <span class="pick-new-label">
-        <span class="pick-new-dot" aria-hidden="true"></span>
-        Place your bets!
-      </span>
       <div class="pick-new-row">
+        <span class="pick-new-label">
+          <span class="pick-new-dot" aria-hidden="true"></span>
+          Place your bets!
+        </span>
         <label class="pick-field">
           <span>I risk</span>
           <span class="pick-dollar">$</span>
@@ -474,8 +474,8 @@ function updatePreview(courtId) {
 
   const odds = oddsLabel(risk, win)
   el.textContent =
-    `${odds === 'even money' ? 'Even money' : odds} — win ${money(win)}, or pay ${money(risk)}.` +
-    ` The other end risks ${money(win)} to win ${money(risk)}.`
+    `${odds === 'even money' ? 'Even money' : odds} — win ${money(win)} or pay ${money(risk)}.` +
+    ` They risk ${money(win)} to win ${money(risk)}.`
 }
 
 function renderCourt(court) {

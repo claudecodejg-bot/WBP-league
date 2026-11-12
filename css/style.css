@@ -3293,8 +3293,11 @@ footer {
    panel breathes instead. */
 .pick-new {
   position: relative;
-  margin: 0.85rem 0 0.9rem;
-  padding: 0.95rem 1rem;
+  margin: 0.7rem 0 0.8rem;
+  /* Horizontal padding clears the bulb columns, which sit 3px in and
+     carry a 4px halo; at 0.75rem the preview line's first letter sat
+     right against one. */
+  padding: 0.6rem 0.9rem;
   border-radius: 12px;
   background: linear-gradient(135deg, #0c3a2a 0%, #12553d 55%, #0a3025 100%);
   animation: wager-breathe 3.4s ease-in-out infinite;
@@ -3337,17 +3340,22 @@ footer {
 /* The pseudo-element is positioned, so the form needs its own layer. */
 .pick-new-inner { position: relative; z-index: 1; }
 
+/* The sign sits IN the row, not above it. On its own line it cost a
+   whole band of height on every court card for three words. */
 .pick-new-label {
-  display: flex; align-items: center; gap: 0.45rem;
-  margin-bottom: 0.6rem;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  margin-right: 0.15rem;
   color: var(--white);
-  font-size: 0.78rem; font-weight: 800;
-  letter-spacing: 0.1em; text-transform: uppercase;
+  font-size: 0.72rem; font-weight: 800;
+  letter-spacing: 0.09em; text-transform: uppercase;
   text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+  white-space: nowrap;
 }
-.pick-new-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.pick-new-row {
+  display: flex; flex-wrap: wrap; gap: 0.35rem 0.5rem; align-items: center;
+}
 .pick-new-note {
-  margin: 0.5rem 0 0; font-size: 0.8rem; color: rgba(255,255,255,0.62);
+  margin: 0.35rem 0 0; font-size: 0.76rem; color: rgba(255,255,255,0.62);
 }
 
 /* On the dark panel everything that was grey has to come back up. These
@@ -3355,9 +3363,32 @@ footer {
    are also used on the white half of the card. */
 .pick-new .pick-field,
 .pick-new .pick-dollar,
-.pick-new .pick-new-on  { color: rgba(255,255,255,0.82); }
-.pick-new .pick-preview { color: rgba(255,255,255,0.72); }
-.pick-new .pick-amt     { border-color: rgba(255,255,255,0.35); }
+.pick-new .pick-new-on  { color: rgba(255,255,255,0.82); font-size: 0.85rem; }
+.pick-new .pick-preview {
+  color: rgba(255,255,255,0.72);
+  margin-top: 0.35rem; font-size: 0.76rem;
+}
+.pick-new .pick-amt {
+  border-color: rgba(255,255,255,0.35);
+  width: 4.2rem; padding: 0.3rem 0.4rem; font-size: 0.9rem;
+}
+.pick-new .btn-sm { padding: 0.32rem 0.7rem; }
+
+/* The two amounts stay side by side on a phone. The page-wide rule gives
+   .pick-field a whole row each, which on this panel turned four short
+   words and two small boxes into four stacked bands. */
+@media (max-width: 640px) {
+  .pick-new .pick-field { flex: 0 1 auto; }
+  .pick-new .pick-field .pick-amt { flex: 0 0 3.8rem; width: 3.8rem; }
+  /* The sign takes its own line on a phone. Inline, it pushed "to win"
+     onto a second row and left "on" dangling at the end of it; on its
+     own line the two amounts sit together and the count of rows is the
+     same either way. */
+  .pick-new .pick-new-label { flex: 0 0 100%; margin-right: 0; }
+  /* Natural width, so the two sides share one row when they fit. The
+     page-wide rule stretches them, which always cost a second row. */
+  .pick-new .pick-new-row .btn { flex: 0 1 auto; }
+}
 
 /* The side buttons are the thing to press. Edged and filled in the
    panel's own gold rather than the site's coral, which on this green
