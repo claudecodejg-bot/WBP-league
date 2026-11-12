@@ -423,6 +423,24 @@ function renderCourt(court) {
     </article>`
 }
 
+/**
+ * "Week 6 · Monday, November 16" — unless the label IS the date, which is
+ * what the scheduler actually writes ("Monday, November 16, 2026"). Adding
+ * the date beside that one printed it twice and read as a bug, which is
+ * how it was found: on the live board, with the first real week on it.
+ */
+function nightHeading(night) {
+  const label  = String(night.week_label || '').trim()
+  const pretty = prettyDate(night.played_on)
+  const key    = t => t.toLowerCase().replace(/[^a-z0-9]+/g, '')
+
+  if (!label)                      return escapeHtml(pretty)
+  if (key(label).includes(key(pretty))) return escapeHtml(label)
+
+  return escapeHtml(label) +
+    `<span class="pick-night-date">${escapeHtml(pretty)}</span>`
+}
+
 function render() {
   renderSignedOutNote()
 
@@ -448,11 +466,7 @@ function render() {
 
   _container.innerHTML = nights.map(night => `
     <section class="pick-night">
-      <h2 class="pick-night-title">${escapeHtml(night.week_label || '')}${
-        night.week_label
-          ? `<span class="pick-night-date">${escapeHtml(prettyDate(night.played_on))}</span>`
-          : escapeHtml(prettyDate(night.played_on))
-      }</h2>
+      <h2 class="pick-night-title">${nightHeading(night)}</h2>
       ${night.courts.map(renderCourt).join('')}
     </section>`).join('')
 
