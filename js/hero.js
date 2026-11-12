@@ -6,26 +6,42 @@
 //
 //  WHY IT IS NOT IN THE CSS
 //
-//  A pure-CSS stack would need all five in the stylesheet, so all five
-//  would be fetched before anything appeared — about 640KB — and a phone
-//  on a bad connection would stare at a plain gradient the whole time.
-//  Here the first photo is the only one fetched up front; each later one
-//  is fetched a moment before it is needed and never at all if the tab is
-//  closed, or hidden, before its turn comes round.
+//  A pure-CSS stack would need every one of them in the stylesheet, so
+//  every one would be fetched before anything appeared — 1.7MB as the
+//  list stands — and a phone on a bad connection would stare at a plain
+//  gradient the whole time. Here the first photo is the only one fetched
+//  up front; each later one is fetched a moment before it is needed and
+//  never at all if the tab is closed, or hidden, before its turn comes
+//  round. That is why the list can keep growing without costing anything
+//  to whoever only glances at the page.
 //
 //  If this module fails to load, the banner keeps the charcoal-and-coral
 //  gradient it has in the stylesheet, which is a finished design in its
 //  own right rather than an empty box.
 
+//  Fourteen of them, running from the 2014 cage match to last spring, so
+//  the banner is the league's own history rather than one good night.
+//  Order is deliberate: no two line-ups of the same twenty men in the
+//  same clubhouse next to each other, since consecutive near-identical
+//  frames read as the rotation being broken rather than as two photos.
 const PHOTOS = [
   // position: where to hold the crop as the box gets wider or narrower.
-  // Faces are the thing not to cut, and they sit higher than centre in
-  // every one of these but the night shot.
+  // Faces are the thing not to cut, and in most of these they sit above
+  // centre — hence the percentages under 50.
   { src: 'banners/court-night.jpg',     position: 'center 55%' },
-  { src: 'banners/group-2026.jpg',      position: 'center 38%' },
+  { src: 'banners/lineup-2021.jpg',     position: 'center 45%' },
   { src: 'banners/champs-2023.jpg',     position: 'center 42%' },
-  { src: 'banners/group-2023.jpg',      position: 'center 40%' },
+  { src: 'banners/cage-2014.jpg',       position: 'center 38%' },
+  { src: 'banners/group-2026.jpg',      position: 'center 38%' },
+  { src: 'banners/play-2019.jpg',       position: 'center 48%' },
+  { src: 'banners/group-2022.jpg',      position: 'center 42%' },
+  { src: 'banners/cage-2017.jpg',       position: 'center 38%' },
   { src: 'banners/finalists-2026.jpg',  position: 'center 40%' },
+  { src: 'banners/rainbow-2026.jpg',    position: 'center 58%' },
+  { src: 'banners/group-2023.jpg',      position: 'center 40%' },
+  { src: 'banners/champs-2019.jpg',     position: 'center 38%' },
+  { src: 'banners/cage-2016.jpg',       position: 'center 40%' },
+  { src: 'banners/champs-2026.jpg',     position: 'center 45%' },
 ]
 
 const DWELL = 7000    // how long a photo holds

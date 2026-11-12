@@ -431,30 +431,35 @@ function renderOfferForm(court, myTeam) {
   const sides = [1, 2].filter(side => myTeam === null || myTeam === side)
 
   return `<div class="pick-new">
-    <span class="pick-new-label">Back a side</span>
-    <div class="pick-new-row">
-      <label class="pick-field">
-        <span>I risk</span>
-        <span class="pick-dollar">$</span>
-        <input type="number" id="post-risk-${court.id}" class="pick-amt" data-preview="${court.id}"
-               min="1" max="100" step="0.01" value="20" inputmode="decimal">
-      </label>
-      <label class="pick-field">
-        <span>to win</span>
-        <span class="pick-dollar">$</span>
-        <input type="number" id="post-win-${court.id}" class="pick-amt" data-preview="${court.id}"
-               min="1" max="500" step="0.01" value="20" inputmode="decimal">
-      </label>
-      <span class="pick-new-on">on</span>
-      ${sides.map(side => `
-        <button class="btn btn-sm btn-outline" data-post="${court.id}" data-side="${side}">
-          ${escapeHtml(sideNames(court, side))}
-        </button>`).join('')}
+    <div class="pick-new-inner">
+      <span class="pick-new-label">
+        <span class="live-board-dot" aria-hidden="true"></span>
+        Put a price up
+      </span>
+      <div class="pick-new-row">
+        <label class="pick-field">
+          <span>I risk</span>
+          <span class="pick-dollar">$</span>
+          <input type="number" id="post-risk-${court.id}" class="pick-amt" data-preview="${court.id}"
+                 min="1" max="100" step="0.01" value="20" inputmode="decimal">
+        </label>
+        <label class="pick-field">
+          <span>to win</span>
+          <span class="pick-dollar">$</span>
+          <input type="number" id="post-win-${court.id}" class="pick-amt" data-preview="${court.id}"
+                 min="1" max="500" step="0.01" value="20" inputmode="decimal">
+        </label>
+        <span class="pick-new-on">on</span>
+        ${sides.map(side => `
+          <button class="btn btn-sm btn-outline" data-post="${court.id}" data-side="${side}">
+            ${escapeHtml(sideNames(court, side))}
+          </button>`).join('')}
+      </div>
+      <p class="pick-preview" id="post-preview-${court.id}"></p>
+      ${myTeam !== null
+        ? `<p class="pick-new-note">You're playing &mdash; you can only back your own team.</p>`
+        : ''}
     </div>
-    <p class="pick-preview" id="post-preview-${court.id}"></p>
-    ${myTeam !== null
-      ? `<p class="pick-new-note">You're playing &mdash; you can only back your own team.</p>`
-      : ''}
   </div>`
 }
 
