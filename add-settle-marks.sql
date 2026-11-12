@@ -41,8 +41,14 @@ create policy settle_marks_read on public.settle_marks
 
 -- No write policy at all. Writes go through the two functions below,
 -- the same as every other write in the picks system.
+--
+-- REVOKE ALL, then grant back the one thing wanted. Naming the three
+-- obvious writes instead left TRUNCATE, REFERENCES and TRIGGER behind:
+-- this project's default privileges hand `all` to anon and authenticated
+-- on every new table in public, and TRUNCATE is not subject to RLS.
+-- Nothing in PostgREST will issue one, but it is a hole in the same wall.
+revoke all on public.settle_marks from anon, authenticated;
 grant select on public.settle_marks to anon, authenticated;
-revoke insert, update, delete on public.settle_marks from anon, authenticated;
 
 -- ---------------------------------------------------------------------
 --  Clear the tab
