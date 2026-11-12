@@ -1,0 +1,101 @@
+// =============================================
+//  The picks banner — league photos, rotating
+// =============================================
+//  Five photographs cross-fade behind the wordmark so the banner reads as
+//  a picture of this league rather than stock art.
+//
+//  WHY IT IS NOT IN THE CSS
+//
+//  A pure-CSS stack would need all five in the stylesheet, so all five
+//  would be fetched before anything appeared — about 640KB — and a phone
+//  on a bad connection would stare at a plain gradient the whole time.
+//  Here the first photo is the only one fetched up front; each later one
+//  is fetched a moment before it is needed and never at all if the tab is
+//  closed, or hidden, before its turn comes round.
+//
+//  If this module fails to load, the banner keeps the charcoal-and-coral
+//  gradient it has in the stylesheet, which is a finished design in its
+//  own right rather than an empty box.
+
+const PHOTOS = [
+  // position: where to hold the crop as the box gets wider or narrower.
+  // Faces are the thing not to cut, and they sit higher than centre in
+  // every one of these but the night shot.
+  { src: 'banners/court-night.jpg',     position: 'center 55%' },
+  { src: 'banners/group-2026.jpg',      position: 'center 38%' },
+  { src: 'banners/champs-2023.jpg',     position: 'center 42%' },
+  { src: 'banners/group-2023.jpg',      position: 'center 40%' },
+  { src: 'banners/finalists-2026.jpg',  position: 'center 40%' },
+]
+
+const DWELL = 7000    // how long a photo holds
+const FADE  = 1200    // must match --hero-fade in the stylesheet
+
+const reduceMotion = () =>
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+
+/** Resolves once the image is in cache, or when it fails — never rejects. */
+function preload(src) {
+  return new Promise(resolve => {
+    const img = new Image()
+    img.onload = img.onerror = () => resolve()
+    img.src = src
+  })
+}
+
+function paint(layer, photo) {
+  layer.style.backgroundImage    = `url('${photo.src}')`
+  layer.style.backgroundPosition = photo.position
+}
+
+export function startHero(hero) {
+  if (!hero || !PHOTOS.length) return
+
+  const layers = [document.createElement('div'), document.createElement('div')]
+  for (const el of layers) {
+    el.className = 'picks-hero-img'
+    el.setAttribute('aria-hidden', 'true')   // decoration, not content
+    hero.prepend(el)
+  }
+
+  // Start somewhere different each visit, so the page isn't always the
+  // same photograph to anyone who opens it twice in a night.
+  let index = Math.floor(Math.random() * PHOTOS.length)
+  let front = 0
+
+  paint(layers[front], PHOTOS[index])
+  layers[front].classList.add('is-on')
+
+  // One photo, held still, for anyone who has asked for less movement.
+  if (PHOTOS.length === 1 || reduceMotion()) return
+
+  let timer = null
+
+  async function advance() {
+    const next  = PHOTOS[(index + 1) % PHOTOS.length]
+    const back  = 1 - front
+
+    // Fetch before fading. Swapping to a URL that has not arrived shows a
+    // gap where the photo should be for as long as the request takes.
+    await preload(next.src)
+    if (timer === null) return          // stopped while we were waiting
+
+    paint(layers[back], next)
+    layers[back].classList.add('is-on')
+    layers[front].classList.remove('is-on')
+
+    front = back
+    index = (index + 1) % PHOTOS.length
+  }
+
+  function stop()  { window.clearInterval(timer); timer = null }
+  function start() { if (timer === null) timer = window.setInterval(advance, DWELL + FADE) }
+
+  // A hidden tab has no one looking at it; rotating there would only spend
+  // someone's data on photographs nobody sees.
+  document.addEventListener('visibilitychange', () => {
+    document.hidden ? stop() : start()
+  })
+
+  start()
+}
