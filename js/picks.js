@@ -241,15 +241,17 @@ function renderSignedOutNote() {
 function renderLive() {
   const el = document.getElementById('picks-live')
   if (!el) return
-  el.innerHTML = renderJump() + renderOpenBoard() + renderAcceptedBoard() + renderTitles()
+  el.innerHTML = renderJump() + renderTitles() + renderOpenBoard() + renderAcceptedBoard()
 }
 
 /**
- * The three season titles, in one line under the board, linking to the
- * full tables on the standings page.
+ * The three season titles, in one line directly under Place your bets
+ * and above the boards, linking to the full tables on the standings
+ * page. Up there it is read on the way to the money rather than after
+ * it, which is the point of having titles at all.
  *
  * Deliberately quiet: it is the one thing up here that is not an action,
- * and three lit boxes already have the eye. It is also always drawn,
+ * and the lit boxes below it already have the eye. It is also always drawn,
  * even with every title vacant — "Up for grabs" on all three is the most
  * encouraging state this strip can be in, and hiding it then would hide
  * it exactly when it has the most work to do.
