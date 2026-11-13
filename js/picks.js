@@ -404,47 +404,60 @@ function renderAcceptedBoard() {
   // what keeps the two halves of the page in the same order.
   const groups = []
   for (const court of _courts) {
-    const mine = rows
-      .filter(r => r.court.id === court.id)
-      // Newest first inside a court: the bet somebody just took is the
-      // one worth seeing.
-      .sort((x, y) => (x.fill.created_at < y.fill.created_at ? 1 : -1))
+    const mine = rows.filter(r => r.court.id === court.id)
     if (mine.length) groups.push({ court, rows: mine })
   }
 
   const body = groups.map(({ court, rows: inCourt }) => {
-    const cards = inCourt.map(({ fill, offer }) => {
-      const takingSide = offer.side === 1 ? 2 : 1
-      const won        = _results[court.id] ?? null
+    const won = _results[court.id] ?? null
 
-      // Same rule as v_pick_results: the poster's side winning means the
-      // poster collects.
-      let tail = ''
-      if (won !== null) {
-        const posterWon = won === offer.side
-        const winner    = posterWon ? offer.offered_by : fill.taker
-        const amount    = posterWon ? fill.taker_risk_cents : fill.poster_risk_cents
-        tail = `<span class="live-bet-won">${escapeHtml(name(winner))} +${money(amount)}</span>`
-      }
+    // CONSOLIDATED BY SIDE, not one card per fill. A card per fill names
+    // only the taker and leaves the other end as "v Grills", which says
+    // who he is but not which team he is on — and it prints the same
+    // poster once for every person who took him. Two columns, a team
+    // each, with every backer and what they have on it, answers "who is
+    // on which side" in one look.
+    const stakes = { 1: new Map(), 2: new Map() }
+    const bump = (side, id, cents) =>
+      stakes[side].set(id, (stakes[side].get(id) || 0) + cents)
 
-      const mine = _member && (fill.taker === _member.id || offer.offered_by === _member.id)
+    for (const { fill, offer } of inCourt) {
+      const takerSide = offer.side === 1 ? 2 : 1
+      // The poster is on the side he backed, for what he risks; the
+      // taker is on the other one, for the mirror of it.
+      bump(offer.side, offer.offered_by, fill.poster_risk_cents)
+      bump(takerSide,  fill.taker,       fill.taker_risk_cents)
+    }
 
-      // No court on the card any more — the heading above it says so
-      // once for the whole group.
-      return `<li class="live-bet">
-        <div class="live-bet-card${mine ? ' live-bet-mine' : ''}">
-          <span class="live-bet-team">${escapeHtml(sideNames(court, takingSide))}</span>
-          <span class="live-bet-price">${escapeHtml(name(fill.taker))} &middot; ${
-            money(fill.taker_risk_cents)} to win ${money(fill.poster_risk_cents)}</span>
-          <span class="live-bet-from">v ${escapeHtml(name(offer.offered_by))}</span>
-          ${tail}
-        </div>
-      </li>`
+    const riding = [1, 2].reduce((sum, side) =>
+      sum + [...stakes[side].values()].reduce((a, b) => a + b, 0), 0)
+
+    const sides = [1, 2].map(side => {
+      const backers = [...stakes[side].entries()]
+        .map(([id, cents]) => ({ id, name: name(id), cents }))
+        // Most on it first; the name breaks a tie so the order is stable.
+        .sort((a, b) => b.cents - a.cents || a.name.localeCompare(b.name))
+
+      const outcome = won === null ? '' : (won === side ? ' taken-side-won' : ' taken-side-lost')
+
+      return `
+        <section class="taken-side${outcome}">
+          <h4 class="taken-side-team">${escapeHtml(sideNames(court, side))}</h4>
+          <ul class="taken-list">
+            ${backers.map(b => `<li class="taken-row${
+              _member && b.id === _member.id ? ' taken-row-mine' : ''}">
+              <span class="taken-who">${escapeHtml(b.name)}</span>
+              <span class="taken-amt">${money(b.cents)}</span>
+            </li>`).join('')}
+          </ul>
+        </section>`
     }).join('')
 
     return `<div class="live-board-group">
-      <h3 class="live-board-group-title">${courtLabel(court)}</h3>
-      <ul class="live-board-list">${cards}</ul>
+      <h3 class="live-board-group-title">${courtLabel(court)}
+        <span class="live-board-group-sum">${money(riding)} riding</span>
+      </h3>
+      <div class="taken-sides">${sides}</div>
     </div>`
   }).join('')
 
