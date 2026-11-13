@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "courts": [
+      {
+        "location": "Woodway CC",
+        "team1": [
+          "Luecke",
+          "Rockman"
+        ],
+        "team2": [
+          "Walsh",
+          "Napolitano"
+        ],
+        "time": "7:00 PM"
+      },
+      {
+        "location": "Woodway CC",
+        "team1": [
+          "Smith",
+          "Grills"
+        ],
+        "team2": [
+          "Ridder",
+          "McGurren"
+        ],
+        "time": "7:00 PM"
+      }
+    ],
+    "created_at": "2026-11-12T15:51:15.391067+00:00",
+    "id": "17cd9f16-3f71-4171-8b0c-c0500791e311",
+    "played_on": "2026-11-16",
+    "week_label": "Monday, November 16, 2026"
+  }
+]
