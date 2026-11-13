@@ -30,6 +30,8 @@
 //  tables in one transaction, which no RLS policy can express.
 
 import { supabase, escapeHtml, connectionErrorHtml } from './supabase-client.js?v=2d21059e'
+import { CURRENT_SEASON } from './config.js?v=d82921ce'
+import { fetchWagerAwards, wagerRows, wagerBoards } from './wager-awards.js?v=b8c35a36'
 
 let _container = null
 let _member    = null          // { id, full_name, is_admin } or null when signed out
@@ -39,6 +41,7 @@ let _offers   = []
 let _fills    = []
 let _results  = {}             // court_id -> winning_side (1, 2 or null)
 let _nameById = {}
+let _awards   = { picks: [], nets: [] }   // the three season titles
 
 /** YYYY-MM-DD for today, local time — not UTC, which is a day ahead at night. */
 function todayISO() {
@@ -148,18 +151,24 @@ async function fetchAll() {
   const today = todayISO()
 
   // Courts still to come, plus tonight's — which may already have a result.
-  const [courtsRes, membersRes] = await Promise.all([
+  // The season titles ride along: fetchWagerAwards never throws and
+  // returns empty on failure, so a title strip that cannot be built
+  // costs the board nothing.
+  const [courtsRes, membersRes, awards] = await Promise.all([
     supabase.from('scheduled_courts')
       .select('id, season, played_on, week_label, court_no, t1p1, t1p2, t2p1, t2p2, location, start_time, closes_at, status')
       .gte('played_on', today)
       .neq('status', 'void')
       .order('played_on', { ascending: true })
       .order('court_no',  { ascending: true }),
-    supabase.from('members').select('id, full_name')
+    supabase.from('members').select('id, full_name'),
+    fetchWagerAwards(CURRENT_SEASON)
   ])
 
   if (courtsRes.error)  throw courtsRes.error
   if (membersRes.error) throw membersRes.error
+
+  _awards = awards
 
   _courts   = courtsRes.data || []
   _nameById = Object.fromEntries((membersRes.data || []).map(m => [m.id, m.full_name]))
@@ -232,7 +241,43 @@ function renderSignedOutNote() {
 function renderLive() {
   const el = document.getElementById('picks-live')
   if (!el) return
-  el.innerHTML = renderJump() + renderOpenBoard() + renderAcceptedBoard()
+  el.innerHTML = renderJump() + renderOpenBoard() + renderAcceptedBoard() + renderTitles()
+}
+
+/**
+ * The three season titles, in one line under the board, linking to the
+ * full tables on the standings page.
+ *
+ * Deliberately quiet: it is the one thing up here that is not an action,
+ * and three lit boxes already have the eye. It is also always drawn,
+ * even with every title vacant — "Up for grabs" on all three is the most
+ * encouraging state this strip can be in, and hiding it then would hide
+ * it exactly when it has the most work to do.
+ */
+function renderTitles() {
+  const rows = wagerRows(_awards, _nameById)
+  const { king, action, maker } = wagerBoards(rows)
+
+  const item = (icon, label, board, fmt) => {
+    const held = board.leaders.length > 0
+    return `<span class="title-strip-item">
+      <span class="title-strip-icon" aria-hidden="true">${icon}</span>
+      <span class="title-strip-label">${label}</span>
+      <span class="title-strip-who${held ? '' : ' title-strip-open'}">${
+        held ? board.leaders.map(r => escapeHtml(r.name)).join(' & ') : 'Up for grabs'}</span>
+      ${held ? `<span class="title-strip-stat">${fmt(board.leaders)}</span>` : ''}
+    </span>`
+  }
+
+  return `<a class="title-strip" href="standings.html#wagers">
+    ${item('\u{1F451}', 'Wager King',   king,   ls => '+' + money(ls[0].won))}
+    ${item('\u{1F3B2}', 'Most Action',  action, ls => money(ls[0].action) + ' matched')}
+    ${item('\u{1F4E3}', 'Market Maker', maker,  ls => ls.length === 1
+      ? money(ls[0].made) + ' of action'
+      // Tied holders share a count but not the money behind it.
+      : `${ls[0].offers} market${ls[0].offers === 1 ? '' : 's'} each`)}
+    <span class="title-strip-go">Season titles &rarr;</span>
+  </a>`
 }
 
 /** Courts still taking prices, soonest first. */

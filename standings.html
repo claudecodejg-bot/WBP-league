@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/standings.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=47786165">
+  <link rel="stylesheet" href="css/style.css?v=f3bc9b9e">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -299,6 +299,23 @@
     }
   }
 
+  // An anchor this page does not have when it loads. Every table here is
+  // rendered after a fetch, so by the time #wagers exists the browser has
+  // already looked for it, found nothing and stayed at the top — which is
+  // what the link from the picks board hits. Jump once, the first render
+  // that can satisfy it; re-running on every sort would yank the page
+  // back down under whoever is reading it.
+  let _hashDone = false
+  function honourHash() {
+    if (_hashDone) return
+    const id = location.hash.slice(1)
+    if (!id) { _hashDone = true; return }
+    const el = document.getElementById(id)
+    if (!el) return              // a later render may still bring it
+    _hashDone = true
+    el.scrollIntoView()          // honours the section's scroll-margin-top
+  }
+
   function renderTables() {
 
     const isDefault = _sortCol === 'seasonAvg' && _sortDir === 'desc'
@@ -349,6 +366,7 @@
     html += buildHomieSection()
     html += buildWagerSection()
     container.innerHTML = html
+    honourHash()
 
     container.querySelectorAll('th[data-sort]').forEach(th => {
       th.addEventListener('click', () => {
@@ -550,7 +568,7 @@
         </tr>`).join('')
 
     return `
-      <h2 class="section-title" style="margin-top:2rem;">&#127922; ROCK&rsquo;n&rsquo;Roll Wagers</h2>
+      <h2 class="section-title" id="wagers" style="margin-top:2rem;">&#127922; ROCK&rsquo;n&rsquo;Roll Wagers</h2>
       <p class="vinnys-lead-note">
         Three titles, running all season. They are won on the
         <a href="picks.html">board</a> &mdash; play money, squared up on
