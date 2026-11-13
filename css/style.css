@@ -3517,9 +3517,22 @@ footer {
 .taken-row:last-child { border-bottom: 0; }
 .taken-who { color: var(--white); font-weight: 600; }
 .taken-amt { color: #cfe4ff; font-weight: 700; white-space: nowrap; }
+/* The payout, in the same green as a winning side, because it is the
+   figure that changes hands — the stake next to it is only what was
+   put at risk to get it. */
+.taken-win { color: #8ff0bb; font-weight: 700; }
+/* What the whole side collects. Drawn only where two or more names
+   share it; above one row it would just repeat that row. */
+.taken-side-pays {
+  margin: -0.15rem 0 0.3rem;
+  color: #8ff0bb;
+  font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
 /* Your own money, so you can find it without reading the names. */
 .taken-row-mine .taken-who { color: #ffd86b; }
 .taken-row-mine .taken-amt { color: #ffd86b; }
+.taken-row-mine .taken-win { color: #ffd86b; }
 
 @media (max-width: 640px) {
   .taken-sides { grid-template-columns: 1fr; gap: 0.85rem; }

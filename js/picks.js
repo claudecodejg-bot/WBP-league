@@ -417,37 +417,52 @@ function renderAcceptedBoard() {
     // poster once for every person who took him. Two columns, a team
     // each, with every backer and what they have on it, answers "who is
     // on which side" in one look.
+    // Two figures per name, not one. The stake alone reads as the payout
+    // to anyone glancing, and at these odds it usually isn't: a $10 bet
+    // taken at 2-1 against collects $5. Each end risks its own number
+    // and collects the other's, so one bet is the same pair swapped.
     const stakes = { 1: new Map(), 2: new Map() }
-    const bump = (side, id, cents) =>
-      stakes[side].set(id, (stakes[side].get(id) || 0) + cents)
+    const bump = (side, id, risk, win) => {
+      const at = stakes[side].get(id) || { risk: 0, win: 0 }
+      at.risk += Number(risk) || 0
+      at.win  += Number(win)  || 0
+      stakes[side].set(id, at)
+    }
 
     for (const { fill, offer } of inCourt) {
       const takerSide = offer.side === 1 ? 2 : 1
-      // The poster is on the side he backed, for what he risks; the
-      // taker is on the other one, for the mirror of it.
-      bump(offer.side, offer.offered_by, fill.poster_risk_cents)
-      bump(takerSide,  fill.taker,       fill.taker_risk_cents)
+      bump(offer.side, offer.offered_by, fill.poster_risk_cents, fill.taker_risk_cents)
+      bump(takerSide,  fill.taker,       fill.taker_risk_cents,  fill.poster_risk_cents)
     }
 
     const riding = [1, 2].reduce((sum, side) =>
-      sum + [...stakes[side].values()].reduce((a, b) => a + b, 0), 0)
+      sum + [...stakes[side].values()].reduce((a, b) => a + b.risk, 0), 0)
 
     const sides = [1, 2].map(side => {
       const backers = [...stakes[side].entries()]
-        .map(([id, cents]) => ({ id, name: name(id), cents }))
+        .map(([id, at]) => ({ id, name: name(id), risk: at.risk, win: at.win }))
         // Most on it first; the name breaks a tie so the order is stable.
-        .sort((a, b) => b.cents - a.cents || a.name.localeCompare(b.name))
+        .sort((a, b) => b.risk - a.risk || a.name.localeCompare(b.name))
 
       const outcome = won === null ? '' : (won === side ? ' taken-side-won' : ' taken-side-lost')
+      // What this whole side collects between them. Only worth a line
+      // when more than one name is on it — with one it just repeats the
+      // row underneath.
+      const pays = backers.reduce((sum, b) => sum + b.win, 0)
 
       return `
         <section class="taken-side${outcome}">
           <h4 class="taken-side-team">${escapeHtml(sideNames(court, side))}</h4>
+          ${backers.length > 1
+            ? `<p class="taken-side-pays">Pays ${money(pays)} between them</p>`
+            : ''}
           <ul class="taken-list">
             ${backers.map(b => `<li class="taken-row${
               _member && b.id === _member.id ? ' taken-row-mine' : ''}">
               <span class="taken-who">${escapeHtml(b.name)}</span>
-              <span class="taken-amt">${money(b.cents)}</span>
+              <span class="taken-amt">${money(b.risk)}
+                <span class="taken-win">to win ${money(b.win)}</span>
+              </span>
             </li>`).join('')}
           </ul>
         </section>`
