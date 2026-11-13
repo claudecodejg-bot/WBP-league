@@ -544,10 +544,32 @@
       board.leaders.length && value === board.top && value > 0
         ? ' class="wager-lead"' : ''
 
-    const body = [...rows]
+    const ranked = [...rows]
       .sort((a, b) => b.won - a.won || b.action - a.action || a.name.localeCompare(b.name))
-      .map(r => `
-        <tr>
+
+    // Standard competition ranking on Won: level money is a level place,
+    // which is what the cards above already say when a title is shared.
+    let place = 0, prev = null
+    const places = ranked.map((r, i) => {
+      if (r.won !== prev) { place = i + 1; prev = r.won }
+      return place
+    })
+
+    // A podium only means something once Won actually separates people.
+    // Before the first court is scored everyone sits on zero, and
+    // numbering them then would crown whoever happened to sort first.
+    const podium = ranked.length > 1 && ranked[0].won > 0 &&
+      ranked.some(r => r.won !== ranked[0].won)
+
+    const body = ranked
+      .map((r, i) => {
+        const at   = places[i]
+        const top3 = podium && at <= 3 && r.won > 0
+        return `
+        <tr${top3 ? ` class="podium-${at}"` : ''}>
+          ${podium ? `<td class="rank">${top3
+            ? `<span class="rank-badge rank-${at}">${at}</span>`
+            : at}</td>` : ''}
           <td class="player-name">
             <a href="player.html?id=${r.id}" class="player-link">${escapeHtml(r.name)}</a>
           </td>
@@ -565,7 +587,8 @@
               ? `<span class="wager-sub">${wagerMoney(r.made)} of action</span>`
               : ''}
           </td>
-        </tr>`).join('')
+        </tr>`
+      }).join('')
 
     return `
       <h2 class="section-title" id="wagers" style="margin-top:2rem;">&#127922; ROCK&rsquo;n&rsquo;Roll Wagers</h2>
@@ -579,6 +602,7 @@
         <table class="standings-table">
           <thead>
             <tr>
+              ${podium ? '<th class="rank">#</th>' : ''}
               <th>Member</th>
               <th style="text-align:right;">Won</th>
               <th style="text-align:right;">Action</th>
