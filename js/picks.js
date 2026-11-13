@@ -480,13 +480,13 @@ function renderOfferForm(court, myTeam) {
           <span>I risk</span>
           <span class="pick-dollar">$</span>
           <input type="number" id="post-risk-${court.id}" class="pick-amt" data-preview="${court.id}"
-                 min="1" max="100" step="0.01" value="20" inputmode="decimal">
+                 min="1" max="100" step="0.01" value="5" inputmode="decimal">
         </label>
         <label class="pick-field">
           <span>to win</span>
           <span class="pick-dollar">$</span>
           <input type="number" id="post-win-${court.id}" class="pick-amt" data-preview="${court.id}"
-                 min="1" max="500" step="0.01" value="20" inputmode="decimal">
+                 min="1" max="500" step="0.01" value="5" inputmode="decimal">
         </label>
         <span class="pick-new-on">on</span>
         ${sides.map(side => `
