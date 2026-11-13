@@ -435,9 +435,6 @@ function renderAcceptedBoard() {
       bump(takerSide,  fill.taker,       fill.taker_risk_cents,  fill.poster_risk_cents)
     }
 
-    const riding = [1, 2].reduce((sum, side) =>
-      sum + [...stakes[side].values()].reduce((a, b) => a + b.risk, 0), 0)
-
     const sides = [1, 2].map(side => {
       const backers = [...stakes[side].entries()]
         .map(([id, at]) => ({ id, name: name(id), risk: at.risk, win: at.win }))
@@ -469,9 +466,7 @@ function renderAcceptedBoard() {
     }).join('')
 
     return `<div class="live-board-group">
-      <h3 class="live-board-group-title">${courtLabel(court)}
-        <span class="live-board-group-sum">${money(riding)} riding</span>
-      </h3>
+      <h3 class="live-board-group-title">${courtLabel(court)}</h3>
       <div class="taken-sides">${sides}</div>
     </div>`
   }).join('')

@@ -3472,13 +3472,6 @@ footer {
 .live-board-group-title::after {
   content: ''; flex: 1; height: 1px;
   background: rgba(207,228,255,0.22);
-  order: 1;                       /* before the total, not after it */
-}
-.live-board-group-sum {
-  order: 2;
-  font-weight: 700; letter-spacing: 0.06em;
-  color: rgba(207,228,255,0.6);
-  white-space: nowrap;
 }
 
 /* A team each, with everyone who is on it and what they have on it.
