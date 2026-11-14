@@ -526,7 +526,7 @@ function sheet(id, side, card, teamIdx) {
 function pickNext(id) {
   const m = matches[id];
   const live = orderFor(id).map((k, i) => ({ k, i, st: game(m.rolls[k]).st })).filter(x => !x.st.done);
-  if (!live.length) return active[id];
+  if (!live.length) return active[id] || orderFor(id)[0]; // finished: keep the selection, or start at the leadoff bowler
   live.sort((x, y) => x.st.f - y.st.f || x.i - y.i);
   return live[0].k;
 }
