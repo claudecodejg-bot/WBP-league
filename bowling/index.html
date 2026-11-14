@@ -74,6 +74,7 @@ h1, h2 { text-wrap: balance; margin: 0 }
 h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 4vw, 38px); line-height: 1.1 }
 h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700 }
 .lede { color: var(--muted); margin: 6px 0 0; max-width: 65ch }
+.lede.past a { color: var(--accent); font-weight: 600 }
 .note { margin: 12px 0 0; padding: 10px 14px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-size: 15px }
 .note:empty { display: none }
 .stack { display: flex; flex-direction: column; gap: 24px }
@@ -210,6 +211,12 @@ table.card { border-collapse: collapse; width: 100%; min-width: 780px; table-lay
 <main id="app"></main>
 
 <script>
+// ---------- Saved results ----------
+// A results page sets window.FROZEN to a copy of the final scores before this script runs.
+// The page then shows them read-only: no keypad, no syncing, no editing.
+const FROZEN = window.FROZEN || null;
+const PAST = [{ date: "November 14, 2026", href: "results/2026-11-14.html" }];
+
 // ---------- Tournament shape ----------
 // 4 teams, round robin: each team bowls each other team once, across 3 rounds of 2 matches.
 const SCHEDULE = [
@@ -422,7 +429,19 @@ async function poll() {
   setTimeout(poll, document.hidden ? 10000 : 2000);
 }
 let firstFocus = true;
-function connect() { if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'; loadLocal(); render(true); poll(); }
+function connect() {
+  if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+  if (FROZEN) {
+    teams = cleanTeams(FROZEN.teams);
+    SCHEDULE.forEach(x => { matches[x.id] = cleanMatch(FROZEN.matches[x.id]); });
+    document.title = "Best Frame Results · " + FROZEN.date;
+    const nav = document.getElementById("navlinks");
+    nav.querySelector('[data-v="teams"]').remove();
+    nav.insertAdjacentHTML("beforeend", `<a href="../">Scoreboard</a>`);
+    render(); return;
+  }
+  loadLocal(); render(true); poll();
+}
 
 // ---------- Views ----------
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -439,13 +458,13 @@ function render(focus) {
   const prev = [...document.querySelectorAll(".grid-wrap")].map(w => w.scrollLeft);
   document.querySelectorAll("#navlinks a").forEach(a => a.classList.toggle("on", a.dataset.v === r.v));
   const app = document.getElementById("app");
-  app.className = r.v === "match" ? "match-main" : "";
+  app.className = r.v === "match" && !FROZEN ? "match-main" : "";
   if (r.v === "match") {
     app.innerHTML = matchView(r.id);
     document.querySelectorAll(".grid-wrap").forEach((w, i) => { w.scrollLeft = prev[i] || 0; });
     if (focus) focusCurrent();
   }
-  else if (r.v === "teams") app.innerHTML = teamsView();
+  else if (r.v === "teams" && !FROZEN) app.innerHTML = teamsView();
   else if (r.v === "stats") app.innerHTML = statsView();
   else app.innerHTML = homeView();
 }
@@ -481,6 +500,7 @@ function standings() {
   });
   return rows.sort((a, b) => b.w - a.w || b.total - a.total || a.i - b.i);
 }
+function champion() { const r = standings()[0]; return r ? r.t.name : ""; }
 function homeView() {
   const rows = standings();
   const anyScores = rows.some(r => r.total > 0);
@@ -505,9 +525,11 @@ function homeView() {
       }).join("")}
     </div>`).join("");
   return `<div class="stack">
-    <div><h1>Standings</h1>
+    <div><h1>${FROZEN ? "Final results" : "Standings"}</h1>
+      ${FROZEN ? `<p class="lede"><b>${esc(FROZEN.date)}</b> · ${esc(champion())} won the tournament.</p>` : ""}
       <p class="lede">Each team's score is its best-frame total: in every frame, the higher of the two teammates' frame scores counts. Ranked by wins, then total pins.</p>
-      ${noteHtml()}</div>
+      ${FROZEN ? "" : noteHtml()}
+      ${!FROZEN && PAST.length ? `<p class="lede past">Past results: ${PAST.map(x => `<a href="${x.href}">${esc(x.date)}</a>`).join(" · ")}</p>` : ""}</div>
     <div class="table-wrap"><table class="stand">
       <thead><tr><th></th><th>Team</th><th class="num">Round 1</th><th class="num">Round 2</th><th class="num">Round 3</th><th class="num">Total</th><th class="num">W–L</th></tr></thead>
       <tbody>${body}</tbody></table></div>
@@ -581,13 +603,13 @@ function sheet(id, side, card, teamIdx) {
   const prow = pi => {
     const g = card.g[pi], key = side + pi;
     const last = g.cum.filter(v => v !== null).pop();
-    return `<tr class="p ${act === key ? "act" : ""}" data-pick="${key}">
+    return `<tr class="p ${act === key && !FROZEN ? "act" : ""}" data-pick="${key}">
       <td class="who">${esc(t.p[pi])}<small>${g.st.done ? "Game complete" : g.fr.some(x => x.r.length) ? "Frame " + (g.st.f + 1) : "Tap to bowl"}</small></td>
       ${g.fr.map((fr, f) => {
         const ed = edits[id], fixing = ed && ed.key === key && ed.f === f;
         const mk = marks(f, fixing ? ed.rolls : fr.r);
         const won = !fixing && card.best[f] && (card.best[f].who === pi || card.best[f].who === "both");
-        const cur = fixing || (!ed && act === key && !g.st.done && f === g.st.f);
+        const cur = !FROZEN && (fixing || (!ed && act === key && !g.st.done && f === g.st.f));
         return `<td class="${f === LAST ? "f10" : ""} ${won ? "won" : ""} ${cur ? "cur" : ""} ${fixing ? "fixing" : ""}" ${fr.r.length ? `data-f="${f}"` : ""}><div class="balls">${mk.map(v => `<span class="ball ${v === "X" ? "x" : ""}">${v}</span>`).join("")}</div>
           <div class="cum">${fixing ? "fix" : g.cum[f] ?? ""}</div></td>`;
       }).join("")}
@@ -633,18 +655,18 @@ function matchView(id) {
     ${noteHtml()}
     ${sheet(id, "a", res.A, x.a)}
     ${sheet(id, "b", res.B, x.b)}
-    <div class="tools">
+    ${FROZEN ? `<div class="tools"><span class="legend"><span><span class="sw"></span>Frame that counts for the team</span></span></div>` : `<div class="tools">
       <span class="legend"><span><span class="sw"></span>Frame that counts for the team</span><span>Tap a bowler's name to bowl for them. Tap a bowled frame to fix it.</span></span>
       <span style="margin-left:auto"></span>
       ${confirmClear === id
         ? `<span>Erase every ball in this match?</span><button class="btn danger" data-clear="yes">Erase match</button><button class="btn" data-clear="no">Keep</button>`
         : `<button class="btn" data-clear="ask" ${res.any ? "" : "disabled"}>Clear match…</button>`}
-    </div>
+    </div>`}
   </div>
-  <div class="dock ${ed ? "fixing" : ""}"><div class="dock-in">
+  ${FROZEN ? "" : `<div class="dock ${ed ? "fixing" : ""}"><div class="dock-in">
     <div class="now"><div><b>${esc(who.p)}</b> <span>${esc(who.t)}</span></div><span>${st.done ? "Game complete. Tap another bowler." : ball + " · " + st.max + " pins standing"}</span></div>
     <div class="keys">${keys.join("")}</div>
-  </div></div>`;
+  </div></div>`}`;
 }
 function enter(id, k) {
   const m = matches[id], ed = edits[id];
@@ -699,7 +721,7 @@ function teamsView() {
 
 // ---------- Events ----------
 document.addEventListener("click", e => {
-  const r = route(); if (r.v !== "match") return;
+  const r = route(); if (r.v !== "match" || FROZEN) return;
   const k = e.target.closest("[data-k]");
   if (k && !k.disabled) { enter(r.id, k.dataset.k); return; }
   const p = e.target.closest("[data-pick]");
@@ -725,7 +747,7 @@ document.addEventListener("input", e => {
   save("teams", { teams });
 });
 document.addEventListener("keydown", e => {
-  const r = route(); if (r.v !== "match" || e.target.closest("input")) return;
+  const r = route(); if (r.v !== "match" || FROZEN || e.target.closest("input")) return;
   const k = /^[0-9]$/.test(e.key) ? e.key : e.key === "/" ? "/" : e.key.toLowerCase() === "x" ? "X" : e.key === "Backspace" ? "undo" : null;
   if (!k) return;
   const b = document.querySelector(`[data-k="${k}"]`);
