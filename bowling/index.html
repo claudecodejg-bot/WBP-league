@@ -53,6 +53,19 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .nav-links a { text-decoration: none; padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 16px; opacity: .8 }
 .nav-links a.on { background: var(--paper); color: var(--ink); opacity: 1 }
 @media (max-width: 480px) { .nav-in { flex-wrap: nowrap; gap: 8px } .brand { font-size: 18px; gap: 8px } .nav-links { gap: 2px } .nav-links a { padding: 6px 10px; font-size: 15px } }
+@media (max-width: 400px) { .brand { font-size: 16px; white-space: nowrap } .brand .pin { display: none } .nav-links a { padding: 6px 8px; font-size: 14px } }
+/* Stats: keep all columns on screen on a phone */
+@media (max-width: 600px) {
+  table.stand.stats { min-width: 0 }
+  table.stand.stats td, table.stand.stats th { padding: 10px 4px }
+  table.stand.stats td:first-child, table.stand.stats th:first-child, table.stand.stats td:last-child, table.stand.stats th:last-child { display: none }
+  table.stand.stats td:nth-child(2), table.stand.stats th:nth-child(2) { padding-left: 12px }
+  table.stand.stats th { font-size: 11px; letter-spacing: 0 }
+  table.stand.stats td:nth-last-child(2), table.stand.stats th:nth-last-child(2) { padding-right: 12px }
+  table.stand.stats td.num { font-size: 18px }
+  table.stand.stats .tname { font-size: 15px }
+  table.stand.stats .tplayers { font-size: 12px }
+}
 
 main { max-width: 1180px; margin: 0 auto; padding-block: 20px 40px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
@@ -190,6 +203,7 @@ table.card { border-collapse: collapse; width: 100%; min-width: 780px; table-lay
   <a class="brand" href="#"><span class="pin" aria-hidden="true"></span>Best Frame</a>
   <div class="nav-links" id="navlinks">
     <a href="#" data-v="home">Standings</a>
+    <a href="#stats" data-v="stats">Stats</a>
     <a href="#teams" data-v="teams">Teams</a>
   </div>
 </div></nav>
@@ -417,6 +431,7 @@ function route() {
   const m = /^match-([1-6])$/.exec(h);
   if (m) return { v: "match", id: +m[1] };
   if (h === "teams") return { v: "teams" };
+  if (h === "stats") return { v: "stats" };
   return { v: "home" };
 }
 function render(focus) {
@@ -431,6 +446,7 @@ function render(focus) {
     if (focus) focusCurrent();
   }
   else if (r.v === "teams") app.innerHTML = teamsView();
+  else if (r.v === "stats") app.innerHTML = statsView();
   else app.innerHTML = homeView();
 }
 // Bring the box the next ball goes into to the middle of what's visible: sideways within
@@ -496,6 +512,66 @@ function homeView() {
       <thead><tr><th></th><th>Team</th><th class="num">Round 1</th><th class="num">Round 2</th><th class="num">Round 3</th><th class="num">Total</th><th class="num">W–L</th></tr></thead>
       <tbody>${body}</tbody></table></div>
     <div class="rounds">${rounds}</div>
+  </div>`;
+}
+
+// ---------- Stats ----------
+// Strikes and spares one bowler made in a game. In the last frame every fresh rack counts,
+// so X X X there is three strikes and 7 / X is a spare and a strike.
+function markCount(rolls) {
+  let x = 0, sp = 0;
+  game(rolls).fr.forEach((fr, f) => {
+    const r = fr.r;
+    if (f < LAST) { if (r[0] === 10) x++; else if (r.length === 2 && r[0] + r[1] === 10) sp++; return; }
+    let fresh = true, first = 0;
+    (r[0] === 10 || r[0] + r[1] === 10 ? r : r.slice(0, 2)).forEach(v => {
+      if (fresh) { if (v === 10) x++; else { fresh = false; first = v; } }
+      else { if (first + v === 10) sp++; fresh = true; }
+    });
+  });
+  return { x, sp };
+}
+function stats() {
+  const T = teams.map((t, i) => ({ i, name: t.name, x: 0, sp: 0, pts: 0, games: 0 }));
+  const P = [];
+  teams.forEach((t, i) => t.p.forEach((name, pi) => P.push({ ti: i, pi, name, team: t.name, x: 0, sp: 0, pins: 0, games: 0 })));
+  SCHEDULE.forEach(x => {
+    const res = matchResult(x.id);
+    if (!res.any) return;
+    [["a", x.a, res.A], ["b", x.b, res.B]].forEach(([side, ti, card]) => {
+      T[ti].pts += card.total; T[ti].games++;
+      [0, 1].forEach(pi => {
+        const rolls = matches[x.id].rolls[side + pi], g = card.g[pi], mk = markCount(rolls), p = P.find(q => q.ti === ti && q.pi === pi);
+        p.x += mk.x; p.sp += mk.sp; T[ti].x += mk.x; T[ti].sp += mk.sp;
+        p.pins += g.cum.filter(v => v !== null).pop() ?? 0;
+        if (rolls.length) p.games++;
+      });
+    });
+  });
+  return { T: T.sort((a, b) => b.pts - a.pts || a.i - b.i), P: P.sort((a, b) => b.pins - a.pins || b.x - a.x) };
+}
+function statsView() {
+  const { T, P } = stats();
+  const avg = (n, g) => g ? Math.round(n / g) : "–";
+  const hi = (rows, k) => Math.max(0, ...rows.map(r => r[k]));
+  const cell = (v, top) => `<td class="num ${top && v > 0 ? "total" : ""}">${v}</td>`;
+  const tx = hi(T, "x"), tsp = hi(T, "sp"), tp = hi(T, "pts"), px = hi(P, "x"), psp = hi(P, "sp"), pp = hi(P, "pins");
+  const teamRows = T.map((t, k) => `<tr><td class="rank">${k + 1}</td><td><div class="tname">${esc(t.name)}</div><div class="tplayers">${t.games} game${t.games === 1 ? "" : "s"}</div></td>
+    ${cell(t.x, t.x === tx)}${cell(t.sp, t.sp === tsp)}${cell(t.pts, t.pts === tp)}<td class="num">${avg(t.pts, t.games)}</td></tr>`).join("");
+  const playerRows = P.map((p, k) => `<tr><td class="rank">${k + 1}</td><td><div class="tname">${esc(p.name)}</div><div class="tplayers">${esc(p.team)}</div></td>
+    ${cell(p.x, p.x === px)}${cell(p.sp, p.sp === psp)}${cell(p.pins, p.pins === pp)}<td class="num">${avg(p.pins, p.games)}</td></tr>`).join("");
+  return `<div class="stack">
+    <div><h1>Stats</h1>
+      <p class="lede">Strikes and spares are every mark each bowler threw, and a team's are its two bowlers' added together. Team points are best-frame totals; bowler points are their own game scores. The leader in each column is in red.</p>
+      ${noteHtml()}</div>
+    <div><h2>Teams</h2>
+    <div class="table-wrap"><table class="stand stats">
+      <thead><tr><th></th><th>Team</th><th class="num">Strikes</th><th class="num">Spares</th><th class="num">Points</th><th class="num">Avg</th></tr></thead>
+      <tbody>${teamRows}</tbody></table></div></div>
+    <div><h2>Bowlers</h2>
+    <div class="table-wrap"><table class="stand stats">
+      <thead><tr><th></th><th>Bowler</th><th class="num">Strikes</th><th class="num">Spares</th><th class="num">Points</th><th class="num">Avg</th></tr></thead>
+      <tbody>${playerRows}</tbody></table></div></div>
   </div>`;
 }
 
