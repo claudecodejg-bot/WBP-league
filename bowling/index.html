@@ -552,7 +552,7 @@ function homeView() {
       ${FROZEN ? `<p class="lede"><b>${esc(FROZEN.date)}</b> · ${esc(champion())} won the tournament.</p>` : ""}
       <p class="lede">Each team's score is its best-frame total: in every frame, the higher of the two teammates' frame scores counts. Ranked by wins, then total pins.</p>
       ${FROZEN ? "" : noteHtml()}
-      ${!FROZEN && PAST.length ? `<p class="lede past">Past results: ${PAST.map(x => `<a href="${x.href}">${esc(x.date)}</a>`).join(" · ")}</p>` : ""}</div>
+      ${!FROZEN && PAST.length ? `<p class="lede past">Past results: ${PAST.map(x => `<a href="${x.href}">${esc(x.date)}</a>`).join(" · ")} · <a href="https://wbpleague.com/bowling/league/">Thursday league night</a></p>` : ""}</div>
     <div class="table-wrap"><table class="stand">
       <thead><tr><th></th><th>Team</th><th class="num">Round 1</th><th class="num">Round 2</th><th class="num">Round 3</th><th class="num">Total</th><th class="num">W–L</th></tr></thead>
       <tbody>${body}</tbody></table></div>
