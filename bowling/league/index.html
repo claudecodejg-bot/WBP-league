@@ -943,11 +943,24 @@ function enter(id, k) {
 function getDraft() {
   if (!draft) { try { draft = JSON.parse(localStorage.getItem(LSD) || "null"); } catch (e) {} }
   if (!draft || !draft.touched || !Array.isArray(draft.teams)) {
-    // Start from the last night's teams, so only the changes need typing.
-    draft = { touched: false, date: today(), frames: cfg ? cfg.frames : 6, n: cfg ? cfg.teams.length : 8, teams: (cfg ? cfg.teams : []).map(t => ({ p: t.p.slice() })) };
+    // Teams change every week, so the names start empty; the size and frames carry over.
+    draft = { touched: false, date: today(), frames: cfg ? cfg.frames : 6, n: cfg ? cfg.teams.length : 8, teams: [] };
   }
   while (draft.teams.length < 8) draft.teams.push({ p: ["", ""] });
   return draft;
+}
+// Everyone who has bowled on an earlier night, offered as suggestions while typing a name.
+let roster = [];
+const rosterHtml = () => roster.map(n => `<option value="${esc(n)}">`).join("");
+async function loadRoster() {
+  try {
+    const r = await fetch(SB + "?key=eq.config&select=data", { cache: "no-store", headers: SB_HEAD });
+    if (!r.ok) return;
+    const names = new Set();
+    (await r.json()).forEach(x => { const c = cleanCfg(x.data); if (c) c.teams.forEach(t => t.p.forEach(n => { if (!/^Bowler [12]$/.test(n)) names.add(n.trim()); })); });
+    roster = [...names].sort((a, b) => a.localeCompare(b));
+    const el = document.getElementById("names"); if (el) el.innerHTML = rosterHtml();
+  } catch (e) {}
 }
 function keepDraft() { draft.touched = true; try { localStorage.setItem(LSD, JSON.stringify(draft)); } catch (e) {} }
 function setupView() {
@@ -958,15 +971,16 @@ function setupView() {
     const rows = [...Array(z)].map(() => {
       const i = k++, t = d.teams[i];
       return `<div class="trow"><span class="no">${i + 1}</span>
-        <input class="txt" data-d="${i},0" value="${esc(t.p[0])}" placeholder="Bowler 1" maxlength="40" autocomplete="off" autocapitalize="words" aria-label="Team ${i + 1} bowler 1">
-        <input class="txt" data-d="${i},1" value="${esc(t.p[1])}" placeholder="Bowler 2" maxlength="40" autocomplete="off" autocapitalize="words" aria-label="Team ${i + 1} bowler 2">
+        <input class="txt" data-d="${i},0" value="${esc(t.p[0])}" placeholder="Bowler 1" list="names" maxlength="40" autocomplete="off" autocapitalize="words" aria-label="Team ${i + 1} bowler 1">
+        <input class="txt" data-d="${i},1" value="${esc(t.p[1])}" placeholder="Bowler 2" list="names" maxlength="40" autocomplete="off" autocapitalize="words" aria-label="Team ${i + 1} bowler 2">
         <span class="mv"><button data-mv="${i},-1" ${i === 0 ? "disabled" : ""} aria-label="Move team ${i + 1} up">▲</button><button data-mv="${i},1" ${i === d.n - 1 ? "disabled" : ""} aria-label="Move team ${i + 1} down">▼</button></span></div>`;
     }).join("");
     return `<div class="tgroup"><h2>${sizes.length > 1 ? "Flight " + "AB"[fi] : "Teams"}</h2>${rows}</div>`;
   }).join("");
   const live = cfg && index.current && loaded === index.current && !champion();
   return `<div class="stack">
-    <div><h1>Set up a league night</h1><p class="lede">Pick how many teams are here, type in the bowlers, and start. The page builds the flights and the schedule.</p>${noteHtml()}</div>
+    <div><h1>Set up a league night</h1><p class="lede">Pick how many teams are here, type in tonight's pairs, and start. The page builds the flights and the schedule. Names from earlier nights come up as you type.</p>${noteHtml()}</div>
+    <datalist id="names">${rosterHtml()}</datalist>
     <div class="setup-grid">
       <label class="field"><span>Date</span><input class="txt" type="date" data-d="date" value="${esc(d.date)}"></label>
       <div class="field"><span>Teams</span>${seg("n", [2, 3, 4, 5, 6, 7, 8], d.n)}</div>
@@ -1132,11 +1146,13 @@ window.addEventListener("hashchange", () => {
   Object.keys(edits).forEach(k => delete edits[k]); Object.keys(fixPick).forEach(k => delete fixPick[k]);
   window.scrollTo(0, 0);
   if (route().v === "history") loadHistory();
+  if (route().v === "setup") loadRoster();
   if (wanted() !== loaded) poll();
   render(true);
 });
 
 if (route().v === "history") loadHistory();
+if (route().v === "setup") loadRoster();
 connect();
 </script>
 </body>
