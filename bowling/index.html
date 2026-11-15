@@ -81,6 +81,29 @@ h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: v
 
 /* Standings */
 .table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 14px }
+table.frames { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums }
+.frames th { text-align: right; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 10px 8px; border-bottom: 1px solid var(--line); font-weight: 700 }
+.frames td { text-align: right; padding: 9px 8px; border-bottom: 1px solid var(--line); font-family: var(--font-num); font-size: 19px; font-weight: 600 }
+.frames th.name, .frames td.name { text-align: left; font-family: var(--font-body) }
+.frames td.name { font-size: 16px }
+.frames td.name small { display: block; color: var(--muted); font-size: 12px; font-weight: 400 }
+.frames tr.team td { font-weight: 800; border-top: 2px solid var(--line) }
+.frames tr.team td.name { font-weight: 700 }
+.frames tr.bowler td { color: var(--muted); font-weight: 500 }
+.frames tr.bowler td.name { padding-left: 22px }
+.frames tr:last-child td { border-bottom: 0 }
+.frames tr.bowler td.cnt { color: var(--accent); font-weight: 700 }
+.frames tr td.tot { color: var(--ink); font-weight: 800 }
+.frames td.top { color: var(--accent) }
+.frames .dash { color: var(--muted); font-weight: 400 }
+@media (max-width: 600px) {
+  .frames th { padding: 8px 3px; font-size: 11px; letter-spacing: 0 }
+  .frames td { padding: 8px 3px; font-size: 16px }
+  .frames th.name, .frames td.name { padding-left: 10px }
+  .frames th:last-child, .frames td:last-child { padding-right: 10px }
+  .frames td.name { font-size: 14px }
+  .frames tr.bowler td.name { padding-left: 18px }
+}
 table.stand { width: 100%; border-collapse: collapse; min-width: 640px; font-variant-numeric: tabular-nums }
 .stand th { text-align: left; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 12px 14px; border-bottom: 1px solid var(--line); font-weight: 700 }
 .stand td { padding: 14px; border-bottom: 1px solid var(--line); vertical-align: middle }
@@ -572,8 +595,56 @@ function stats() {
   });
   return { T: T.sort((a, b) => b.pts - a.pts || a.i - b.i), P: P.sort((a, b) => b.pins - a.pins || b.x - a.x) };
 }
+// Round by round: each team's and bowler's score in every round, and the frame-by-frame card.
+function roundTotals() {
+  const T = teams.map((t, i) => ({ i, name: t.name, sub: t.p[0] + " & " + t.p[1], r: [null, null, null], total: 0 }));
+  const P = [];
+  teams.forEach((t, i) => t.p.forEach((name, pi) => P.push({ ti: i, pi, name, sub: t.name, r: [null, null, null], total: 0 })));
+  SCHEDULE.forEach(x => {
+    const res = matchResult(x.id);
+    if (!res.any) return;
+    [["a", x.a, res.A], ["b", x.b, res.B]].forEach(([side, ti, card]) => {
+      T[ti].r[x.round - 1] = card.total; T[ti].total += card.total;
+      [0, 1].forEach(pi => {
+        if (!matches[x.id].rolls[side + pi].length) return;
+        const p = P.find(q => q.ti === ti && q.pi === pi), v = card.g[pi].cum.filter(c => c !== null).pop() ?? 0;
+        p.r[x.round - 1] = v; p.total += v;
+      });
+    });
+  });
+  return { T: T.sort((a, b) => b.total - a.total || a.i - b.i), P: P.sort((a, b) => b.total - a.total) };
+}
+function roundTable(rows, label) {
+  const tops = [0, 1, 2].map(k => Math.max(0, ...rows.map(r => r.r[k] ?? 0))), tt = Math.max(0, ...rows.map(r => r.total));
+  const c = (v, top) => `<td class="${top && v > 0 ? "top" : ""}">${v === null ? `<span class="dash">—</span>` : v}</td>`;
+  return `<div class="table-wrap"><table class="frames">
+    <thead><tr><th class="name">${label}</th><th>Rd 1</th><th>Rd 2</th><th>Rd 3</th><th>Total</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td class="name">${esc(r.name)}<small>${esc(r.sub)}</small></td>${r.r.map((v, k) => c(v, v === tops[k])).join("")}${c(r.total, r.total === tt).replace('<td class="', '<td class="tot ')}</tr>`).join("")}</tbody></table></div>`;
+}
+function frameTable(round) {
+  const head = `<tr><th class="name">Round ${round}</th>${[...Array(NF)].map((_, f) => `<th>${f + 1}</th>`).join("")}<th>Total</th></tr>`;
+  const v = x => x === null || x === undefined ? `<span class="dash">·</span>` : x;
+  const body = SCHEDULE.filter(x => x.round === round).map(x => {
+    const res = matchResult(x.id);
+    return [["a", x.a, res.A], ["b", x.b, res.B]].map(([side, ti, card]) => {
+      const t = teams[ti], won = res.winner === side;
+      const team = `<tr class="team"><td class="name">${esc(t.name)}<small>${res.final ? (won ? "Won" : res.winner === "tie" ? "Tie" : "Lost") + " vs " + esc(teams[side === "a" ? x.b : x.a].name) : res.any ? "Live · Frame " + res.frame : "Not started"}</small></td>
+        ${card.best.map(b => `<td>${v(b && b.v)}</td>`).join("")}<td class="tot">${res.any ? card.total : v(null)}</td></tr>`;
+      const bowlers = [0, 1].map(pi => {
+        const g = card.g[pi], last = g.cum.filter(c => c !== null).pop();
+        return `<tr class="bowler"><td class="name">${esc(t.p[pi])}</td>
+          ${g.scores.map((s, f) => { const b = card.best[f]; const cnt = b && b.v !== null && (b.who === pi || b.who === "both"); return `<td class="${cnt ? "cnt" : ""}">${v(s)}</td>`; }).join("")}
+          <td class="tot">${last ?? v(null)}</td></tr>`;
+      }).join("");
+      return team + bowlers;
+    }).join("");
+  }).join("");
+  return `<div class="table-wrap"><table class="frames"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+}
+
 function statsView() {
   const { T, P } = stats();
+  const RT = roundTotals();
   const avg = (n, g) => g ? Math.round(n / g) : "–";
   const hi = (rows, k) => Math.max(0, ...rows.map(r => r[k]));
   const cell = (v, top) => `<td class="num ${top && v > 0 ? "total" : ""}">${v}</td>`;
@@ -585,7 +656,7 @@ function statsView() {
   return `<div class="stack">
     <div><h1>Stats</h1>
       <p class="lede">Strikes and spares are every mark each bowler threw, and a team's are its two bowlers' added together. Team points are best-frame totals; bowler points are their own game scores. The leader in each column is in red.</p>
-      ${noteHtml()}</div>
+      ${FROZEN ? "" : noteHtml()}</div>
     <div><h2>Teams</h2>
     <div class="table-wrap"><table class="stand stats">
       <thead><tr><th></th><th>Team</th><th class="num">Strikes</th><th class="num">Spares</th><th class="num">Points</th><th class="num">Avg</th></tr></thead>
@@ -594,6 +665,13 @@ function statsView() {
     <div class="table-wrap"><table class="stand stats">
       <thead><tr><th></th><th>Bowler</th><th class="num">Strikes</th><th class="num">Spares</th><th class="num">Points</th><th class="num">Avg</th></tr></thead>
       <tbody>${playerRows}</tbody></table></div></div>
+    <div><h2>Round by round</h2>
+      <p class="lede">Each team's best-frame score and each bowler's own game score in every round.</p>
+      ${roundTable(RT.T, "Team")}</div>
+    <div>${roundTable(RT.P, "Bowler")}</div>
+    <div><h2>Frame scores</h2>
+      <p class="lede">Every frame of every round. The team row is its best-frame score for that frame; a red bowler score is the frame that counted for the team.</p></div>
+    ${[1, 2, 3].map(n => `<div>${frameTable(n)}</div>`).join("")}
   </div>`;
 }
 
