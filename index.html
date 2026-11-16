@@ -392,7 +392,7 @@
         <div class="season-welcome-body">
           ${summary ? `<p>${summary}</p>` : ''}
           ${leader ? `
-          <p><strong>${esc(leader.name)}</strong> leads the table with a rating of ${fmt(leader.seasonAvg)}${
+          <p><strong>${esc(leader.name)}</strong> leads with a rating of ${fmt(leader.seasonAvg)}${
             table[1] ? `, with <strong>${esc(table[1].name)}</strong> next at ${fmt(table[1].seasonAvg)}` : ''}.
             ${leader.usingRolling4 ? 'Early days &mdash; ratings still carry some of last season.' : ''}</p>` : ''}
         </div>
