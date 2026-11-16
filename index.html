@@ -207,7 +207,6 @@
       // Heading only. The body is filled in once the data lands, so nothing
       // on screen has to be taken back.
       setHero(`
-        <div class="season-welcome-eyebrow">Season Underway</div>
         <h1 class="season-welcome-title">The <span>${seasonLabel}</span> Season</h1>
         <p class="season-welcome-sub">Wee Burn &amp; Woodway &mdash; paddle tennis since 2004</p>
         <a href="standings.html?season=${encodeURIComponent(CURRENT_SEASON)}" class="welcome-cta">See the Full Table &rarr;</a>`)
@@ -350,7 +349,6 @@
     const hero = document.querySelector('.season-welcome')
     if (!hero) return
     setHero(`
-      <div class="season-welcome-eyebrow">Season Underway</div>
       <h1 class="season-welcome-title">The <span>${seasonLabel}</span> Season</h1>
       <p class="season-welcome-sub">Wee Burn &amp; Woodway &mdash; paddle tennis since 2004</p>
       <div class="season-welcome-body">
@@ -389,7 +387,6 @@
     const hero = document.querySelector('.season-welcome')
     if (hero) {
       setHero(`
-        <div class="season-welcome-eyebrow">Season Underway</div>
         <h1 class="season-welcome-title">The <span>${seasonLabel}</span> Season</h1>
         <p class="season-welcome-sub">${esc(lastWeek || '')} &mdash; ${current.length} match${current.length !== 1 ? 'es' : ''} played across ${weeks.length} week${weeks.length !== 1 ? 's' : ''}</p>
         <div class="season-welcome-body">
