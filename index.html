@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=e0709d6e">
+  <link rel="stylesheet" href="css/style.css?v=4e57bbd0">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -71,6 +71,31 @@
 
 <main class="main-wide">
 
+  <!-- New season welcome. First thing on the page, with league photographs
+       rotating behind it. The copy is rewritten several times as the clock
+       and then the data decide what the season actually is, so it lives in
+       an inner div — the photo layers are prepended to the SECTION and a
+       rewrite of the section would take them with it. -->
+  <section class="season-welcome is-pending">
+    <div class="season-welcome-inner">
+      <div class="season-welcome-eyebrow">Welcome Back</div>
+      <h1 class="season-welcome-title">The <span>2026&ndash;27</span> Season Starts 12 October</h1>
+      <p class="season-welcome-sub">Wee Burn &amp; Woodway &mdash; paddle tennis since 2004</p>
+
+      <div class="season-welcome-body">
+        <p>The paddles are coming down off the shelf, the courts are getting swept, and somewhere out there at least one of you is claiming to have practiced all summer. We remain skeptical.</p>
+        <p><strong>Dolan and Napolitano</strong> return as defending champions after last spring&rsquo;s 9-to-1 Cinderella run &mdash; three matches, two deciding tiebreakers, and a rainbow over the courts to finish it off. Which means everyone else now has a very specific target to aim at.</p>
+        <p>The warm-up Mondays are behind us. <strong>The season starts for real on Monday 12 October at 7pm</strong> &mdash; from that night on, every result counts towards the standings. Sixteen of us this year, with <strong>Rockman</strong> back after a season lost to injury.</p>
+        <p>New season, clean slate, everyone back to zero.</p>
+      </div>
+
+      <div class="countdown-row" id="countdown-row"></div>
+
+      <a href="availability.html" class="welcome-cta">Set Your Availability &rarr;</a>
+      <div class="welcome-cta-note">Mondays are now open through the end of December &mdash; let us know which nights you can play.</div>
+    </div>
+  </section>
+
   <!-- Next match night's courts (filled by JS; hidden when none scheduled) -->
   <div id="upcoming-container"></div>
 
@@ -79,25 +104,6 @@
   <div id="avail-nudge"></div>
 
   <div id="vinnys-container"></div>
-
-  <!-- New season welcome -->
-  <section class="season-welcome is-pending">
-    <div class="season-welcome-eyebrow">Welcome Back</div>
-    <h1 class="season-welcome-title">The <span>2026&ndash;27</span> Season Starts 12 October</h1>
-    <p class="season-welcome-sub">Wee Burn &amp; Woodway &mdash; paddle tennis since 2004</p>
-
-    <div class="season-welcome-body">
-      <p>The paddles are coming down off the shelf, the courts are getting swept, and somewhere out there at least one of you is claiming to have practiced all summer. We remain skeptical.</p>
-      <p><strong>Dolan and Napolitano</strong> return as defending champions after last spring&rsquo;s 9-to-1 Cinderella run &mdash; three matches, two deciding tiebreakers, and a rainbow over the courts to finish it off. Which means everyone else now has a very specific target to aim at.</p>
-      <p>The warm-up Mondays are behind us. <strong>The season starts for real on Monday 12 October at 7pm</strong> &mdash; from that night on, every result counts towards the standings. Sixteen of us this year, with <strong>Rockman</strong> back after a season lost to injury.</p>
-      <p>New season, clean slate, everyone back to zero.</p>
-    </div>
-
-    <div class="countdown-row" id="countdown-row"></div>
-
-    <a href="availability.html" class="welcome-cta">Set Your Availability &rarr;</a>
-    <div class="welcome-cta-note">Mondays are now open through the end of December &mdash; let us know which nights you can play.</div>
-  </section>
 
   <!-- League at a glance -->
   <div class="home-stats-row">
@@ -149,7 +155,20 @@
   import { CURRENT_SEASON, NEXT_SEASON_LABEL, NEXT_SEASON_START } from './js/config.js?v=d82921ce'
   import { computeCurrentSeasonStats, isWinner, fmt, winnerFirst } from './js/scoring.js?v=059e4ed1'
   import { fetchVinnys, leaderboard, attendeesOn, nightsHeld, NOT_A_PERSON } from './js/vinnys.js?v=67aac246'
+  import { startHero } from './js/hero.js?v=5f4eef9b'
   initNav('home')
+
+  /**
+   * The banner's copy, swapped in place. It writes to the inner div
+   * because startHero prepends its photo layers to the section itself —
+   * writing to the section would delete them and the banner would go
+   * back to a plain gradient.
+   */
+  function setHero(html) {
+    const inner = document.querySelector('.season-welcome-inner')
+    if (inner) inner.innerHTML = html
+    return inner
+  }
 
   // ── Countdown to the first week of the new season ─────────────────────
   function renderCountdown() {
@@ -187,13 +206,18 @@
     if (Date.now() >= NEXT_SEASON_START.getTime()) {
       // Heading only. The body is filled in once the data lands, so nothing
       // on screen has to be taken back.
-      hero.innerHTML = `
+      setHero(`
         <div class="season-welcome-eyebrow">Season Underway</div>
         <h1 class="season-welcome-title">The <span>${seasonLabel}</span> Season</h1>
         <p class="season-welcome-sub">Wee Burn &amp; Woodway &mdash; paddle tennis since 2004</p>
-        <a href="standings.html?season=${encodeURIComponent(CURRENT_SEASON)}" class="welcome-cta">See the Full Table &rarr;</a>`
+        <a href="standings.html?season=${encodeURIComponent(CURRENT_SEASON)}" class="welcome-cta">See the Full Table &rarr;</a>`)
     }
     hero.classList.remove('is-pending')
+    // After the copy, not before: startHero prepends to the SECTION and
+    // the rewrites above only touch the inner div, so the order here is
+    // not load-bearing — but a photograph fading in behind a box that is
+    // still visibility:hidden is wasted work.
+    startHero(hero)
   }
   primeHero()
 
@@ -325,7 +349,7 @@
   function justStartedHero() {
     const hero = document.querySelector('.season-welcome')
     if (!hero) return
-    hero.innerHTML = `
+    setHero(`
       <div class="season-welcome-eyebrow">Season Underway</div>
       <h1 class="season-welcome-title">The <span>${seasonLabel}</span> Season</h1>
       <p class="season-welcome-sub">Wee Burn &amp; Woodway &mdash; paddle tennis since 2004</p>
@@ -336,7 +360,7 @@
       </div>
       <a href="availability.html" class="btn btn-primary season-welcome-cta">Set Your Availability &rarr;</a>
       <p class="season-welcome-foot">Mondays are open through the end of December &mdash;
-        <a class="welcome-inline-link" href="availability.html">let us know which nights you can play</a>.</p>`
+        <a class="welcome-inline-link" href="availability.html">let us know which nights you can play</a>.</p>`)
   }
 
   // Pre-season: all-time figures, since a "this season" count would read zero.
@@ -364,7 +388,7 @@
 
     const hero = document.querySelector('.season-welcome')
     if (hero) {
-      hero.innerHTML = `
+      setHero(`
         <div class="season-welcome-eyebrow">Season Underway</div>
         <h1 class="season-welcome-title">The <span>${seasonLabel}</span> Season</h1>
         <p class="season-welcome-sub">${esc(lastWeek || '')} &mdash; ${current.length} match${current.length !== 1 ? 'es' : ''} played across ${weeks.length} week${weeks.length !== 1 ? 's' : ''}</p>
@@ -375,7 +399,7 @@
             table[1] ? `, with <strong>${esc(table[1].name)}</strong> next at ${fmt(table[1].seasonAvg)}` : ''}.
             ${leader.usingRolling4 ? 'Early days &mdash; ratings still carry some of last season.' : ''}</p>` : ''}
         </div>
-        <a href="standings.html?season=${encodeURIComponent(CURRENT_SEASON)}" class="welcome-cta">See the Full Table &rarr;</a>`
+        <a href="standings.html?season=${encodeURIComponent(CURRENT_SEASON)}" class="welcome-cta">See the Full Table &rarr;</a>`)
     }
 
     // Stats become this-season figures.

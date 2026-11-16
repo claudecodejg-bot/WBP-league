@@ -2042,14 +2042,38 @@ footer {
 
 /* ── Home: new-season welcome ─────────────────────────────────────────── */
 .season-welcome {
+  position: relative;
+  overflow: hidden;
+  /* The backdrop a photograph sits on, and the whole design on a slow
+     connection or if hero.js never loads. */
   background: linear-gradient(135deg, #1a1a1a 0%, #2b2b2b 55%, #3d2215 100%);
   color: #fff;
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  padding: 2.25rem 2rem;
-  margin-bottom: 1.5rem;
+  padding: 1.6rem 1.5rem;
+  margin-bottom: 1.25rem;
   text-align: center;
 }
+/* Deeper than the other banners' scrim on purpose: this one carries
+   paragraphs, not a title and a line, and body text at 0.9rem needs
+   more to sit on than a heading does. */
+.season-welcome::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%,
+      rgba(10,10,10,0.78) 0%, rgba(10,10,10,0.58) 55%, rgba(10,10,10,0.38) 100%),
+    linear-gradient(180deg,
+      rgba(12,12,12,0.42) 0%, rgba(12,12,12,0.28) 45%, rgba(12,12,12,0.58) 100%);
+}
+/* Not `> *`: that matches the photo layers too, and at equal specificity
+   coming later it would put them back in flow and show no photograph. */
+.season-welcome > :not(.hero-img) { position: relative; z-index: 3; }
+.season-welcome-inner { text-shadow: 0 1px 6px rgba(0,0,0,0.75); }
+
 .season-welcome-eyebrow {
   font-size: 0.72rem;
   font-weight: 800;
@@ -2059,26 +2083,27 @@ footer {
   margin-bottom: 0.6rem;
 }
 .season-welcome-title {
-  font-size: 2rem;
+  font-size: 1.7rem;
   font-weight: 800;
   line-height: 1.15;
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.3rem;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.8);
 }
 .season-welcome-title span { color: var(--accent); }
 .season-welcome-sub {
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.72);
-  margin: 0 0 1.35rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 0.9rem;
 }
 .season-welcome-body {
   max-width: 620px;
-  margin: 0 auto 1.5rem;
+  margin: 0 auto 1rem;
   text-align: left;
-  font-size: 0.94rem;
-  line-height: 1.75;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.94);
 }
-.season-welcome-body p { margin: 0 0 0.8rem; }
+.season-welcome-body p { margin: 0 0 0.6rem; }
 .season-welcome-body p:last-child { margin-bottom: 0; }
 .season-welcome-body strong { color: #fff; }
 
@@ -2087,7 +2112,7 @@ footer {
   justify-content: center;
   gap: 0.6rem;
   flex-wrap: wrap;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 .countdown-box {
   background: rgba(255, 255, 255, 0.08);
@@ -2116,15 +2141,19 @@ footer {
   color: var(--accent);
 }
 
+/* Sized down with the box around it: a pill the width of the old one
+   under a banner this short reads as the point of the banner. */
 .welcome-cta {
   display: inline-block;
   background: var(--accent);
   color: #fff;
   text-decoration: none;
   font-weight: 800;
-  font-size: 0.95rem;
-  padding: 0.75rem 1.9rem;
-  border-radius: 26px;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  padding: 0.5rem 1.2rem;
+  border-radius: 20px;
+  text-shadow: none;
   transition: filter 0.15s, transform 0.15s;
 }
 .welcome-cta:hover { filter: brightness(0.94); transform: translateY(-1px); }
@@ -2135,9 +2164,9 @@ footer {
 }
 
 @media (max-width: 640px) {
-  .season-welcome { padding: 1.75rem 1.15rem; }
-  .season-welcome-title { font-size: 1.5rem; }
-  .season-welcome-body { font-size: 0.9rem; }
+  .season-welcome { padding: 1.25rem 1.05rem; }
+  .season-welcome-title { font-size: 1.35rem; }
+  .season-welcome-body { font-size: 0.86rem; }
   .countdown-box { min-width: 62px; padding: 0.55rem 0.8rem; }
   .countdown-value { font-size: 1.25rem; }
 }
