@@ -241,7 +241,43 @@ function renderSignedOutNote() {
 function renderLive() {
   const el = document.getElementById('picks-live')
   if (!el) return
-  el.innerHTML = renderJump() + renderTitles() + renderOpenBoard() + renderAcceptedBoard()
+  // Nothing going is a state worth saying out loud. An empty space under
+  // the titles reads as the page having failed to load, and the money
+  // from the night just gone still has to change hands — so when the
+  // board has nothing live on it, it points at Settle Up instead.
+  const live = renderOpenBoard() + renderAcceptedBoard()
+  el.innerHTML = renderJump() + renderTitles() + (live || renderSettled())
+}
+
+/** A court with a score in. Its bets are decided and the board is done
+ *  with them; what is owed is Settle Up's business from here. */
+function isResolved(court) {
+  return _results[court.id] != null
+}
+
+/**
+ * Shown only when nothing is open and nothing is still riding, and only
+ * when the night that just went has bets behind it — with no action at
+ * all there is nothing to settle and the pointer would be noise.
+ */
+function renderSettled() {
+  const byOffer = Object.fromEntries(_offers.map(o => [o.id, o]))
+  const done = _fills
+    .map(f => byOffer[f.offer_id])
+    .map(o => o && _courts.find(c => c.id === o.court_id))
+    .filter(c => c && isResolved(c))
+
+  if (!done.length) return ''
+
+  const night = done.map(c => c.played_on).sort().pop()
+
+  return `
+    <section class="picks-settled">
+      <h2 class="picks-settled-title">${escapeHtml(prettyDate(night))} is in the books</h2>
+      <p class="picks-settled-sub">${done.length} wager${done.length === 1 ? '' : 's'}
+        decided. Nothing open until the next courts go up.</p>
+      <a class="picks-settled-cta" href="settle.html">See who owes what &rarr;</a>
+    </section>`
 }
 
 /**
@@ -404,15 +440,19 @@ function renderAcceptedBoard() {
   // Grouped by court, in the order the courts themselves run — _courts
   // comes back sorted by night and then court number, so walking it is
   // what keeps the two halves of the page in the same order.
+  // Only courts still waiting on a score. Once one is final its bets are
+  // decided, and leaving them up here left the board showing last night's
+  // settled money as though it were still live.
   const groups = []
   for (const court of _courts) {
+    if (isResolved(court)) continue
     const mine = rows.filter(r => r.court.id === court.id)
     if (mine.length) groups.push({ court, rows: mine })
   }
 
-  const body = groups.map(({ court, rows: inCourt }) => {
-    const won = _results[court.id] ?? null
+  if (!groups.length) return ''
 
+  const body = groups.map(({ court, rows: inCourt }) => {
     // CONSOLIDATED BY SIDE, not one card per fill. A card per fill names
     // only the taker and leaves the other end as "v Grills", which says
     // who he is but not which team he is on — and it prints the same
@@ -443,14 +483,13 @@ function renderAcceptedBoard() {
         // Most on it first; the name breaks a tie so the order is stable.
         .sort((a, b) => b.risk - a.risk || a.name.localeCompare(b.name))
 
-      const outcome = won === null ? '' : (won === side ? ' taken-side-won' : ' taken-side-lost')
       // What this whole side collects between them. Only worth a line
       // when more than one name is on it — with one it just repeats the
       // row underneath.
       const pays = backers.reduce((sum, b) => sum + b.win, 0)
 
       return `
-        <section class="taken-side${outcome}">
+        <section class="taken-side">
           <h4 class="taken-side-team">${escapeHtml(sideNames(court, side))}</h4>
           ${backers.length > 1
             ? `<p class="taken-side-pays">Pays ${money(pays)} between them</p>`
@@ -479,7 +518,8 @@ function renderAcceptedBoard() {
         <h2 class="live-board-title">
           <span class="live-board-dot" aria-hidden="true"></span>
           Accepted wagers!
-          <span class="live-board-count">${rows.length} on the line</span>
+          <span class="live-board-count">${
+            groups.reduce((n, g) => n + g.rows.length, 0)} on the line</span>
         </h2>
         ${body}
       </div>

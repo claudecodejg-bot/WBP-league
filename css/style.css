@@ -3309,6 +3309,47 @@ footer {
 .champ-hero .champ-hero-names,
 .champ-hero .champ-hero-tagline { text-shadow: 0 2px 10px rgba(0,0,0,0.75); }
 
+/* ── Nothing going ──────────────────────────── */
+/* What the live block shows once every court has a score. Deliberately
+   unlit: chasing bulbs around "nothing is open" would be the board
+   shouting about its own silence. The money still has to change hands,
+   so the one thing it does is point at Settle Up. */
+.picks-settled {
+  text-align: center;
+  padding: 1.1rem 1.2rem;
+  margin: 0 0 1.25rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--white);
+  box-shadow: var(--shadow);
+}
+.picks-settled-title {
+  margin: 0;
+  font-size: 1rem; font-weight: 800;
+  color: var(--text);
+}
+.picks-settled-sub {
+  margin: 0.2rem 0 0.75rem;
+  font-size: 0.84rem;
+  color: var(--gray-600);
+}
+.picks-settled-cta {
+  display: inline-block;
+  padding: 0.45rem 1.1rem;
+  border-radius: 20px;
+  background: var(--green-mid);
+  color: #fff;
+  font-size: 0.8rem; font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: filter 0.15s, transform 0.15s;
+}
+.picks-settled-cta:hover {
+  text-decoration: none;
+  filter: brightness(0.94);
+  transform: translateY(-1px);
+}
+
 /* ── Down to the betting ────────────────────── */
 /* Takes the posting panel's green and gold rather than the board's
    amber, because it is a pointer AT that panel: you follow a colour
@@ -3521,13 +3562,6 @@ footer {
   color: var(--white);
   font-size: 0.92rem; font-weight: 700; line-height: 1.3;
 }
-.taken-side-won .taken-side-team::after {
-  content: " won";
-  color: #8ff0bb; font-weight: 800;
-  font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
-}
-.taken-side-lost { opacity: 0.5; }
-
 .taken-list { list-style: none; margin: 0; padding: 0; }
 .taken-row {
   display: flex; align-items: baseline; justify-content: space-between;
