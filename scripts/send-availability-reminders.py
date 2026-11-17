@@ -5,7 +5,7 @@ Nudge members who haven't set their availability for the coming Monday.
 Two reminders, both to non-responders only — anyone who has answered, yes
 or no, is left alone:
 
-  Wednesday 3pm ET  general reminder
+  Wednesday 8am ET  general reminder
   Friday 6am ET     final notice: no answer by noon means unavailable
 
 That last line is not a threat invented for the email. The scheduler only
@@ -103,12 +103,18 @@ def target_monday(now_local, cfg):
 # afternoon and these windows decide which run does the work; a claim in the
 # database stops the others repeating it.
 #
+# Wednesday runs long on purpose. The cron is packed into the morning so
+# the nudge lands around 8am, but the window stays open until 7:59pm: if
+# GitHub drops every morning attempt the reminder still goes out that
+# evening, which for a nudge is far better than not at all. Nothing in
+# the Wednesday copy names a time, so a late send reads the same.
+#
 # Friday opens at 6am so the last call is waiting when people wake up, and
 # closes at noon on purpose: the email says "if we haven't heard from you by
 # noon today", which is false after noon. Better to send nothing than to
 # send that. Six hours wide also means GitHub's dropped and delayed runs
 # have room -- the old three-hour window was landing with minutes to spare.
-WEDNESDAY_WINDOW = range(15, 20)  # 3pm to 7:59pm ET
+WEDNESDAY_WINDOW = range(8, 20)   # 8am to 7:59pm ET
 FRIDAY_WINDOW    = range(6, 12)   # 6am to 11:59am ET
 
 
@@ -279,7 +285,7 @@ def main():
     print("Local time: %s" % now.strftime("%a %d %b %H:%M %Z"))
 
     if not kind:
-        print("Not a reminder window (Wed 3pm / Fri 6am ET). Nothing to do.")
+        print("Not a reminder window (Wed 8am / Fri 6am ET). Nothing to do.")
         return 0
 
     cfg = read_config()

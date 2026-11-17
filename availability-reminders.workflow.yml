@@ -11,7 +11,7 @@
 #  load and delivers the survivors late — observed up to 3h36m late, and
 #  in practice only 2-3 of 15 hourly entries actually run. So the script
 #  does not trust the cron time: it accepts ANY run landing inside a
-#  window (Wed 3:00-7:59pm ET, Fri 6:00-11:59am ET) and the first one in
+#  window (Wed 8:00am-7:59pm ET, Fri 6:00-11:59am ET) and the first one in
 #  claims the slot in `reminder_log` so the rest stand down.
 #
 #  Two deliberate choices here:
@@ -23,6 +23,12 @@
 #  2. Attempts every half hour, not every hour. Friday used to be three
 #     hours wide with one try an hour, and was landing by minutes —
 #     11:56am on 13 Nov against a noon close, and a clean miss on 16 Oct.
+#
+#  Wednesday's attempts are packed into the morning so the nudge lands
+#  around 8am, but its window stays open until 7:59pm: if GitHub drops
+#  every morning try, an evening nudge still beats no nudge, and nothing
+#  in the Wednesday copy names a time. Friday cannot do the same — see
+#  below — so it gets the density instead.
 #
 #  Friday opens at 6am so the last call is sitting there when people wake
 #  up, and closes at noon on purpose: the email says "if we haven't heard
@@ -36,8 +42,8 @@
 #  the wrong local time. The season spans the changeover (EDT to 1 Nov,
 #  EST to 14 Mar), so both halves are live in a single season.
 #
-#    Wed 3:00-7:59pm ET  =  19:00-23:59 UTC Wed   (EDT)
-#                        =  20:00-00:59 UTC Wed/THU (EST)  <- crosses midnight
+#    Wed 8:00am-7:59pm ET = 12:00-23:59 UTC Wed   (EDT)
+#                         = 13:00-00:59 UTC Wed/THU (EST)  <- crosses midnight
 #    Fri 6:00-11:59am ET =  10:00-15:59 UTC Fri   (EDT)
 #                        =  11:00-16:59 UTC Fri   (EST)
 #
@@ -50,10 +56,14 @@ name: Availability reminders
 
 on:
   schedule:
-    # Wednesday nudge — 19:00-23:59 UTC Wed covers 3-7:59pm ET on both clocks
-    - cron: '11,43 19-23 * * 3'
+    # Wednesday nudge, dense across the morning — 12:00-16:59 UTC covers
+    # 8-11:59am ET on both clocks, so one lands at ~8am
+    - cron: '9,29,49 12-16 * * 3'
+    # ...then hourly through the day as a fallback, in case GitHub drops
+    # every morning attempt. Still Wednesday in New York.
+    - cron: '23 17-23 * * 3'
     # ...and the EST tail: Thu 00:xx UTC is Wed 7:xx pm in New York
-    - cron: '11,43 0 * * 4'
+    - cron: '23 0 * * 4'
     # Friday last call — 10:00-16:59 UTC covers 6-11:59am ET on both clocks
     - cron: '9,39 10-16 * * 5'
 
