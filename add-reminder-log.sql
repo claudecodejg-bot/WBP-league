@@ -19,10 +19,20 @@
 
 CREATE TABLE IF NOT EXISTS reminder_log (
   week_start date        NOT NULL,
-  kind       text        NOT NULL CHECK (kind IN ('thursday', 'friday')),
+  kind       text        NOT NULL,
   sent_at    timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (week_start, kind)
 );
+
+-- The nudge moved from Thursday to Wednesday on 17 Nov 2026. 'thursday'
+-- stays legal so the rows from Oct-Nov 2026 remain valid -- a CHECK is
+-- validated against existing rows when it is added, so dropping it would
+-- fail outright. Dropped and re-added rather than written inline above,
+-- because the table already exists in production and CREATE TABLE IF NOT
+-- EXISTS would quietly do nothing.
+ALTER TABLE reminder_log DROP CONSTRAINT IF EXISTS reminder_log_kind_check;
+ALTER TABLE reminder_log ADD  CONSTRAINT reminder_log_kind_check
+  CHECK (kind IN ('wednesday', 'thursday', 'friday'));
 
 ALTER TABLE reminder_log ENABLE ROW LEVEL SECURITY;
 

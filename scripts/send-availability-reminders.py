@@ -5,8 +5,8 @@ Nudge members who haven't set their availability for the coming Monday.
 Two reminders, both to non-responders only — anyone who has answered, yes
 or no, is left alone:
 
-  Thursday 3pm ET  general reminder
-  Friday 10am ET   final notice: no answer by noon means unavailable
+  Wednesday 3pm ET  general reminder
+  Friday 10am ET    final notice: no answer by noon means unavailable
 
 That last line is not a threat invented for the email. The scheduler only
 ever picks from people who explicitly said yes, so a missing answer
@@ -25,7 +25,7 @@ Environment:
   SUPABASE_SECRET_KEY  required. Reads members.email and the availability
                        table, both of which the publishable key cannot see.
   RESEND_API_KEY       required unless --dry-run.
-  REMINDER_FORCE       optional: "thursday" or "friday" to bypass the time
+  REMINDER_FORCE       optional: "wednesday" or "friday" to bypass the time
                        gate, for testing.
 
 Usage:
@@ -106,17 +106,17 @@ def target_monday(now_local, cfg):
 # Friday closes at noon on purpose: the email says "if we haven't heard from
 # you by noon today", which is false after noon. Better to send nothing than
 # to send that.
-THURSDAY_WINDOW = range(15, 20)   # 3pm to 7:59pm ET
+WEDNESDAY_WINDOW = range(15, 20)  # 3pm to 7:59pm ET
 FRIDAY_WINDOW   = range(9, 12)    # 9am to 11:59am ET
 
 
 def which_reminder(now_local):
     forced = os.environ.get("REMINDER_FORCE", "").strip().lower()
-    if forced in ("thursday", "friday"):
+    if forced in ("wednesday", "friday"):
         return forced
-    # weekday(): Thursday 3, Friday 4
-    if now_local.weekday() == 3 and now_local.hour in THURSDAY_WINDOW:
-        return "thursday"
+    # weekday(): Wednesday 2, Friday 4
+    if now_local.weekday() == 2 and now_local.hour in WEDNESDAY_WINDOW:
+        return "wednesday"
     if now_local.weekday() == 4 and now_local.hour in FRIDAY_WINDOW:
         return "friday"
     return None
@@ -208,7 +208,7 @@ def render(kind, name, monday):
     when = monday.strftime("%-d %B")   # "Monday" is already in the sentence
     first = name.split(",")[0]
 
-    if kind == "thursday":
+    if kind == "wednesday":
         subject = "Paddle Monday %s — are you in?" % monday.strftime("%-d %b")
         lead = (
             "We're putting the courts together for <strong>Monday %s</strong> "
@@ -277,7 +277,7 @@ def main():
     print("Local time: %s" % now.strftime("%a %d %b %H:%M %Z"))
 
     if not kind:
-        print("Not a reminder window (Thu 3pm / Fri 10am ET). Nothing to do.")
+        print("Not a reminder window (Wed 3pm / Fri 10am ET). Nothing to do.")
         return 0
 
     cfg = read_config()

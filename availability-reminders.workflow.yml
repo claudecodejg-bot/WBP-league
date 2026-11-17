@@ -11,7 +11,7 @@
 #  load and delivers the survivors late — observed up to 3h36m late, and
 #  in practice only 2-3 of 15 hourly entries actually run. So the script
 #  does not trust the cron time: it accepts ANY run landing inside a
-#  window (Thu 3:00-7:59pm ET, Fri 9:00-11:59am ET) and the first one in
+#  window (Wed 3:00-7:59pm ET, Fri 9:00-11:59am ET) and the first one in
 #  claims the slot in `reminder_log` so the rest stand down.
 #
 #  Two deliberate choices here:
@@ -21,7 +21,7 @@
 #     it. Odd minutes are dropped far less often.
 #
 #  2. Attempts concentrated where they are needed. Friday's window is
-#     three hours wide against Thursday's five, and was landing by
+#     three hours wide against Wednesday's five, and was landing by
 #     minutes — 11:56am on 13 Nov against a noon close, and a clean miss
 #     on 16 Oct. Friday now gets three attempts an hour instead of one.
 #
@@ -35,13 +35,13 @@
 #  the wrong local time. The season spans the changeover (EDT to 1 Nov,
 #  EST to 14 Mar), so both halves are live in a single season.
 #
-#    Thu 3:00-7:59pm ET  =  19:00-23:59 UTC Thu   (EDT)
-#                        =  20:00-00:59 UTC Thu/FRI (EST)  <- crosses midnight
+#    Wed 3:00-7:59pm ET  =  19:00-23:59 UTC Wed   (EDT)
+#                        =  20:00-00:59 UTC Wed/THU (EST)  <- crosses midnight
 #    Fri 9:00-11:59am ET =  13:00-15:59 UTC Fri   (EDT)
 #                        =  14:00-16:59 UTC Fri   (EST)
 #
-#  Hence the lone `* * 5` entry at hour 0: that is Thursday EVENING in
-#  New York, not Friday. Runs outside a window cost a few seconds and
+#  Hence the lone `* * 4` entry at hour 0: that is Wednesday EVENING in
+#  New York, not Thursday. Runs outside a window cost a few seconds and
 #  exit 0.
 # =====================================================================
 
@@ -49,17 +49,17 @@ name: Availability reminders
 
 on:
   schedule:
-    # Thursday nudge — 19:00-23:59 UTC Thu covers 3-7:59pm ET on both clocks
-    - cron: '11,43 19-23 * * 4'
-    # ...and the EST tail: Fri 00:xx UTC is Thu 7:xx pm in New York
-    - cron: '11,43 0 * * 5'
+    # Wednesday nudge — 19:00-23:59 UTC Wed covers 3-7:59pm ET on both clocks
+    - cron: '11,43 19-23 * * 3'
+    # ...and the EST tail: Thu 00:xx UTC is Wed 7:xx pm in New York
+    - cron: '11,43 0 * * 4'
     # Friday last call — 13:00-16:59 UTC covers 9-11:59am ET on both clocks
     - cron: '7,27,47 13-16 * * 5'
 
   workflow_dispatch:
     inputs:
       force:
-        description: 'Send now regardless of the time: thursday or friday'
+        description: 'Send now regardless of the time: wednesday or friday'
         required: false
         default: ''
       dry_run:
