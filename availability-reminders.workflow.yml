@@ -1,31 +1,61 @@
 # =====================================================================
-#  INSTALL THIS FILE AS .github/workflows/availability-reminders.yml
+#  Availability reminders
 #
-#  It is parked here because the token Claude pushes with is not allowed
-#  to create workflow files. Copy it into place yourself, either through
-#  GitHub (Add file -> Create new file, path
-#  .github/workflows/availability-reminders.yml) or with:
+#  PARKED COPY. The file GitHub actually runs is
+#  .github/workflows/availability-reminders.yml — keep the two identical.
+#  Claude's token has no `workflow` scope and cannot push that path, so
+#  changes are made here and pasted into GitHub's web editor by hand.
 #
-#      git mv availability-reminders.workflow.yml \
-#             .github/workflows/availability-reminders.yml
-#      git commit -m "Add the availability reminder workflow" && git push
+#  ── Why the cron looks like this ───────────────────────────────────
+#  GitHub's scheduler is best-effort. It drops most scheduled runs under
+#  load and delivers the survivors late — observed up to 3h36m late, and
+#  in practice only 2-3 of 15 hourly entries actually run. So the script
+#  does not trust the cron time: it accepts ANY run landing inside a
+#  window (Thu 3:00-7:59pm ET, Fri 9:00-11:59am ET) and the first one in
+#  claims the slot in `reminder_log` so the rest stand down.
 #
-#  Needs two repository secrets first — Settings -> Secrets and variables
-#  -> Actions -> New repository secret:
-#      SUPABASE_SECRET_KEY   Supabase -> Project Settings -> API (secret)
-#      RESEND_API_KEY        Resend -> API Keys
+#  Two deliberate choices here:
+#
+#  1. NOT on the hour. ':00' is the most contended minute on GitHub's
+#     scheduler by a wide margin, and every entry below used to sit on
+#     it. Odd minutes are dropped far less often.
+#
+#  2. Attempts concentrated where they are needed. Friday's window is
+#     three hours wide against Thursday's five, and was landing by
+#     minutes — 11:56am on 13 Nov against a noon close, and a clean miss
+#     on 16 Oct. Friday now gets three attempts an hour instead of one.
+#
+#  Friday closes at noon on purpose: the email says "if we haven't heard
+#  from you by noon today", which is false after noon. The script would
+#  rather send nothing than send that.
+#
+#  ── UTC, and the DST handover ──────────────────────────────────────
+#  GitHub cron is UTC and has no notion of a timezone, so each window is
+#  covered across BOTH its EST and EDT positions and the script discards
+#  the wrong local time. The season spans the changeover (EDT to 1 Nov,
+#  EST to 14 Mar), so both halves are live in a single season.
+#
+#    Thu 3:00-7:59pm ET  =  19:00-23:59 UTC Thu   (EDT)
+#                        =  20:00-00:59 UTC Thu/FRI (EST)  <- crosses midnight
+#    Fri 9:00-11:59am ET =  13:00-15:59 UTC Fri   (EDT)
+#                        =  14:00-16:59 UTC Fri   (EST)
+#
+#  Hence the lone `* * 5` entry at hour 0: that is Thursday EVENING in
+#  New York, not Friday. Runs outside a window cost a few seconds and
+#  exit 0.
 # =====================================================================
 
 name: Availability reminders
 
-# Hourly across Thursday and Friday rather than at four exact times.
-# GitHub ran this up to 3h36m behind its cron time, which made precise
-# scheduling useless. The script accepts any run inside its window
-# (Thu 15:00-19:59 ET, Fri 09:00-11:59 ET) and the reminder_log table
-# makes sure only the first one in each window actually sends.
 on:
   schedule:
-    - cron: '0 9-23 * * 4,5'
+    # Thursday nudge — 19:00-23:59 UTC Thu covers 3-7:59pm ET on both clocks
+    - cron: '11,43 19-23 * * 4'
+    # ...and the EST tail: Fri 00:xx UTC is Thu 7:xx pm in New York
+    - cron: '11,43 0 * * 5'
+    # Friday last call — 13:00-16:59 UTC covers 9-11:59am ET on both clocks
+    - cron: '7,27,47 13-16 * * 5'
+
   workflow_dispatch:
     inputs:
       force:
