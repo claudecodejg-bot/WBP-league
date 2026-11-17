@@ -343,6 +343,22 @@ function renderLog() {
         const takerSide  = p.poster_side === 1 ? 2 : 1
         const backed     = sideNames(court, takerSide)
 
+        // The team somebody backed, linked to the match itself on the
+        // results page. By night plus one of the players, not a match
+        // id: the betting tables join to matches on the date and the two
+        // pairs of names, and never carry an id across.
+        //
+        // Only once there is a result to go and look at. A bet still
+        // riding has no match page to land on.
+        // The date comes off the pick, not the court: the courts query
+        // asks for the four players and nothing else.
+        const backedHtml = !backed ? ''
+          : (p.winner !== null && p.played_on && court?.t1p1)
+            ? ` on <a class="settle-log-team" href="results.html?on=${
+                encodeURIComponent(p.played_on)}&amp;who=${
+                encodeURIComponent(court.t1p1)}">${escapeHtml(backed)}</a>`
+            : ` on <strong>${escapeHtml(backed)}</strong>`
+
         let out
         if (p.winner === null) {
           // A pick on a Monday still to come is riding, not stuck. Only
@@ -360,8 +376,7 @@ function renderLog() {
         return `<li class="settle-log-row${mine ? ' settle-log-mine' : ''}">
           <span class="settle-log-court">C${p.court_no ?? '?'}</span>
           <span class="settle-log-what">
-            <strong>${escapeHtml(name(p.taker))}</strong>${backed
-              ? ` on <strong>${escapeHtml(backed)}</strong>` : ''},
+            <strong>${escapeHtml(name(p.taker))}</strong>${backedHtml},
             ${money(p.taker_risk_cents)} to win ${money(p.poster_risk_cents)},
             v ${escapeHtml(name(p.poster))}
           </span>

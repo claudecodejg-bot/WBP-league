@@ -31,6 +31,25 @@ function enteredByLine(m) {
   return `<div class="match-entered-by">Entered by ${name}${when ? ` on ${when}` : ''}</div>`
 }
 
+/**
+ * The match played on `on` that `who` was in, or null.
+ *
+ * A match id would be the obvious key, but the betting side has none:
+ * scheduled_courts joins to matches on the date and the two pairs of
+ * players (see v_court_results), and it does not carry the id through.
+ * Nobody plays two courts on one night, so a date and ONE of the four
+ * names picks out the same single match without any new SQL to run.
+ *
+ * Only useful once loadResults has filled the cache.
+ */
+export function findMatch(on, who) {
+  if (!_cache || !on || !who) return null
+  return _cache.matches.find(m =>
+    m.played_on === on &&
+    (m.team1_player1 === who || m.team1_player2 === who ||
+     m.team2_player1 === who || m.team2_player2 === who)) || null
+}
+
 /** Seasons present in the cached match data, newest first. */
 export function knownSeasons() {
   return _cache ? [...new Set(_cache.matches.map(m => m.season))].sort().reverse() : []
@@ -117,7 +136,7 @@ export async function loadResults(season = CURRENT_SEASON, { refresh = false } =
                           : { names: t2names, score: t2score, won: t2won }
 
       html += `
-        <div class="match-card">
+        <div class="match-card" id="m-${m.id}">
           <div class="match-team ${left.won ? 'team-won' : 'team-lost'}">
             ${left.won ? '<div class="winner-label">Winner</div>' : ''}
             <div class="match-team-names">${left.names}</div>

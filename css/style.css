@@ -3326,6 +3326,29 @@ footer {
 .champ-hero .champ-hero-names,
 .champ-hero .champ-hero-tagline { text-shadow: 0 2px 10px rgba(0,0,0,0.75); }
 
+/* ── A bet, linked to the match it was on ───── */
+/* Reads as the team name it already was, with the underline only on
+   hover: a log line is dense enough without four blue links in it. */
+.settle-log-team {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--gray-400, #9a9a9a);
+}
+.settle-log-team:hover,
+.settle-log-team:focus-visible {
+  color: var(--green-mid);
+  border-bottom-color: currentColor;
+  text-decoration: none;
+}
+
+/* The card that a link from Settle Up landed on. Held, not flashed —
+   someone arriving mid-page needs to see which of six cards they were
+   sent to, and an animation that has finished tells them nothing. */
+.match-card-linked {
+  box-shadow: 0 0 0 2px var(--green-mid), var(--shadow);
+}
+
 /* ── Nothing going ──────────────────────────── */
 /* What the live block shows once every court has a score. Deliberately
    unlit: chasing bulbs around "nothing is open" would be the board
