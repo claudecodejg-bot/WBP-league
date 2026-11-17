@@ -314,8 +314,30 @@ function renderLog() {
 
   const body = nights.map(night => {
     const settled = !isOpen(night.played_on)
-    const rows = [...night.picks]
-      .sort((x, y) => (x.court_no || 0) - (y.court_no || 0))
+    // One line per person, per price-maker, per court. Taking a $5 price
+    // and then taking it again is one $10 bet as far as who owes what
+    // goes, and two identical rows stacked on each other read as the
+    // page printing the same bet twice.
+    const merged = []
+    for (const p of [...night.picks].sort((x, y) => (x.court_no || 0) - (y.court_no || 0))) {
+      const same = merged.find(m =>
+        m.court_id    === p.court_id &&
+        m.taker       === p.taker &&
+        m.poster      === p.poster &&
+        m.poster_side === p.poster_side &&
+        m.winner      === p.winner)
+      if (!same) { merged.push({ ...p }); continue }
+      // Two prices from the same man on the same side add up, whether or
+      // not they were the same price: the pair of figures stays true as
+      // a total even when it is no longer a single quoted price.
+      same.taker_risk_cents  += p.taker_risk_cents  || 0
+      same.poster_risk_cents += p.poster_risk_cents || 0
+      // null on a pick with no result yet, and null + null is 0 rather
+      // than null — which would print as "+$0" the moment one landed.
+      same.amount_cents       = (same.amount_cents ?? 0) + (p.amount_cents ?? 0)
+    }
+
+    const rows = merged
       .map(p => {
         const court      = _courts[p.court_id]
         const takerSide  = p.poster_side === 1 ? 2 : 1
