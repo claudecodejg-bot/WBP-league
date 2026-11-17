@@ -259,11 +259,14 @@
 
     // The courts stay up until the results are in. The schedule row on its
     // own does not prove they are missing — finishing off a part-entered
-    // night leaves the row behind — so count what has actually been recorded.
-    let pill = 'Next Up'
-    if (data.played_on === today) {
-      pill = 'Tonight'
-    } else if (data.played_on < today) {
+    // night leaves the row behind — so count what has actually been
+    // recorded.
+    //
+    // This check used to be skipped on the night itself, which is the one
+    // night it matters most: scores go in from the courts around 9pm and
+    // the pairings sat there underneath them until midnight. A night is
+    // over when its results exist, not when the date rolls over.
+    if (data.played_on <= today) {
       try {
         const res = await supabase
           .from('matches')
@@ -274,8 +277,11 @@
       } catch (err) {
         return
       }
-      pill = 'Awaiting Results'
     }
+
+    const pill = data.played_on === today ? 'Tonight'
+               : data.played_on <   today ? 'Awaiting Results'
+               : 'Next Up'
 
     const courts = data.courts
     let html = `
