@@ -2157,6 +2157,23 @@ footer {
   transition: filter 0.15s, transform 0.15s;
 }
 .welcome-cta:hover { filter: brightness(0.94); transform: translateY(-1px); }
+/* Two of them side by side, wrapping rather than shrinking on a phone. */
+.welcome-cta-row {
+  display: flex; flex-wrap: wrap;
+  justify-content: center; gap: 0.5rem;
+}
+/* The second one. Outlined, not filled: both buttons solid coral and
+   neither reads as the main thing to do. */
+.welcome-cta-alt {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.55);
+  color: #fff;
+}
+.welcome-cta-alt:hover {
+  filter: none;
+  background: rgba(255,255,255,0.12);
+  border-color: #fff;
+}
 .welcome-cta-note {
   font-size: 0.78rem;
   color: rgba(255, 255, 255, 0.5);
