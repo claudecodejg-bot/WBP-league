@@ -31,7 +31,7 @@
 
 import { supabase, escapeHtml, connectionErrorHtml } from './supabase-client.js?v=2d21059e'
 import { CURRENT_SEASON } from './config.js?v=d82921ce'
-import { fetchWagerAwards, wagerRows, wagerBoards } from './wager-awards.js?v=b8c35a36'
+import { fetchWagerAwards, wagerRows, wagerBoards } from './wager-awards.js?v=64e98e49'
 
 let _container = null
 let _member    = null          // { id, full_name, is_admin } or null when signed out

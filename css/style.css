@@ -3039,7 +3039,7 @@ footer {
 
 /* "wagers" sits under the wordmark as the second half of a lockup, which is
    why it is not simply the same size on one line: at phone width
-   "ROCK'n'Roll wagers" either wraps where it likes or shrinks to nothing. */
+   "ROCK Bottom wagers" either wraps where it likes or shrinks to nothing. */
 .picks-hero-kicker {
   display: block;
   margin-top: 0.45rem;
@@ -3077,7 +3077,7 @@ footer {
 }
 
 /* ── The "?" beside the wordmark ────────────── */
-/* It rides just off the end of ROCK'n'Roll, where it reads as help with
+/* It rides just off the end of ROCK Bottom, where it reads as help with
    THIS, rather than floating in the corner of the photograph.
    Absolute, not in the flow: in the flow it would join the line box and
    push the wordmark left of centre while WAGERS below stayed centred, and

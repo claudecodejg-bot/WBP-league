@@ -1,5 +1,5 @@
 // =============================================
-//  ROCK'n'Roll Wagers — the three season titles
+//  ROCK Bottom Wagers — the three season titles
 // =============================================
 //  Wager King     most won over the season
 //  Most Action    most money matched, either end of it

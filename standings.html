@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/standings.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=11292d27">
+  <link rel="stylesheet" href="css/style.css?v=3ce04b05">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -84,7 +84,7 @@
            fetchAllRecordedTotals, allTimeBoard } from './js/vinnys.js?v=67aac246'
   import { fetchPaddleHomie, homieBoard } from './js/homie.js?v=22d405a8'
   import { fetchWagerAwards, wagerRows, wagerBoards, money as wagerMoney }
-    from './js/wager-awards.js?v=b8c35a36'
+    from './js/wager-awards.js?v=64e98e49'
   import { startHero } from './js/hero.js?v=5f4eef9b'
   initNav('standings')
   startHero(document.querySelector('.page-hero'))
@@ -111,7 +111,7 @@
   let _homie             = []   // paddle_homie totals for the active season
   let _vinnysRecorded    = []   // hand-kept Vinny's totals for a past season
   let _vinnysAllTime     = []   // hand-kept totals for every season, for the all-time board
-  let _wager             = { picks: [], nets: [] }   // the three ROCK'n'Roll titles
+  let _wager             = { picks: [], nets: [] }   // the three ROCK Bottom titles
 
   function getCols() {
     const cols = [
@@ -491,7 +491,7 @@
       </div>`
   }
 
-  // ── ROCK'n'Roll Wagers ────────────────────────────────────────
+  // ── ROCK Bottom Wagers ────────────────────────────────────────
   // Three season-long titles off the picks board. Computed in
   // js/wager-awards.js from views that already existed, so none of this
   // needed a line of SQL.
@@ -591,7 +591,7 @@
       }).join('')
 
     return `
-      <h2 class="section-title" id="wagers" style="margin-top:2rem;">&#127922; ROCK&rsquo;n&rsquo;Roll Wagers</h2>
+      <h2 class="section-title" id="wagers" style="margin-top:2rem;">&#127922; ROCK Bottom Wagers</h2>
       <p class="vinnys-lead-note">
         Three titles, running all season. They are won on the
         <a href="picks.html">board</a> &mdash; play money, squared up on
