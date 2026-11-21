@@ -527,6 +527,34 @@ function renderAcceptedBoard() {
 }
 
 /**
+ * One "I risk $ [-] 5 [+]" control.
+ *
+ * The buttons exist because the native spinner is two 7px arrows stacked
+ * in the corner of the box -- findable if you know it is there, invisible
+ * otherwise, and impossible on a phone. These say what they do. The
+ * native spinner is hidden in CSS so there is only one way to step.
+ *
+ * The number sits between them and is centred: with the buttons either
+ * side, a left-aligned figure drifts away from the control that changes
+ * it.
+ */
+function amountField(id, courtId, text, srLabel, max) {
+  return `<div class="pick-field">
+    <span class="pick-field-name">${escapeHtml(text)}</span>
+    <span class="pick-dollar">$</span>
+    <label class="sr-only" for="${id}">${escapeHtml(srLabel)}</label>
+    <span class="pick-stepper">
+      <button type="button" class="pick-step" data-step="down" data-target="${id}"
+              aria-label="${escapeHtml(srLabel)}: less" tabindex="-1">&minus;</button>
+      <input type="number" id="${id}" class="pick-amt" data-preview="${courtId}"
+             min="0" max="${max}" step="5" value="5" inputmode="decimal">
+      <button type="button" class="pick-step" data-step="up" data-target="${id}"
+              aria-label="${escapeHtml(srLabel)}: more" tabindex="-1">+</button>
+    </span>
+  </div>`
+}
+
+/**
  * The form for putting a side up. Two amounts rather than an odds box:
  *
  * The boxes open at $5 and the arrows move in fives, because nobody
@@ -551,18 +579,8 @@ function renderOfferForm(court, myTeam) {
           <span class="pick-new-dot" aria-hidden="true"></span>
           Place your bets!
         </span>
-        <label class="pick-field">
-          <span>I risk</span>
-          <span class="pick-dollar">$</span>
-          <input type="number" id="post-risk-${court.id}" class="pick-amt" data-preview="${court.id}"
-                 min="0" max="100" step="5" value="5" inputmode="decimal">
-        </label>
-        <label class="pick-field">
-          <span>to win</span>
-          <span class="pick-dollar">$</span>
-          <input type="number" id="post-win-${court.id}" class="pick-amt" data-preview="${court.id}"
-                 min="0" max="500" step="5" value="5" inputmode="decimal">
-        </label>
+        ${amountField(`post-risk-${court.id}`, court.id, 'I risk', 'Amount to risk', 100)}
+        ${amountField(`post-win-${court.id}`,  court.id, 'to win', 'Amount to win',  500)}
         <span class="pick-new-on">on</span>
         ${sides.map(side => `
           <button class="btn btn-sm btn-outline" data-post="${court.id}" data-side="${side}">
@@ -790,10 +808,26 @@ export async function loadPicks(container, member) {
   // the other. Delegating from the document covers both and still
   // survives every re-render without rebinding.
   document.addEventListener('click', async event => {
+    const step   = event.target.closest('[data-step]')
     const post   = event.target.closest('[data-post]')
     const take   = event.target.closest('[data-take]')
     const cancel = event.target.closest('[data-cancel]')
 
+    if (step) {
+      event.preventDefault()
+      const box = document.getElementById(step.dataset.target)
+      if (box) {
+        // stepUp/stepDown already respect min, max and step, and snap an
+        // off-step amount onto the grid rather than refusing to move: a
+        // typed $7.50 steps up to $10. An empty box throws, which is the
+        // one case worth guarding.
+        try { step.dataset.step === 'up' ? box.stepUp() : box.stepDown() }
+        catch (err) { box.value = '5' }
+        // Dispatched, not called directly, so the mirroring and the
+        // preview see it exactly as they would a keystroke.
+        box.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+    }
     if (post)   { event.preventDefault(); await onPost(post.dataset.post, Number(post.dataset.side)) }
     if (take)   { event.preventDefault(); await onTake(take.dataset.take) }
     if (cancel) { event.preventDefault(); await onCancel(cancel.dataset.cancel) }

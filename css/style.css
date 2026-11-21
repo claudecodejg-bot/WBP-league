@@ -3778,13 +3778,19 @@ footer {
 .pick-new .pick-field,
 .pick-new .pick-dollar,
 .pick-new .pick-new-on  { color: rgba(255,255,255,0.82); font-size: 0.85rem; }
+/* This is the line that says what the price actually means, and on the
+   panel it was 0.76rem -- smaller than the page-wide rule it overrides,
+   so enlarging .pick-preview on its own did nothing here. Sized up and
+   brightened: it has to be read before anyone commits money. */
 .pick-new .pick-preview {
-  color: rgba(255,255,255,0.72);
-  margin-top: 0.35rem; font-size: 0.76rem;
+  color: rgba(255,255,255,0.92);
+  margin-top: 0.5rem;
+  font-size: 1.02rem;
+  font-weight: 600;
 }
 .pick-new .pick-amt {
   border-color: rgba(255,255,255,0.35);
-  width: 4.2rem; padding: 0.3rem 0.4rem; font-size: 0.9rem;
+  width: 3.6rem; padding: 0.3rem 0.25rem; font-size: 1.05rem;
 }
 .pick-new .btn-sm { padding: 0.32rem 0.7rem; }
 
@@ -3793,7 +3799,12 @@ footer {
    words and two small boxes into four stacked bands. */
 @media (max-width: 640px) {
   .pick-new .pick-field { flex: 0 1 auto; }
-  .pick-new .pick-field .pick-amt { flex: 0 0 3.8rem; width: 3.8rem; }
+  .pick-new .pick-field .pick-amt { flex: 0 0 3.2rem; width: 3.2rem; }
+  /* Thumbs, not cursors. The buttons keep their full size on a phone --
+     this is the one place the panel is actually used one-handed -- and
+     the number box gives up the width instead. */
+  .pick-new .pick-step { width: 2.1rem; height: 2.1rem; }
+  .pick-new .pick-stepper { gap: 0.2rem; }
   /* The sign takes its own line on a phone. Inline, it pushed "to win"
      onto a second row and left "on" dangling at the end of it; on its
      own line the two amounts sit together and the count of rows is the
@@ -3818,9 +3829,50 @@ footer {
 }
 
 .pick-amt {
-  width: 5.5rem; padding: 0.4rem 0.5rem;
+  width: 4.4rem; padding: 0.4rem 0.3rem;
   border: 1px solid var(--gray-400); border-radius: var(--radius);
-  font-size: 0.95rem; font-family: inherit;
+  font-size: 1.05rem; font-weight: 600; font-family: inherit;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── - 15 + ──────────────────────────────────────────────────────── */
+/* The native spinner is two 7px arrows stacked in a corner: findable if
+   you know it is there, and absent entirely on a phone. These replace
+   it, so the stepper is hidden rather than left to sit alongside. */
+.pick-stepper input::-webkit-outer-spin-button,
+.pick-stepper input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+.pick-stepper input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.pick-stepper {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+}
+
+.pick-step {
+  flex: none;
+  width: 2rem; height: 2rem;
+  display: grid; place-items: center;
+  border: 1px solid rgba(255,255,255,0.45);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  color: var(--white);
+  font-size: 1.15rem; font-weight: 700; line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+  /* The panel is dark green; a tap highlight on a round button over it
+     reads as a smear. */
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s ease, transform 0.08s ease;
+}
+.pick-step:hover  { background: rgba(255,255,255,0.26); }
+.pick-step:active { transform: scale(0.92); }
+.pick-step:focus-visible {
+  outline: 2px solid var(--white); outline-offset: 2px;
 }
 
 /* ── Who is playing ─────────────────────────── */
@@ -3872,6 +3924,7 @@ footer {
   font-size: 0.9rem; color: var(--gray-600);
   white-space: nowrap;
 }
+.pick-field-name { font-weight: 600; }
 .pick-dollar { color: var(--gray-600); font-size: 0.9rem; }
 
 /* The line that spells out both ends of the price. It is the one piece
@@ -3881,9 +3934,9 @@ footer {
 .pick-preview {
   margin: 0.55rem 0 0;
   color: var(--gray-700);
-  font-size: 1rem;
-  font-weight: 500;
-  line-height: 1.5;
+  font-size: 1.12rem;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 @media (max-width: 640px) {
