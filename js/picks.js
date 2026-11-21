@@ -791,6 +791,26 @@ export async function loadPicks(container, member) {
 
   document.addEventListener('input', event => {
     const field = event.target.closest('[data-preview]')
-    if (field) updatePreview(field.dataset.preview)
+    if (!field) return
+    const courtId = field.dataset.preview
+
+    // "To win" follows "I risk" until the poster takes charge of it.
+    // Most prices put up here are even money, so typing 10 into the risk
+    // box and having to type 10 again next door was the common case
+    // doing the most work. Touching the win box once stops it following
+    // for good -- anything else would overwrite a price mid-thought.
+    //
+    // The flag lives on the element rather than in a variable because
+    // the panel is rebuilt wholesale on every render; a fresh input is
+    // a fresh intention, and its value has gone back to the default
+    // anyway.
+    if (field.id === `post-win-${courtId}`) {
+      field.dataset.touched = '1'
+    } else if (field.id === `post-risk-${courtId}`) {
+      const win = document.getElementById(`post-win-${courtId}`)
+      if (win && win.dataset.touched !== '1') win.value = field.value
+    }
+
+    updatePreview(courtId)
   })
 }

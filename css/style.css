@@ -17,6 +17,10 @@
      white, so it still passes AA for normal text. */
   --gray-500:     #6c757d;
   --gray-600:     #4a4a4a;
+  /* Same story as --gray-500 above: used by .court-team-total and the
+     bracket winner's score, never defined, so both fell back to
+     near-black. 10.9:1 on white. */
+  --gray-700:     #333333;
   --gray-800:     #1a1a1a;
   --text:         #1a1a1a;
   --radius:       8px;
@@ -3868,9 +3872,16 @@ footer {
 }
 .pick-dollar { color: var(--gray-600); font-size: 0.9rem; }
 
+/* The line that spells out both ends of the price. It is the one piece
+   of text on the panel somebody actually has to read and agree with
+   before they commit money, so it is sized to be read rather than
+   skimmed past -- it was a 0.82rem footnote and got treated like one. */
 .pick-preview {
-  margin: 0.5rem 0 0;
-  color: var(--gray-600); font-size: 0.82rem; line-height: 1.5;
+  margin: 0.55rem 0 0;
+  color: var(--gray-700);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 @media (max-width: 640px) {
