@@ -3850,16 +3850,18 @@ footer {
 .pick-empty { color: var(--gray-600); font-size: 0.9rem; margin: 0; }
 
 /* ── A price with two ends ──────────────────── */
+.pick-amt:invalid { box-shadow: none; }
+
 .pick-odds {
   display: inline-block;
   margin-left: 0.3rem;
-  padding: 0.05rem 0.4rem;
+  padding: 0.1rem 0.5rem;
   border-radius: 999px;
   background: var(--green-pale);
   color: var(--gray-800);
-  font-size: 0.75rem; font-weight: 700;
+  font-size: 0.92rem; font-weight: 700;
   letter-spacing: 0.02em;
-  vertical-align: 1px;
+  vertical-align: 0;
   white-space: nowrap;
 }
 
