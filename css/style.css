@@ -3553,7 +3553,10 @@ footer {
 .live-board-list {
   list-style: none; margin: 0; padding: 0;
   display: grid; gap: 0.5rem;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  /* 15rem fitted a card whose action row was "$ [amount] [Take it]".
+     It now also carries two stepper buttons and Counter, which ran
+     straight out of the card. */
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
 }
 .live-bet-card {
   display: block;
@@ -3573,6 +3576,9 @@ footer {
 .live-bet-act {
   display: flex; align-items: center; gap: 0.35rem;
   margin-top: 0.5rem;
+  /* Wrap rather than overflow: on a narrow card Counter drops to its own
+     line instead of hanging off the edge. */
+  flex-wrap: wrap; row-gap: 0.4rem;
 }
 .live-bet-act .pick-amt {
   width: 3.4rem; padding: 0.28rem 0.25rem; font-size: 0.95rem;
@@ -3965,6 +3971,28 @@ footer {
   0%, 100% { box-shadow: 0 0 0 2px #ffe9a8, 0 0 14px rgba(255,233,168,0.6); }
   50%      { box-shadow: 0 0 0 2px #ffe9a8, 0 0 22px rgba(255,233,168,0.95); }
 }
+/* "Bet posted!" where the click happened. The page-wide flash lives at
+   the top; on a three-court night the court you are posting on can be two
+   screens below it, so the confirmation landed off-screen and the button
+   read as dead. */
+.pick-posted {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius);
+  background: rgba(143,240,187,0.16);
+  border: 1px solid rgba(143,240,187,0.5);
+  color: #d6ffe8;
+  font-size: 0.98rem; font-weight: 700; line-height: 1.4;
+}
+.pick-posted.is-in { animation: pick-posted-in 0.32s ease-out; }
+@keyframes pick-posted-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pick-posted.is-in { animation: none; }
+}
+
 .pick-counter-note {
   margin: 0.5rem 0 0;
   color: #ffe9a8;

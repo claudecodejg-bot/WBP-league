@@ -606,6 +606,7 @@ function renderOfferForm(court, myTeam) {
       </div>
       <p class="pick-preview" id="post-preview-${court.id}"></p>
       <p class="pick-counter-note" id="counter-note-${court.id}" hidden></p>
+      <p class="pick-posted" id="posted-${court.id}" hidden></p>
       ${myTeam !== null
         ? `<p class="pick-new-note">You're playing &mdash; you can only back your own team.</p>`
         : ''}
@@ -802,6 +803,31 @@ function flash(message, kind = 'error') {
   flash._t = window.setTimeout(() => { el.hidden = true }, 7000)
 }
 
+/**
+ * Confirmation where the eye already is.
+ *
+ * flash() writes to #picks-flash at the very top of the page. Posting
+ * happens at a court card, which on a three-court night is a screen or
+ * two below it -- so the confirmation appeared somewhere nobody was
+ * looking and the click read as having done nothing.
+ *
+ * Called after refresh(), never before: the re-render replaces the whole
+ * court card, and a message written first goes with it.
+ */
+function postedFlash(courtId, message) {
+  const el = document.getElementById(`posted-${courtId}`)
+  if (!el) return
+  el.textContent = message
+  el.hidden = false
+  // Restart the animation on a second post to the same court, which it
+  // would otherwise skip entirely.
+  el.classList.remove('is-in')
+  void el.offsetWidth
+  el.classList.add('is-in')
+  window.clearTimeout(postedFlash._t)
+  postedFlash._t = window.setTimeout(() => { el.hidden = true }, 9000)
+}
+
 async function onPost(courtId, side) {
   const risk = centsFrom(`post-risk-${courtId}`)
   const win  = centsFrom(`post-win-${courtId}`)
@@ -816,10 +842,14 @@ async function onPost(courtId, side) {
   })
   if (error) return flash(error.message)
 
-  flash(risk === win
+  const said = risk === win
     ? `Up at even money — ${money(risk)}. Somebody has to take it now.`
-    : `Up at ${oddsLabel(risk, win)} — you risk ${money(risk)} to win ${money(win)}.`, 'success')
+    : `Up at ${oddsLabel(risk, win)} — you risk ${money(risk)} to win ${money(win)}.`
+
+  flash(said, 'success')
   await refresh()
+  // After the re-render, so it survives it.
+  postedFlash(courtId, `Bet posted! ${said}`)
 }
 
 async function onTake(offerId) {
