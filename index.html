@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=522d89e7">
+  <link rel="stylesheet" href="css/style.css?v=6e835fbc">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -211,7 +211,7 @@
         <p class="season-welcome-sub">Wee Burn &amp; Woodway &mdash; paddle tennis since 2004</p>
         <div class="welcome-cta-row">
           <a href="standings.html?season=${encodeURIComponent(CURRENT_SEASON)}" class="welcome-cta">See the Full Table &rarr;</a>
-          <a href="picks.html" class="welcome-cta welcome-cta-alt">See the Wagers &rarr;</a>
+          <a href="picks.html" class="welcome-cta welcome-cta-alt">Wagers &rarr;</a>
         </div>`)
     }
     hero.classList.remove('is-pending')
@@ -287,12 +287,23 @@
                : 'Next Up'
 
     const courts = data.courts
+
+    // The board is only worth pointing at while it can still be used.
+    // Once a night is played and waiting on scores its courts are shut,
+    // and "Place your bets!" over a closed board is just a lie with an
+    // exclamation mark.
+    const bettable = pill !== 'Awaiting Results'
+
     let html = `
       <div class="upcoming-section">
         <div class="upcoming-header">
           <span class="upcoming-pill">${esc(pill)}</span>
           <span class="upcoming-title">${esc(data.week_label || '')}</span>
-        </div>`
+        </div>
+        ${bettable ? `<a class="upcoming-bets" href="picks.html">
+          <span class="upcoming-bets-dot" aria-hidden="true"></span>
+          Place your bets!
+        </a>` : ''}`
 
     courts.forEach((court, i) => {
       const [p1 = '?', p2 = '?'] = court.team1 || []
@@ -407,7 +418,7 @@
         </div>
         <div class="welcome-cta-row">
           <a href="standings.html?season=${encodeURIComponent(CURRENT_SEASON)}" class="welcome-cta">See the Full Table &rarr;</a>
-          <a href="picks.html" class="welcome-cta welcome-cta-alt">See the Wagers &rarr;</a>
+          <a href="picks.html" class="welcome-cta welcome-cta-alt">Wagers &rarr;</a>
         </div>`)
     }
 
