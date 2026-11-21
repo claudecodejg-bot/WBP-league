@@ -6,7 +6,7 @@ Two reminders, both to non-responders only — anyone who has answered, yes
 or no, is left alone:
 
   Wednesday 8am ET  general reminder
-  Friday 6am ET     final notice: no answer by noon means unavailable
+  Friday 6am ET     final notice: no answer before pairings means unavailable
 
 That last line is not a threat invented for the email. The scheduler only
 ever picks from people who explicitly said yes, so a missing answer
@@ -109,13 +109,15 @@ def target_monday(now_local, cfg):
 # evening, which for a nudge is far better than not at all. Nothing in
 # the Wednesday copy names a time, so a late send reads the same.
 #
-# Friday opens at 6am so the last call is waiting when people wake up, and
-# closes at noon on purpose: the email says "if we haven't heard from you by
-# noon today", which is false after noon. Better to send nothing than to
-# send that. Six hours wide also means GitHub's dropped and delayed runs
-# have room -- the old three-hour window was landing with minutes to spare.
+# Friday opens at 6am so the last call is waiting when people wake up and
+# closes at 2pm, comfortably before pairings go out. It used to close at
+# noon because the copy named noon; that made the window too tight for
+# GitHub's scheduler, which on 20 Nov delivered a single Friday run at
+# 1:33pm and so sent nothing at all. The copy now says "by the time
+# pairings go out this afternoon", which stays true across the whole
+# window.
 WEDNESDAY_WINDOW = range(8, 20)   # 8am to 7:59pm ET
-FRIDAY_WINDOW    = range(6, 12)   # 6am to 11:59am ET
+FRIDAY_WINDOW    = range(6, 14)   # 6am to 1:59pm ET
 
 
 def which_reminder(now_local):
@@ -229,8 +231,15 @@ def render(kind, name, monday):
             "Still nothing from you for <strong>Monday %s</strong>, and pairings "
             "go out this afternoon." % when
         )
+        # Deliberately not a clock time. Naming noon forced the send
+        # window to close at noon -- the email would otherwise promise a
+        # deadline that had already passed -- and GitHub's scheduler
+        # could not hit a window that tight: on 20 Nov it delivered one
+        # Friday run, at 1:33pm, and the last call went unsent. Tying
+        # the cutoff to the pairings going out is both true and loose
+        # enough to survive a late run.
         close = (
-            "<strong>If we haven't heard from you by noon today, we'll assume "
+            "<strong>If we haven't heard from you by then, we'll assume "
             "you're unavailable</strong> and you won't be put on a court."
         )
 
