@@ -375,13 +375,6 @@ function renderOpenBoard() {
     // Playing this court? You can only ever be on your own team.
     const blocked = myTeam !== null && myTeam !== takingSide
     const dflt    = (risk / 100).toFixed(2).replace(/\.00$/, '')
-    // Takes step in fives too, but only when what is left on the offer
-    // actually permits it. A part-taken offer can leave an odd amount
-    // open -- $12.50, say -- and a min of $5 with a step of $5 would put
-    // the cap below the floor and jam the box. Those fall back to the
-    // old free-form cent stepping.
-    const byFives = risk >= 500 && risk % 500 === 0
-    const stepAttrs = byFives ? 'min="5" step="5"' : 'min="1" step="0.01"'
 
     let action = ''
     if (mine) {
@@ -396,7 +389,7 @@ function renderOpenBoard() {
         <label class="sr-only" for="take-amt-${offer.id}">Amount to risk</label>
         <span class="live-bet-dollar">$</span>
         <input type="number" id="take-amt-${offer.id}" class="pick-amt"
-               ${stepAttrs} max="${dflt}" value="${dflt}" inputmode="decimal">
+               min="0" step="5" max="${dflt}" value="${dflt}" inputmode="decimal">
         <button class="btn btn-sm btn-primary" data-take="${offer.id}">Take it</button>
       </span>`
     }
@@ -535,6 +528,16 @@ function renderAcceptedBoard() {
 
 /**
  * The form for putting a side up. Two amounts rather than an odds box:
+ *
+ * The boxes open at $5 and the arrows move in fives, because nobody
+ * posts $5.01. Any amount can still be typed -- the arrows are a
+ * convenience, not a constraint, and the real limits ($1-$100 to risk,
+ * $1-$500 to win, inside 10-1) are check constraints in add-picks.sql.
+ *
+ * min is 0, not 1, because min doubles as the stepping base: min="1"
+ * would make the arrows run 1, 6, 11. Zero keeps them on clean fives
+ * and still stops the down arrow going negative.
+ *
  * "risk 5 to win 10" is how the price gets said out loud, and it cannot be
  * read the wrong way round the way a bare "2-1" can.
  */
@@ -552,13 +555,13 @@ function renderOfferForm(court, myTeam) {
           <span>I risk</span>
           <span class="pick-dollar">$</span>
           <input type="number" id="post-risk-${court.id}" class="pick-amt" data-preview="${court.id}"
-                 min="5" max="100" step="5" value="5" inputmode="decimal">
+                 min="0" max="100" step="5" value="5" inputmode="decimal">
         </label>
         <label class="pick-field">
           <span>to win</span>
           <span class="pick-dollar">$</span>
           <input type="number" id="post-win-${court.id}" class="pick-amt" data-preview="${court.id}"
-                 min="5" max="500" step="5" value="5" inputmode="decimal">
+                 min="0" max="500" step="5" value="5" inputmode="decimal">
         </label>
         <span class="pick-new-on">on</span>
         ${sides.map(side => `
