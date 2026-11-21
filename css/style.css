@@ -3575,8 +3575,25 @@ footer {
   margin-top: 0.5rem;
 }
 .live-bet-act .pick-amt {
-  width: 4rem; padding: 0.28rem 0.4rem; font-size: 0.85rem;
+  width: 3.4rem; padding: 0.28rem 0.25rem; font-size: 0.95rem;
   border-color: rgba(255,255,255,0.35);
+}
+/* The board's buttons are a shade smaller than the posting panel's: the
+   row also carries "Take it" and "Counter", and three full-size controls
+   push the card to two lines on a phone. */
+.live-bet-act .pick-step { width: 1.75rem; height: 1.75rem; font-size: 1rem; }
+.live-bet-act .pick-stepper { gap: 0.2rem; }
+
+/* A third button on this row, and the quietest of the three: taking a
+   price is the common move, countering the considered one. */
+.btn-ghost {
+  background: transparent;
+  color: rgba(255,255,255,0.8);
+  border: 1px solid rgba(255,255,255,0.3);
+}
+.btn-ghost:hover {
+  background: rgba(255,255,255,0.12);
+  color: var(--white);
 }
 .live-bet-dollar { color: rgba(255,255,255,0.7); font-size: 0.85rem; }
 .live-bet-note {
@@ -3591,6 +3608,21 @@ footer {
 .live-bet-team {
   display: block;
   font-weight: 700; font-size: 0.95rem; line-height: 1.3;
+}
+/* "You back" / "You're on" — small, so the TEAM is what the eye lands
+   on, but present, so which end of the bet this is never has to be
+   worked out from the price. */
+.live-bet-you {
+  display: inline-block; margin-right: 0.25rem;
+  font-size: 0.68rem; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  vertical-align: 1px;
+}
+.live-bet-against {
+  display: block; margin-top: 0.1rem;
+  font-size: 0.82rem; font-weight: 600;
+  color: rgba(255,255,255,0.72);
 }
 .live-bet-price { font-size: 0.88rem; font-weight: 600; color: #ffd9a8; }
 .live-bet-from {
@@ -3920,6 +3952,26 @@ footer {
 .pick-step:active { transform: scale(0.92); }
 .pick-step:focus-visible {
   outline: 2px solid var(--white); outline-offset: 2px;
+}
+
+/* ── Countering ──────────────────────────────────────────────────── */
+/* After "Counter" the panel is filled in and scrolled to, and this is
+   what says which of the two team buttons finishes the job. */
+.pick-countering {
+  box-shadow: 0 0 0 2px #ffe9a8, 0 0 14px rgba(255,233,168,0.6);
+  animation: pick-countering-pulse 1.6s ease-in-out 3;
+}
+@keyframes pick-countering-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px #ffe9a8, 0 0 14px rgba(255,233,168,0.6); }
+  50%      { box-shadow: 0 0 0 2px #ffe9a8, 0 0 22px rgba(255,233,168,0.95); }
+}
+.pick-counter-note {
+  margin: 0.5rem 0 0;
+  color: #ffe9a8;
+  font-size: 0.95rem; font-weight: 600; line-height: 1.45;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pick-countering { animation: none; }
 }
 
 /* ── Who is playing ─────────────────────────── */

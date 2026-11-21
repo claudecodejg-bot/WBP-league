@@ -388,15 +388,32 @@ function renderOpenBoard() {
       action = `<span class="live-bet-act">
         <label class="sr-only" for="take-amt-${offer.id}">Amount to risk</label>
         <span class="live-bet-dollar">$</span>
-        <input type="number" id="take-amt-${offer.id}" class="pick-amt"
-               min="0" step="5" max="${dflt}" value="${dflt}" inputmode="decimal">
+        <span class="pick-stepper">
+          <button type="button" class="pick-step" data-step="down" data-target="take-amt-${offer.id}"
+                  aria-label="Risk less" tabindex="-1">&minus;</button>
+          <input type="number" id="take-amt-${offer.id}" class="pick-amt"
+                 min="0" step="5" max="${dflt}" value="${dflt}" inputmode="decimal">
+          <button type="button" class="pick-step" data-step="up" data-target="take-amt-${offer.id}"
+                  aria-label="Risk more" tabindex="-1">+</button>
+        </span>
         <button class="btn btn-sm btn-primary" data-take="${offer.id}">Take it</button>
+        <button class="btn btn-sm btn-ghost" data-counter="${offer.id}">Counter</button>
       </span>`
     }
 
+    // Naming one team was ambiguous: "Luecke & Jonson" next to a price
+    // reads as easily as the side being bet ON as the side being bet
+    // AGAINST. Both ends, labelled, leaves nothing to infer.
+    const yours  = sideNames(court, takingSide)
+    const theirs = sideNames(court, offer.side)
+
     return `<li class="live-bet">
       <div class="live-bet-card">
-        <span class="live-bet-team">${escapeHtml(sideNames(court, takingSide))}</span>
+        <span class="live-bet-team">
+          <span class="live-bet-you">${mine ? "You're on" : 'You back'}</span>
+          ${escapeHtml(yours)}
+        </span>
+        <span class="live-bet-against">vs ${escapeHtml(theirs)}</span>
         <span class="live-bet-price">${money(risk)} to win ${money(win)}</span>
         <span class="pick-odds">${escapeHtml(oddsLabel(risk, win))}</span>
         <span class="live-bet-from">${courtLabel(court)}${
@@ -588,6 +605,7 @@ function renderOfferForm(court, myTeam) {
           </button>`).join('')}
       </div>
       <p class="pick-preview" id="post-preview-${court.id}"></p>
+      <p class="pick-counter-note" id="counter-note-${court.id}" hidden></p>
       ${myTeam !== null
         ? `<p class="pick-new-note">You're playing &mdash; you can only back your own team.</p>`
         : ''}
@@ -719,6 +737,60 @@ async function refresh() {
   render()
 }
 
+/**
+ * Answer someone's price with your own.
+ *
+ * There is no counter-offer in the database and there does not need to
+ * be. Countering IS posting the other side of the same court -- the only
+ * thing missing was the path from one to the other, which meant scrolling
+ * back down, working out which of the two teams was the opposite of the
+ * one you had just read, and retyping the stake. This does all three.
+ *
+ * It fills the panel and points at the button; it does not post. The
+ * price is the whole point of countering, so naming it stays a deliberate
+ * act.
+ */
+function onCounter(offerId) {
+  const offer = _offers.find(o => o.id === offerId)
+  if (!offer) return
+  const court = _courts.find(c => c.id === offer.court_id)
+  if (!court) return
+
+  const side = offer.side === 1 ? 2 : 1
+  // Their stake, at even money. Countering is nearly always "I'll take
+  // that bet, but not at those odds", and the mirroring makes even money
+  // what a single typed number already means.
+  const amount = (offer.win_open_cents / 100).toFixed(2).replace(/\.00$/, '')
+
+  const risk = document.getElementById(`post-risk-${court.id}`)
+  const win  = document.getElementById(`post-win-${court.id}`)
+  if (!risk || !win) return                 // panel not shown: not yours to post on
+
+  // Hand the win box back to the mirror. Countering is a fresh thought,
+  // and a number typed into it ten minutes ago should not survive it.
+  delete win.dataset.touched
+  risk.value = amount
+  risk.dispatchEvent(new Event('input', { bubbles: true }))
+
+  document.querySelectorAll('.pick-countering')
+    .forEach(el => el.classList.remove('pick-countering'))
+  const target = document.querySelector(
+    `[data-post="${court.id}"][data-side="${side}"]`)
+  if (target) target.classList.add('pick-countering')
+
+  const note = document.getElementById(`counter-note-${court.id}`)
+  if (note) {
+    note.innerHTML = `Countering <strong>${escapeHtml(name(offer.offered_by))}</strong>
+      &mdash; set your price, then click <strong>${escapeHtml(sideNames(court, side))}</strong>.`
+    note.hidden = false
+  }
+
+  document.getElementById(`court-${court.id}`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  risk.focus()
+  risk.select()
+}
+
 /** Shows a short message above the board and clears it after a moment. */
 function flash(message, kind = 'error') {
   const el = document.getElementById('picks-flash')
@@ -808,7 +880,8 @@ export async function loadPicks(container, member) {
   // the other. Delegating from the document covers both and still
   // survives every re-render without rebinding.
   document.addEventListener('click', async event => {
-    const step   = event.target.closest('[data-step]')
+    const step    = event.target.closest('[data-step]')
+    const counter = event.target.closest('[data-counter]')
     const post   = event.target.closest('[data-post]')
     const take   = event.target.closest('[data-take]')
     const cancel = event.target.closest('[data-cancel]')
@@ -828,6 +901,7 @@ export async function loadPicks(container, member) {
         box.dispatchEvent(new Event('input', { bubbles: true }))
       }
     }
+    if (counter) { event.preventDefault(); onCounter(counter.dataset.counter) }
     if (post)   { event.preventDefault(); await onPost(post.dataset.post, Number(post.dataset.side)) }
     if (take)   { event.preventDefault(); await onTake(take.dataset.take) }
     if (cancel) { event.preventDefault(); await onCancel(cancel.dataset.cancel) }
