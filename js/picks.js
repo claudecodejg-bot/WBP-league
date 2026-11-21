@@ -42,6 +42,8 @@ let _fills    = []
 let _results  = {}             // court_id -> winning_side (1, 2 or null)
 let _nameById = {}
 let _awards   = { picks: [], nets: [] }   // the three season titles
+let _counters = []             // pending answers to open offers
+let _counterOpen = null        // offer id whose counter form is showing
 
 /** YYYY-MM-DD for today, local time — not UTC, which is a day ahead at night. */
 function todayISO() {
@@ -174,9 +176,10 @@ async function fetchAll() {
   _nameById = Object.fromEntries((membersRes.data || []).map(m => [m.id, m.full_name]))
 
   const courtIds = _courts.map(c => c.id)
-  _offers  = []
-  _fills   = []
-  _results = {}
+  _offers   = []
+  _fills    = []
+  _counters = []
+  _results  = {}
   if (courtIds.length === 0) return
 
   // The winner is derived from `matches` rather than stored, so it is read
@@ -207,12 +210,24 @@ async function fetchAll() {
   const offerIds = _offers.map(o => o.id)
   if (offerIds.length === 0) return
 
-  const fillsRes = await supabase.from('wager_fills')
-    .select('id, offer_id, taker, poster_risk_cents, taker_risk_cents, created_at')
-    .in('offer_id', offerIds)
-    .order('created_at', { ascending: true })
+  // Counters are only ever read as "what is still waiting on somebody",
+  // so the resolved ones stay on the server. A board that has never had
+  // the migration run answers 404 rather than erroring the whole page —
+  // the rest of the picks still work without counters.
+  const [fillsRes, countersRes] = await Promise.all([
+    supabase.from('wager_fills')
+      .select('id, offer_id, taker, poster_risk_cents, taker_risk_cents, created_at')
+      .in('offer_id', offerIds)
+      .order('created_at', { ascending: true }),
+    supabase.from('wager_counters')
+      .select('id, offer_id, countered_by, risk_cents, win_cents, status, created_at')
+      .in('offer_id', offerIds)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+  ])
   if (fillsRes.error) throw fillsRes.error
   _fills = fillsRes.data || []
+  _counters = countersRes.error ? [] : (countersRes.data || [])
 }
 
 // ── Render ──────────────────────────────────────────────────────────────
@@ -350,6 +365,92 @@ function renderJump() {
 }
 
 /**
+ * The counters hanging off one offer.
+ *
+ * Three audiences and three different things to show:
+ *   - the poster sees every pending answer, with Accept and Decline
+ *   - a counterer sees their own, and can take it back
+ *   - everyone else sees nothing; an answer is between two people
+ *
+ * A counter's numbers are the COUNTERER's end, which is also the end the
+ * reader of this line cares about in both cases: the poster needs to
+ * know what he is being asked to lay, so his own side is spelled out too.
+ */
+function renderThread(offer, court, mine, mineCounter, pending) {
+  if (!_member) return ''
+
+  if (mine) {
+    if (!pending.length) return ''
+    return `<div class="live-thread">
+      <p class="live-thread-head">${pending.length}
+        ${pending.length === 1 ? 'counter' : 'counters'} waiting on you</p>
+      ${pending.map(c => `
+        <div class="live-thread-row">
+          <span class="live-thread-who">${escapeHtml(name(c.countered_by))}</span>
+          <span class="live-thread-terms">wants ${money(c.risk_cents)} to win ${money(c.win_cents)}</span>
+          <span class="live-thread-mine">you'd risk ${money(c.win_cents)} to win ${money(c.risk_cents)}
+            <span class="pick-odds">${escapeHtml(oddsLabel(c.win_cents, c.risk_cents))}</span>
+          </span>
+          <span class="live-thread-act">
+            <button class="btn btn-sm btn-primary" data-accept="${c.id}">Accept</button>
+            <button class="btn btn-sm btn-ghost" data-close-counter="${c.id}">Decline</button>
+          </span>
+        </div>`).join('')}
+    </div>`
+  }
+
+  if (_counterOpen === offer.id) {
+    // Their stake at even money. Countering is nearly always "I'll take
+    // that bet, but not at those odds", and the mirroring makes a single
+    // typed number mean exactly that.
+    const start = (offer.win_open_cents / 100).toFixed(2).replace(/\.00$/, '')
+    return `<div class="live-thread live-thread-form">
+      <p class="live-thread-head">Your price to ${escapeHtml(name(offer.offered_by))}</p>
+      <div class="live-counter-row">
+        <label class="sr-only" for="ctr-risk-${offer.id}">You risk</label>
+        <span class="live-counter-label">I risk $</span>
+        <span class="pick-stepper">
+          <button type="button" class="pick-step" data-step="down" data-target="ctr-risk-${offer.id}" tabindex="-1">&minus;</button>
+          <input type="number" id="ctr-risk-${offer.id}" class="pick-amt" data-ctr="${offer.id}"
+                 min="0" max="100" step="5" value="${start}" inputmode="decimal">
+          <button type="button" class="pick-step" data-step="up" data-target="ctr-risk-${offer.id}" tabindex="-1">+</button>
+        </span>
+        <label class="sr-only" for="ctr-win-${offer.id}">You win</label>
+        <span class="live-counter-label">to win $</span>
+        <span class="pick-stepper">
+          <button type="button" class="pick-step" data-step="down" data-target="ctr-win-${offer.id}" tabindex="-1">&minus;</button>
+          <input type="number" id="ctr-win-${offer.id}" class="pick-amt" data-ctr="${offer.id}"
+                 min="0" max="500" step="5" value="${start}" inputmode="decimal">
+          <button type="button" class="pick-step" data-step="up" data-target="ctr-win-${offer.id}" tabindex="-1">+</button>
+        </span>
+      </div>
+      <p class="live-counter-preview" id="ctr-preview-${offer.id}"></p>
+      <span class="live-thread-act">
+        <button class="btn btn-sm btn-primary" data-send-counter="${offer.id}">Send counter</button>
+        <button class="btn btn-sm btn-ghost" data-cancel-counter="1">Never mind</button>
+      </span>
+    </div>`
+  }
+
+  if (mineCounter) {
+    return `<div class="live-thread">
+      <div class="live-thread-row">
+        <span class="live-thread-who">Your counter</span>
+        <span class="live-thread-terms">${money(mineCounter.risk_cents)} to win ${money(mineCounter.win_cents)}
+          <span class="pick-odds">${escapeHtml(oddsLabel(mineCounter.risk_cents, mineCounter.win_cents))}</span>
+        </span>
+        <span class="live-thread-mine">waiting on ${escapeHtml(name(offer.offered_by))}</span>
+        <span class="live-thread-act">
+          <button class="btn btn-sm btn-ghost" data-close-counter="${mineCounter.id}">Take it back</button>
+        </span>
+      </div>
+    </div>`
+  }
+
+  return ''
+}
+
+/**
  * Open prices. Uncapped on purpose: this is now the ONLY place a bet can
  * be taken, so a cap would hide money that is genuinely going.
  */
@@ -376,6 +477,12 @@ function renderOpenBoard() {
     const blocked = myTeam !== null && myTeam !== takingSide
     const dflt    = (risk / 100).toFixed(2).replace(/\.00$/, '')
 
+    // Answers still waiting on somebody. The poster sees all of them;
+    // everyone else sees only their own, because a counter is a private
+    // negotiation between two people even on a public board.
+    const pending     = _counters.filter(c => c.offer_id === offer.id)
+    const mineCounter = _member && pending.find(c => c.countered_by === _member.id)
+
     let action = ''
     if (mine) {
       action = `<span class="live-bet-act">
@@ -397,15 +504,25 @@ function renderOpenBoard() {
                   aria-label="Risk more" tabindex="-1">+</button>
         </span>
         <button class="btn btn-sm btn-primary" data-take="${offer.id}">Take it</button>
-        <button class="btn btn-sm btn-ghost" data-counter="${offer.id}">Counter</button>
+        ${mineCounter ? '' :
+          `<button class="btn btn-sm btn-ghost" data-counter="${offer.id}">Counter</button>`}
       </span>`
     }
 
     // Naming one team was ambiguous: "Luecke & Jonson" next to a price
     // reads as easily as the side being bet ON as the side being bet
     // AGAINST. Both ends, labelled, leaves nothing to infer.
-    const yours  = sideNames(court, takingSide)
-    const theirs = sideNames(court, offer.side)
+    //
+    // Which end that is depends on who is reading. Everything on this
+    // card is written from the TAKER's point of view, because that is
+    // who it is for -- but the poster sees his own card too, and telling
+    // him he is on the side he bet against is worse than the ambiguity
+    // this label was meant to clear up. So his card flips: his side, his
+    // stake, his odds.
+    const yours   = sideNames(court, mine ? offer.side : takingSide)
+    const theirs  = sideNames(court, mine ? takingSide : offer.side)
+    const showRisk = mine ? offer.risk_open_cents : risk
+    const showWin  = mine ? offer.win_open_cents  : win
 
     return `<li class="live-bet">
       <div class="live-bet-card">
@@ -414,11 +531,12 @@ function renderOpenBoard() {
           ${escapeHtml(yours)}
         </span>
         <span class="live-bet-against">vs ${escapeHtml(theirs)}</span>
-        <span class="live-bet-price">${money(risk)} to win ${money(win)}</span>
-        <span class="pick-odds">${escapeHtml(oddsLabel(risk, win))}</span>
+        <span class="live-bet-price">${money(showRisk)} to win ${money(showWin)}</span>
+        <span class="pick-odds">${escapeHtml(oddsLabel(showRisk, showWin))}</span>
         <span class="live-bet-from">${courtLabel(court)}${
           mine ? '' : ' &middot; from ' + escapeHtml(name(offer.offered_by))}</span>
         ${action}
+        ${renderThread(offer, court, mine, mineCounter, pending)}
       </div>
     </li>`
   }).join('')
@@ -741,55 +859,61 @@ async function refresh() {
 /**
  * Answer someone's price with your own.
  *
- * There is no counter-offer in the database and there does not need to
- * be. Countering IS posting the other side of the same court -- the only
- * thing missing was the path from one to the other, which meant scrolling
- * back down, working out which of the two teams was the opposite of the
- * one you had just read, and retyping the stake. This does all three.
- *
- * It fills the panel and points at the button; it does not post. The
- * price is the whole point of countering, so naming it stays a deliberate
- * act.
+ * Opening the form is a render, not a DOM edit: every other thing on this
+ * page redraws from state, and a form poked into the card by hand would
+ * vanish the next time anything refreshed.
  */
 function onCounter(offerId) {
-  const offer = _offers.find(o => o.id === offerId)
-  if (!offer) return
-  const court = _courts.find(c => c.id === offer.court_id)
-  if (!court) return
+  _counterOpen = offerId
+  render()
+  const box = document.getElementById(`ctr-risk-${offerId}`)
+  if (box) { box.focus(); box.select() }
+  updateCounterPreview(offerId)
+}
 
-  const side = offer.side === 1 ? 2 : 1
-  // Their stake, at even money. Countering is nearly always "I'll take
-  // that bet, but not at those odds", and the mirroring makes even money
-  // what a single typed number already means.
-  const amount = (offer.win_open_cents / 100).toFixed(2).replace(/\.00$/, '')
+/** Spells out both ends of the price being proposed. */
+function updateCounterPreview(offerId) {
+  const el = document.getElementById(`ctr-preview-${offerId}`)
+  if (!el) return
+  const risk = centsFrom(`ctr-risk-${offerId}`)
+  const win  = centsFrom(`ctr-win-${offerId}`)
+  if (!risk || !win) { el.textContent = ''; return }
+  const odds = oddsLabel(risk, win)
+  el.textContent =
+    `${odds === 'even money' ? 'Even money' : odds} — you win ${money(win)} or pay ${money(risk)}.` +
+    ` They risk ${money(win)} to win ${money(risk)}.`
+}
 
-  const risk = document.getElementById(`post-risk-${court.id}`)
-  const win  = document.getElementById(`post-win-${court.id}`)
-  if (!risk || !win) return                 // panel not shown: not yours to post on
+async function onSendCounter(offerId) {
+  const risk = centsFrom(`ctr-risk-${offerId}`)
+  const win  = centsFrom(`ctr-win-${offerId}`)
+  if (!risk) return flash('Put in what you want to risk.')
+  if (!win)  return flash('Put in what you want to win.')
 
-  // Hand the win box back to the mirror. Countering is a fresh thought,
-  // and a number typed into it ten minutes ago should not survive it.
-  delete win.dataset.touched
-  risk.value = amount
-  risk.dispatchEvent(new Event('input', { bubbles: true }))
+  const { error } = await supabase.rpc('counter_offer', {
+    p_offer_id:   offerId,
+    p_risk_cents: risk,
+    p_win_cents:  win
+  })
+  if (error) return flash(error.message)
 
-  document.querySelectorAll('.pick-countering')
-    .forEach(el => el.classList.remove('pick-countering'))
-  const target = document.querySelector(
-    `[data-post="${court.id}"][data-side="${side}"]`)
-  if (target) target.classList.add('pick-countering')
+  _counterOpen = null
+  flash(`Counter sent — ${money(risk)} to win ${money(win)}. It is on them now.`, 'success')
+  await refresh()
+}
 
-  const note = document.getElementById(`counter-note-${court.id}`)
-  if (note) {
-    note.innerHTML = `Countering <strong>${escapeHtml(name(offer.offered_by))}</strong>
-      &mdash; set your price, then click <strong>${escapeHtml(sideNames(court, side))}</strong>.`
-    note.hidden = false
-  }
+async function onAcceptCounter(counterId) {
+  const { error } = await supabase.rpc('accept_counter', { p_counter_id: counterId })
+  if (error) return flash(error.message)
+  flash('Done — that one is matched.', 'success')
+  await refresh()
+}
 
-  document.getElementById(`court-${court.id}`)
-    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  risk.focus()
-  risk.select()
+async function onCloseCounter(counterId) {
+  const { data, error } = await supabase.rpc('close_counter', { p_counter_id: counterId })
+  if (error) return flash(error.message)
+  flash(data === 'withdrawn' ? 'Counter taken back.' : 'Counter declined.', 'success')
+  await refresh()
 }
 
 /** Shows a short message above the board and clears it after a moment. */
@@ -912,6 +1036,10 @@ export async function loadPicks(container, member) {
   document.addEventListener('click', async event => {
     const step    = event.target.closest('[data-step]')
     const counter = event.target.closest('[data-counter]')
+    const sendCtr = event.target.closest('[data-send-counter]')
+    const killCtr = event.target.closest('[data-cancel-counter]')
+    const accept  = event.target.closest('[data-accept]')
+    const closeC  = event.target.closest('[data-close-counter]')
     const post   = event.target.closest('[data-post]')
     const take   = event.target.closest('[data-take]')
     const cancel = event.target.closest('[data-cancel]')
@@ -932,6 +1060,10 @@ export async function loadPicks(container, member) {
       }
     }
     if (counter) { event.preventDefault(); onCounter(counter.dataset.counter) }
+    if (sendCtr) { event.preventDefault(); await onSendCounter(sendCtr.dataset.sendCounter) }
+    if (killCtr) { event.preventDefault(); _counterOpen = null; render() }
+    if (accept)  { event.preventDefault(); await onAcceptCounter(accept.dataset.accept) }
+    if (closeC)  { event.preventDefault(); await onCloseCounter(closeC.dataset.closeCounter) }
     if (post)   { event.preventDefault(); await onPost(post.dataset.post, Number(post.dataset.side)) }
     if (take)   { event.preventDefault(); await onTake(take.dataset.take) }
     if (cancel) { event.preventDefault(); await onCancel(cancel.dataset.cancel) }
@@ -960,5 +1092,21 @@ export async function loadPicks(container, member) {
     }
 
     updatePreview(courtId)
+  })
+
+  // The counter form is the same two boxes with the same habits.
+  document.addEventListener('input', event => {
+    const field = event.target.closest('[data-ctr]')
+    if (!field) return
+    const offerId = field.dataset.ctr
+
+    if (field.id === `ctr-win-${offerId}`) {
+      field.dataset.touched = '1'
+    } else if (field.id === `ctr-risk-${offerId}`) {
+      const win = document.getElementById(`ctr-win-${offerId}`)
+      if (win && win.dataset.touched !== '1') win.value = field.value
+    }
+
+    updateCounterPreview(offerId)
   })
 }

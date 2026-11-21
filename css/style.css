@@ -3635,6 +3635,49 @@ footer {
   display: block; margin-top: 0.15rem;
   font-size: 0.75rem; color: rgba(255,255,255,0.62);
 }
+/* ── A counter thread hanging off an offer ──────────────────────── */
+.live-thread {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed rgba(255,255,255,0.25);
+}
+.live-thread-head {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: #ffe9a8;
+}
+.live-thread-row {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 0.3rem 0.5rem;
+  padding: 0.4rem 0;
+}
+.live-thread-row + .live-thread-row { border-top: 1px solid rgba(255,255,255,0.1); }
+.live-thread-who   { font-weight: 800; font-size: 0.9rem; }
+.live-thread-terms { font-size: 0.9rem; font-weight: 600; color: #ffd9a8; }
+/* What accepting would cost the reader. The counter's own numbers are
+   the other end, and nobody should have to flip them in their head
+   before agreeing to lay the money. */
+.live-thread-mine {
+  flex: 1 1 100%;
+  font-size: 0.82rem; color: rgba(255,255,255,0.72);
+}
+.live-thread-act {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+
+.live-thread-form { border-top-style: solid; }
+.live-counter-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.45rem;
+}
+.live-counter-label { font-size: 0.85rem; color: rgba(255,255,255,0.82); }
+.live-counter-preview {
+  margin: 0.45rem 0 0.5rem;
+  font-size: 0.95rem; font-weight: 600; line-height: 1.4;
+  color: rgba(255,255,255,0.92);
+}
+
 /* ── Accepted wagers: the same sign, in navy ── */
 /* Three lit boxes on one page only work if no two of them are the same
    colour. Open prices are charcoal under amber, posting is green under
