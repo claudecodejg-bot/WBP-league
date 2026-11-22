@@ -30,5 +30,49 @@
     "id": "17cd9f16-3f71-4171-8b0c-c0500791e311",
     "played_on": "2026-11-16",
     "week_label": "Monday, November 16, 2026"
+  },
+  {
+    "courts": [
+      {
+        "location": "Wee Burn",
+        "team1": [
+          "Rockman",
+          "Adams"
+        ],
+        "team2": [
+          "Luecke",
+          "Jonson"
+        ],
+        "time": "7:00 PM"
+      },
+      {
+        "location": "Wee Burn",
+        "team1": [
+          "McGurren",
+          "Napolitano"
+        ],
+        "team2": [
+          "Brown",
+          "Dolan"
+        ],
+        "time": "7:00 PM"
+      },
+      {
+        "location": "Wee Burn",
+        "team1": [
+          "McCarthy",
+          "Walsh"
+        ],
+        "team2": [
+          "Baum",
+          "Ridder"
+        ],
+        "time": "7:00 PM"
+      }
+    ],
+    "created_at": "2026-11-21T01:04:50.475753+00:00",
+    "id": "da4fc103-c606-4ec2-a96b-8efe94b93d29",
+    "played_on": "2026-11-23",
+    "week_label": "Monday, November 23, 2026"
   }
 ]
