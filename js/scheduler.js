@@ -3,9 +3,9 @@
 // =============================================
 
 import { supabase }                from './supabase-client.js?v=2d21059e'
-import { SEASON_START, CURRENT_SEASON, MIN_SEED_MATCHES } from './config.js?v=e5b28746'
-import { upcomingWeeks } from './season-weeks.js?v=3989d623'
-import { computeCurrentSeasonStats, isWinner } from './scoring.js?v=253001b7'
+import { SEASON_START, CURRENT_SEASON, MIN_SEED_MATCHES } from './config.js?v=5b7dd9c2'
+import { upcomingWeeks } from './season-weeks.js?v=eebdacbc'
+import { computeCurrentSeasonStats, isWinner } from './scoring.js?v=933c2645'
 
 const ITERATIONS     = 2000          // random sampling iterations
 const BALANCE_WEIGHT = 3             // penalty per 1-pt team score differential

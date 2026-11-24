@@ -3,8 +3,8 @@
 // =============================================
 
 import { supabase, connectionErrorHtml } from './supabase-client.js?v=2d21059e'
-import { CURRENT_SEASON } from './config.js?v=e5b28746'
-import { isWinner, matchScore, fmt, winnerFirst } from './scoring.js?v=253001b7'
+import { CURRENT_SEASON } from './config.js?v=5b7dd9c2'
+import { isWinner, matchScore, fmt, winnerFirst } from './scoring.js?v=933c2645'
 
 // Members + all matches are fetched once and cached, so switching seasons
 // re-renders instantly from memory. Pass { refresh: true } after inserting

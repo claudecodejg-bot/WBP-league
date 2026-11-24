@@ -76,7 +76,7 @@ export const BREAKING_NEWS = {
   body: [
     'Records obtained this week reveal that "Adams" has been competing under an assumed name since 2009 and is, in fact, a robotic agentic AI with direct links to Jensen.',
     'Suspicions were raised when Adams was observed drawing 400 watts at the warm-up and requesting a liquid-cooling break between sets. A teardown confirmed the worst: eight H100s, a titanium backhand, and a service agreement signed in Santa Clara.',
-    'Luecke, who has partnered him eleven times, said only: "That explains the serve."'
+    'Luecke, who has partnered with him eleven times, said only: "That explains the serve."'
   ],
   footer: 'More news to follow.'
 }
