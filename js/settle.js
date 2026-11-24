@@ -35,6 +35,7 @@ let _picks      = []           // v_pick_results — the log
 let _courts     = {}           // court_id -> scheduled_courts row
 let _nameById   = {}
 let _nights     = []           // nights with settled money, newest first
+let _scores     = {}           // court_id -> { winners, losers, sets }
 
 // The last night that counts as paid, or null if the tab has never been
 // cleared. _marksOk is false when settle_marks is not in the database
@@ -89,7 +90,7 @@ function sideNames(court, side) {
 // ── Data ────────────────────────────────────────────────────────────────
 
 async function fetchAll() {
-  const [pairsRes, netsRes, seasonRes, membersRes, picksRes, courtsRes, marksRes] =
+  const [pairsRes, netsRes, seasonRes, membersRes, picksRes, courtsRes, marksRes, matchesRes] =
     await Promise.all([
       supabase.from('v_settle_week')
         .select('played_on, a, b, a_name, b_name, a_net_cents')
@@ -118,7 +119,14 @@ async function fetchAll() {
         .select('settled_through, created_at')
         .eq('season', CURRENT_SEASON)
         .order('settled_through', { ascending: false })
-        .limit(1)
+        .limit(1),
+      // The scores themselves. v_pick_results says WHICH side won, which
+      // is all settlement needs, but a reader checking a bet had to open
+      // the results page to see 6-4 1-6 2-6 and come back.
+      supabase.from('matches')
+        .select('played_on, team1_player1, team1_player2, team2_player1, team2_player2, ' +
+                'team1_set1, team1_set2, team1_set3, team2_set1, team2_set2, team2_set3')
+        .eq('season', CURRENT_SEASON)
     ])
 
   for (const res of [pairsRes, netsRes, seasonRes, membersRes, picksRes, courtsRes]) {
@@ -140,6 +148,47 @@ async function fetchAll() {
   _settledThrough = _marksOk ? (marksRes.data?.[0]?.settled_through ?? null) : null
 
   _nights = [...new Set(_memberNets.map(r => r.played_on))].sort().reverse()
+
+  // A court and a match are tied together by their four players on a
+  // date, never by court number — see v_court_results. Same rule here, so
+  // a night with a substitution simply finds nothing rather than
+  // attaching the wrong score to a bet.
+  _scores = {}
+  if (!matchesRes.error) {
+    for (const c of Object.values(_courts)) {
+      const want = [c.t1p1, c.t1p2, c.t2p1, c.t2p2].filter(Boolean).sort().join('|')
+      const hit = (matchesRes.data || []).find(m => {
+        const got = [m.team1_player1, m.team1_player2, m.team2_player1, m.team2_player2]
+          .filter(Boolean).sort().join('|')
+        return got === want
+      })
+      if (hit) _scores[c.id] = scoreLine(hit)
+    }
+  }
+}
+
+/**
+ * A match as "who beat whom, and by what", winners first.
+ *
+ * Sets are flipped to the winners' point of view: a bet is checked
+ * against the team that won, and 6-4 1-6 2-6 read from the losing side
+ * is the kind of thing that makes somebody think they won.
+ */
+function scoreLine(m) {
+  const setsFor = (a, b) => [1, 2, 3]
+    .map(i => [m[`team${a}_set${i}`], m[`team${b}_set${i}`]])
+    .filter(([x, y]) => x != null && y != null)
+  const won = (a, b) => setsFor(a, b).filter(([x, y]) => x > y).length >= 2
+
+  const t1 = won(1, 2), t2 = won(2, 1)
+  if (t1 === t2) return null                 // part-entered or abandoned
+
+  const [w, l] = t1 ? [1, 2] : [2, 1]
+  return {
+    winners: [m[`team${w}_player1`], m[`team${w}_player2`]],
+    losers:  [m[`team${l}_player1`], m[`team${l}_player2`]],
+    sets: setsFor(w, l).map(([x, y]) => `${x}-${y}`).join(', ')
+  }
 }
 
 /** Matched picks on a night that has been and gone with no result. */
@@ -359,28 +408,50 @@ function renderLog() {
                 encodeURIComponent(court.t1p1)}">${escapeHtml(backed)}</a>`
             : ` on <strong>${escapeHtml(backed)}</strong>`
 
-        let out
-        if (p.winner === null) {
+        // Who collects comes first and who pays comes second, because
+        // that is the order the question gets asked in: not "what did
+        // McGurren back" but "who is up, and off whom".
+        const settledRow = p.winner !== null
+        const loser = settledRow
+          ? (p.winner === p.taker ? p.poster : p.taker)
+          : null
+
+        const out = settledRow
+          ? `<span class="settle-log-out ${
+              p.winner === p.taker ? 'settle-up' : 'settle-down'}">
+               ${escapeHtml(name(p.winner))} +${money(p.amount_cents)}</span>`
           // A pick on a Monday still to come is riding, not stuck. Only
           // one on a night that has been and gone is waiting on anything,
           // and that is the case the panel above is about.
-          out = `<span class="settle-log-out settle-log-pending">${
-            p.played_on >= todayISO() ? 'riding' : 'no result yet'}</span>`
-        } else {
-          const won = p.winner === p.taker
-          out = `<span class="settle-log-out ${won ? 'settle-up' : 'settle-down'}">
-            ${escapeHtml(name(p.winner))} +${money(p.amount_cents)}</span>`
-        }
+          : `<span class="settle-log-out settle-log-pending">${
+              p.played_on >= todayISO() ? 'riding' : 'no result yet'}</span>`
+
+        // The court's actual score, so a bet can be checked without
+        // opening the results page and coming back.
+        const sc = _scores[p.court_id]
+        const scoreHtml = !sc ? '' : `
+          <span class="settle-log-score">
+            ${escapeHtml(sc.winners.map(name).join(' & '))} beat
+            ${escapeHtml(sc.losers.map(name).join(' & '))}
+            <span class="settle-log-sets">${escapeHtml(sc.sets)}</span>
+          </span>`
 
         const mine = _member && (p.taker === _member.id || p.poster === _member.id)
         return `<li class="settle-log-row${mine ? ' settle-log-mine' : ''}">
           <span class="settle-log-court">C${p.court_no ?? '?'}</span>
-          <span class="settle-log-what">
-            <strong>${escapeHtml(name(p.taker))}</strong>${backedHtml},
-            ${money(p.taker_risk_cents)} to win ${money(p.poster_risk_cents)},
-            v ${escapeHtml(name(p.poster))}
+          <span class="settle-log-main">
+            <span class="settle-log-line">
+              ${out}
+              ${loser ? `<span class="settle-log-from">from
+                  <strong>${escapeHtml(name(loser))}</strong></span>` : ''}
+            </span>
+            ${scoreHtml}
+            <span class="settle-log-what">
+              ${escapeHtml(name(p.taker))}${backedHtml},
+              ${money(p.taker_risk_cents)} to win ${money(p.poster_risk_cents)},
+              v ${escapeHtml(name(p.poster))}
+            </span>
           </span>
-          ${out}
         </li>`
       }).join('')
 

@@ -4183,10 +4183,42 @@ footer {
   font-size: 0.72rem; font-weight: 800;
   letter-spacing: 0.04em; color: var(--gray-500);
 }
-.settle-log-what { flex: 1 1 14rem; min-width: 0; }
+/* Three stacked lines now, not one: who collects, what the court did,
+   and the bet that produced it. The row used to push the outcome to the
+   far right with margin-left:auto, which put the one figure anybody is
+   looking for at the end of a sentence they had to read first. */
+.settle-log-main { flex: 1 1 14rem; min-width: 0; }
+.settle-log-line {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.4rem;
+}
 .settle-log-out {
-  margin-left: auto; white-space: nowrap;
-  font-size: 0.88rem; font-weight: 600;
+  white-space: nowrap;
+  font-size: 1rem; font-weight: 800;
+}
+.settle-log-from {
+  font-size: 0.88rem; color: var(--gray-600);
+}
+.settle-log-from strong { color: var(--gray-800); font-weight: 700; }
+
+/* The court's own score, so a bet can be checked here instead of on the
+   results page. Winners first -- 6-4 1-6 2-6 read from the losing side
+   is how somebody talks themselves into having won. */
+.settle-log-score {
+  display: block; margin-top: 0.1rem;
+  font-size: 0.82rem; color: var(--gray-600);
+}
+.settle-log-sets {
+  margin-left: 0.3rem;
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--gray-500);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The bet itself drops to the quiet third line: it is the detail you
+   check after the answer, not the answer. */
+.settle-log-what {
+  display: block; margin-top: 0.1rem;
+  font-size: 0.82rem; color: var(--gray-500);
 }
 .settle-log-pending { color: var(--gray-500); font-style: italic; font-weight: 400; }
 
