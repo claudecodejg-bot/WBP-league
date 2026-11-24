@@ -60,3 +60,23 @@ export const MIN_RANKED_MATCHES = 4
 // won the championship. Below this threshold we walk back to the most
 // recent season with enough matches to mean something.
 export const MIN_SEED_MATCHES = 4
+
+// ── Breaking news ───────────────────────────────────────────────────────
+// A loud temporary panel on the home page, between the season banner and
+// the courts. Deliberately one constant and not markup: it goes up and
+// comes down by editing this object, and setting it to null removes it
+// from the page entirely with nothing left behind to find later.
+//
+// `body` is an array of paragraphs. `footer` is the small italic
+// sign-off. Everything is escaped before it is written, so no HTML.
+export const BREAKING_NEWS = {
+  kicker:   'Breaking News',
+  headline: 'Adams out of the WBP League',
+  sub:      'Scandal uncovered',
+  body: [
+    'Records obtained this week reveal that "Adams" has been competing under an assumed name since 2009 and is, in fact, a robotic agentic AI with direct links to Jensen.',
+    'Suspicions were raised when Adams was observed drawing 400 watts at the warm-up and requesting a liquid-cooling break between sets. A teardown confirmed the worst: eight H100s, a titanium backhand, and a service agreement signed in Santa Clara.',
+    'Luecke, who has partnered him eleven times, said only: "That explains the serve."'
+  ],
+  footer: 'More news to follow.'
+}

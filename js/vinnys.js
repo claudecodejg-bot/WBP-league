@@ -6,7 +6,7 @@
 //  behind the admin check.
 // =============================================
 import { supabase } from './supabase-client.js?v=2d21059e'
-import { SEASON_START } from './config.js?v=d82921ce'
+import { SEASON_START } from './config.js?v=e5b28746'
 
 // "Forfeit" is a placeholder member used to record a walkover, not a person,
 // so it must never appear in a tally of who went out.

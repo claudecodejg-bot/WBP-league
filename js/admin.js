@@ -3,9 +3,9 @@
 // =============================================
 
 import { supabase } from './supabase-client.js?v=2d21059e'
-import { CURRENT_SEASON } from './config.js?v=d82921ce'
-import { isWinner, matchScore, fmt } from './scoring.js?v=059e4ed1'
-import { loadAdminAvailability } from './availability.js?v=e92704da'
+import { CURRENT_SEASON } from './config.js?v=e5b28746'
+import { isWinner, matchScore, fmt } from './scoring.js?v=253001b7'
+import { loadAdminAvailability } from './availability.js?v=f612d70c'
 
 let allMembers = []
 

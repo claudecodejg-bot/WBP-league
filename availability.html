@@ -14,7 +14,7 @@
   <meta property="og:url" content="https://wbpleague.com/availability.html">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=7a6abfae">
+  <link rel="stylesheet" href="css/style.css?v=15c5855b">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -79,8 +79,8 @@
 
 <script type="module">
   import { requireLogin, getCurrentMember, initNav } from './js/auth.js?v=81b26575'
-  import { UNOFFICIAL_WEEKS } from './js/config.js?v=d82921ce'
-  import { upcomingWeeks, isUnofficialWeek } from './js/season-weeks.js?v=2864b9a6'
+  import { UNOFFICIAL_WEEKS } from './js/config.js?v=e5b28746'
+  import { upcomingWeeks, isUnofficialWeek } from './js/season-weeks.js?v=3989d623'
 
   // First Monday that counts towards the standings: the one after the last
   // warm-up week. Only shown while a warm-up week is still on the form —
@@ -99,7 +99,7 @@
       'Please fill in the warm-up weeks too, so we can set the courts.'
     el.hidden = false
   }
-  import { loadAvailability, loadAvailabilityTally, loadAdminAvailability } from './js/availability.js?v=e92704da'
+  import { loadAvailability, loadAvailabilityTally, loadAdminAvailability } from './js/availability.js?v=f612d70c'
 
   ;(async () => {
     initNav('availability')
