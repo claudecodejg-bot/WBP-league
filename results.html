@@ -713,6 +713,8 @@
   let _vinnysPeople  = []   // pickable members, name-sorted
   let _vinnysMarked  = {}   // playedOn -> Set(member_id) already saved
   let _vinnysWhen    = {}   // playedOn -> when it was last recorded
+  let _vinnysBy      = {}   // playedOn -> member_id who recorded it
+  let _vinnysNameById = {}  // id -> full_name, for naming them
   // Set to a date when a save found the night changed underneath it. The
   // next save of THAT night goes through; any other night clears it.
   let _vinnysForce   = null
@@ -728,7 +730,7 @@
       supabase.from('matches')
         .select('played_on, week_label, team1_player1, team1_player2, team2_player1, team2_player2')
         .eq('season', CURRENT_SEASON).order('played_on', { ascending: false }),
-      supabase.from('vinnys').select('played_on, member_id, created_at')
+      supabase.from('vinnys').select('played_on, member_id, created_at, recorded_by')
     ])
 
     if (membersRes.error || matchesRes.error) {
@@ -736,6 +738,15 @@
                 '<button id="v-close" class="btn btn-primary" style="width:100%;">Close</button>')
       document.getElementById('v-close').addEventListener('click', closeModal)
       return
+    }
+    // recorded_by arrived after the table did. Asking for a column that is
+    // not there yet fails the whole query, and the message below would then
+    // blame the table -- which is present, and full of entries. Retry once
+    // without it so the form keeps working until the migration is run.
+    if (vinnysRes.error) {
+      const plain = await supabase.from('vinnys')
+        .select('played_on, member_id, created_at')
+      if (!plain.error) { vinnysRes.data = plain.data; vinnysRes.error = null }
     }
     if (vinnysRes.error) {
       setScreen(`<div class="alert alert-error">
@@ -777,14 +788,18 @@
       .filter(m => activeIds.has(m.id) || playedAny.has(m.id))
       .filter(m => m.full_name !== 'Forfeit')
 
+    _vinnysNameById = Object.fromEntries(allMembers.map(m => [m.id, m.full_name]))
+
     _vinnysMarked = {}
     _vinnysWhen   = {}
+    _vinnysBy     = {}
     for (const r of (vinnysRes.data || [])) {
       ;(_vinnysMarked[r.played_on] ||= new Set()).add(r.member_id)
       // Latest wins: a night saved twice should report when it was last
-      // touched, not when somebody first started it.
+      // touched, and by whom, not who first started it.
       if (!_vinnysWhen[r.played_on] || r.created_at > _vinnysWhen[r.played_on]) {
         _vinnysWhen[r.played_on] = r.created_at
+        _vinnysBy[r.played_on]   = r.recorded_by || null
       }
     }
 
@@ -823,9 +838,11 @@
     // button reading "Update", a "(3 out)" in the dropdown and some
     // pre-ticked boxes -- all true, none of them loud enough to stop
     // somebody filling the form in again from scratch.
+    const byId   = _vinnysBy[night.playedOn]
+    const byName = byId ? _vinnysNameById[byId] : null
     const already = saved
       ? `<div class="alert alert-info" style="margin-bottom:0.75rem;font-size:0.85rem;">
-           <strong>Already logged.</strong> ${marked.size}
+           <strong>Already logged${byName ? ' by ' + byName : ''}.</strong> ${marked.size}
            ${marked.size === 1 ? 'person is' : 'people are'} recorded for this night${
              _vinnysWhen[night.playedOn]
                ? ', saved ' + new Date(_vinnysWhen[night.playedOn])
@@ -889,7 +906,7 @@
     // second save quietly discarding the first. Re-read the night here and
     // refuse to write over a version this form never saw.
     const fresh = await supabase.from('vinnys')
-      .select('member_id').eq('played_on', playedOn)
+      .select('member_id, recorded_by').eq('played_on', playedOn)
     if (!fresh.error && _vinnysForce !== playedOn) {
       const now  = new Set((fresh.data || []).map(r => r.member_id))
       const then = _vinnysMarked[playedOn] || new Set()
@@ -900,10 +917,14 @@
         btn.disabled = false
         btn.textContent = 'Save anyway'
         alert.className = 'alert alert-error'
+        const whoId = (fresh.data || []).map(r => r.recorded_by).find(Boolean)
+        const who   = (whoId && _vinnysNameById[whoId]) || 'Somebody else'
+        _vinnysBy[playedOn] = whoId || null
         alert.textContent = now.size === 0
-          ? 'Somebody cleared this night while you had it open. Press "Save anyway" to record yours, or Cancel.'
-          : `Somebody else recorded this night while you had it open — ${now.size} out now. `
-            + 'Press "Save anyway" to replace it with your ticks, or Cancel and reopen to see theirs.'
+          ? `${who === 'Somebody else' ? 'Somebody' : who} cleared this night while you had it open. `
+            + 'Press "Save anyway" to record yours, or Cancel.'
+          : `${who} recorded this night while you had it open — ${now.size} out now. `
+            + 'Press "Save anyway" to replace it with their entry, or Cancel and reopen to see it.'
         return
       }
     }
@@ -913,7 +934,9 @@
     let err = del.error
     if (!err && ids.length > 0) {
       const ins = await supabase.from('vinnys')
-        .insert(ids.map(id => ({ played_on: playedOn, member_id: id })))
+        .insert(ids.map(id => ({
+          played_on: playedOn, member_id: id, recorded_by: _member?.id ?? null
+        })))
       err = ins.error
     }
 
@@ -928,6 +951,7 @@
 
     _vinnysMarked[playedOn] = new Set(ids)
     _vinnysWhen[playedOn]   = new Date().toISOString()
+    _vinnysBy[playedOn]     = _member?.id ?? null
     _vinnysForce = null
     alert.className = 'alert alert-success'
     alert.textContent = ids.length === 0
