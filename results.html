@@ -712,6 +712,10 @@
   let _vinnysNights  = []   // [{ playedOn, label, playerIds:Set }]
   let _vinnysPeople  = []   // pickable members, name-sorted
   let _vinnysMarked  = {}   // playedOn -> Set(member_id) already saved
+  let _vinnysWhen    = {}   // playedOn -> when it was last recorded
+  // Set to a date when a save found the night changed underneath it. The
+  // next save of THAT night goes through; any other night clears it.
+  let _vinnysForce   = null
 
   async function openVinnysModal(preselectDate) {
     modal.style.display = 'flex'
@@ -724,7 +728,7 @@
       supabase.from('matches')
         .select('played_on, week_label, team1_player1, team1_player2, team2_player1, team2_player2')
         .eq('season', CURRENT_SEASON).order('played_on', { ascending: false }),
-      supabase.from('vinnys').select('played_on, member_id')
+      supabase.from('vinnys').select('played_on, member_id, created_at')
     ])
 
     if (membersRes.error || matchesRes.error) {
@@ -774,8 +778,14 @@
       .filter(m => m.full_name !== 'Forfeit')
 
     _vinnysMarked = {}
+    _vinnysWhen   = {}
     for (const r of (vinnysRes.data || [])) {
       ;(_vinnysMarked[r.played_on] ||= new Set()).add(r.member_id)
+      // Latest wins: a night saved twice should report when it was last
+      // touched, not when somebody first started it.
+      if (!_vinnysWhen[r.played_on] || r.created_at > _vinnysWhen[r.played_on]) {
+        _vinnysWhen[r.played_on] = r.created_at
+      }
     }
 
     const start = _vinnysNights.find(n => n.playedOn === preselectDate) || _vinnysNights[0]
@@ -784,6 +794,8 @@
 
   function renderVinnysStep(playedOn) {
     const night  = _vinnysNights.find(n => n.playedOn === playedOn) || _vinnysNights[0]
+    // Switching nights drops any "save anyway" the previous one earned.
+    if (_vinnysForce && _vinnysForce !== night.playedOn) _vinnysForce = null
     const marked = _vinnysMarked[night.playedOn] || new Set()
     const saved  = marked.size > 0
 
@@ -807,9 +819,28 @@
         ${night.playerIds.has(m.id) ? '<span class="vinnys-pick-tag">played</span>' : ''}
       </label>`).join('')
 
+    // Saying so plainly. The signs that a night was already done were a
+    // button reading "Update", a "(3 out)" in the dropdown and some
+    // pre-ticked boxes -- all true, none of them loud enough to stop
+    // somebody filling the form in again from scratch.
+    const already = saved
+      ? `<div class="alert alert-info" style="margin-bottom:0.75rem;font-size:0.85rem;">
+           <strong>Already logged.</strong> ${marked.size}
+           ${marked.size === 1 ? 'person is' : 'people are'} recorded for this night${
+             _vinnysWhen[night.playedOn]
+               ? ', saved ' + new Date(_vinnysWhen[night.playedOn])
+                   .toLocaleString('en-US', { weekday: 'short', month: 'short',
+                                              day: 'numeric', hour: 'numeric', minute: '2-digit' })
+               : ''}.
+           The ticks below are what is saved now &mdash; change them and press
+           Update, or press Cancel to leave it alone.
+         </div>`
+      : ''
+
     setTitle("Vinny's Award")
     setScreen(`
       <div id="vinnys-alert" class="alert hidden"></div>
+      ${already}
       <div class="form-group">
         <label for="v-night">Night</label>
         <select id="v-night" class="form-input">${nightOpts}</select>
@@ -852,6 +883,31 @@
     btn.disabled = true
     btn.textContent = 'Saving…'
 
+    // A night is saved by clearing it and re-inserting, so two people with
+    // the form open at once do not produce duplicates -- the unique index
+    // already rules those out -- they produce a silent overwrite, with the
+    // second save quietly discarding the first. Re-read the night here and
+    // refuse to write over a version this form never saw.
+    const fresh = await supabase.from('vinnys')
+      .select('member_id').eq('played_on', playedOn)
+    if (!fresh.error && _vinnysForce !== playedOn) {
+      const now  = new Set((fresh.data || []).map(r => r.member_id))
+      const then = _vinnysMarked[playedOn] || new Set()
+      const same = now.size === then.size && [...now].every(id => then.has(id))
+      if (!same) {
+        _vinnysMarked[playedOn] = now
+        _vinnysForce = playedOn        // a second press goes through
+        btn.disabled = false
+        btn.textContent = 'Save anyway'
+        alert.className = 'alert alert-error'
+        alert.textContent = now.size === 0
+          ? 'Somebody cleared this night while you had it open. Press "Save anyway" to record yours, or Cancel.'
+          : `Somebody else recorded this night while you had it open — ${now.size} out now. `
+            + 'Press "Save anyway" to replace it with your ticks, or Cancel and reopen to see theirs.'
+        return
+      }
+    }
+
     // Replace the night wholesale so unticking somebody actually removes them.
     const del = await supabase.from('vinnys').delete().eq('played_on', playedOn)
     let err = del.error
@@ -871,6 +927,8 @@
     }
 
     _vinnysMarked[playedOn] = new Set(ids)
+    _vinnysWhen[playedOn]   = new Date().toISOString()
+    _vinnysForce = null
     alert.className = 'alert alert-success'
     alert.textContent = ids.length === 0
       ? 'Night cleared — nobody recorded.'
