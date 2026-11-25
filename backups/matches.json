@@ -10764,6 +10764,24 @@
     "week_label": "Week 4"
   },
   {
+    "created_at": "2026-11-24T02:41:44.248339+00:00",
+    "entered_by": "fd139b77-891a-4e38-beb0-86de22a31ebe",
+    "id": "c0e86d7c-e34b-4240-9792-815632bef9cb",
+    "played_on": "2026-11-23",
+    "season": "2026-27",
+    "team1_player1": "e242608b-cf43-4efa-a7a0-03cf032cd204",
+    "team1_player2": "fd139b77-891a-4e38-beb0-86de22a31ebe",
+    "team1_set1": 6,
+    "team1_set2": 5,
+    "team1_set3": 6,
+    "team2_player1": "df99e58b-b64b-4975-90e9-24676a265c23",
+    "team2_player2": "15537aa0-2461-4428-83ca-af8115ad46f7",
+    "team2_set1": 3,
+    "team2_set2": 7,
+    "team2_set3": 2,
+    "week_label": "Week 7"
+  },
+  {
     "created_at": "2026-03-09T22:18:35.67382+00:00",
     "entered_by": null,
     "id": "c139a042-de6f-43d8-aa55-cce94a22f669",
@@ -12348,6 +12366,24 @@
     "week_label": "Week 9"
   },
   {
+    "created_at": "2026-11-24T02:13:55.321923+00:00",
+    "entered_by": "a5dab49e-a0fe-47e8-a015-4a782172b63e",
+    "id": "df29dec2-756d-45a5-b328-6159bf879799",
+    "played_on": "2026-11-23",
+    "season": "2026-27",
+    "team1_player1": "a5dab49e-a0fe-47e8-a015-4a782172b63e",
+    "team1_player2": "a626833d-205d-4373-9bc9-91395fe54edb",
+    "team1_set1": 6,
+    "team1_set2": 1,
+    "team1_set3": 2,
+    "team2_player1": "3cabc3ee-cd64-48f1-a712-78ce17ee3442",
+    "team2_player2": "bf04312c-c333-43d8-8286-e9b4b8571a89",
+    "team2_set1": 4,
+    "team2_set2": 6,
+    "team2_set3": 6,
+    "week_label": "Week 7"
+  },
+  {
     "created_at": "2026-03-09T22:18:35.67382+00:00",
     "entered_by": null,
     "id": "df31915d-cb6e-4b78-b0a9-bfd4187d1aa3",
@@ -13714,6 +13750,24 @@
     "team2_set2": 4,
     "team2_set3": null,
     "week_label": "Week 9"
+  },
+  {
+    "created_at": "2026-11-24T02:43:46.770937+00:00",
+    "entered_by": "3121f5d6-90ba-45a6-a99c-e50c9d8f31f1",
+    "id": "f2ee3cd2-e403-44d2-8db5-4225df687ec3",
+    "played_on": "2026-11-23",
+    "season": "2026-27",
+    "team1_player1": "a1ee3765-95a1-428e-8ada-c26b28be2335",
+    "team1_player2": "a2883f9c-7008-4726-b950-b6e74db75794",
+    "team1_set1": 6,
+    "team1_set2": 5,
+    "team1_set3": 0,
+    "team2_player1": "3121f5d6-90ba-45a6-a99c-e50c9d8f31f1",
+    "team2_player2": "6cb7240f-4ce9-4891-943d-6493e9a38e89",
+    "team2_set1": 4,
+    "team2_set2": 7,
+    "team2_set3": 6,
+    "week_label": "Week 7"
   },
   {
     "created_at": "2026-03-09T22:18:35.67382+00:00",
