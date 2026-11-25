@@ -6,7 +6,7 @@
 // collected responses for, it finds nobody available and produces an empty
 // schedule.
 
-import { AVAILABILITY_START, AVAILABILITY_END, UNOFFICIAL_WEEKS } from './config.js?v=5b7dd9c2'
+import { AVAILABILITY_START, AVAILABILITY_END, UNOFFICIAL_WEEKS } from './config.js?v=7e3224f9'
 
 /** Formats a Date as YYYY-MM-DD (local date, not UTC). */
 export function toISODate(date) {
