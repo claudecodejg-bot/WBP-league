@@ -2,7 +2,7 @@
 //  Scoring calculations — shared across pages
 // =============================================
 
-import { MIN_SEED_MATCHES } from './config.js?v=41537f1f'
+import { MIN_SEED_MATCHES } from './config.js?v=12ffc09f'
 
 /**
  * Determines if team1 won based on head-to-head set comparison.

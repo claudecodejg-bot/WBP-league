@@ -78,8 +78,16 @@ export const BREAKING_NEWS = null
 // the page entirely. `alt` is read aloud by screen readers and shown if
 // the image fails to load, so it describes the picture rather than
 // repeating the greeting.
+//
+// `until` is the last day it appears, inclusive, in the viewer's own
+// timezone. It takes itself down overnight with nobody doing anything,
+// which is the point: a banner that needs a human or a scheduler to
+// remember it is a banner still up at Christmas. After that date the
+// panel stops rendering and this whole object, the image in banners/ and
+// the .holiday rules in css/style.css can be deleted at leisure.
 export const HOLIDAY_BANNER = {
   src: 'banners/thanksgiving-2026.jpg',
   alt: 'Cartoon turkeys playing paddle tennis in the snow under a Happy Thanksgiving banner, with a scoreboard reading Turkeys versus Pilgrims',
-  caption: 'Happy Thanksgiving from the WBP League'
+  caption: 'Happy Thanksgiving from the WBP League',
+  until: '2026-11-29'   // Sunday
 }

@@ -79,8 +79,8 @@
 
 <script type="module">
   import { requireLogin, getCurrentMember, initNav } from './js/auth.js?v=81b26575'
-  import { UNOFFICIAL_WEEKS } from './js/config.js?v=41537f1f'
-  import { upcomingWeeks, isUnofficialWeek } from './js/season-weeks.js?v=08c3a989'
+  import { UNOFFICIAL_WEEKS } from './js/config.js?v=12ffc09f'
+  import { upcomingWeeks, isUnofficialWeek } from './js/season-weeks.js?v=9ce6f8b2'
 
   // First Monday that counts towards the standings: the one after the last
   // warm-up week. Only shown while a warm-up week is still on the form —
@@ -99,7 +99,7 @@
       'Please fill in the warm-up weeks too, so we can set the courts.'
     el.hidden = false
   }
-  import { loadAvailability, loadAvailabilityTally, loadAdminAvailability } from './js/availability.js?v=64e62dd1'
+  import { loadAvailability, loadAvailabilityTally, loadAdminAvailability } from './js/availability.js?v=7f4c42e8'
 
   ;(async () => {
     initNav('availability')

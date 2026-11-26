@@ -30,7 +30,7 @@
 //  tables in one transaction, which no RLS policy can express.
 
 import { supabase, escapeHtml, connectionErrorHtml } from './supabase-client.js?v=2d21059e'
-import { CURRENT_SEASON } from './config.js?v=41537f1f'
+import { CURRENT_SEASON } from './config.js?v=12ffc09f'
 import { fetchWagerAwards, wagerRows, wagerBoards } from './wager-awards.js?v=64e98e49'
 
 let _container = null
