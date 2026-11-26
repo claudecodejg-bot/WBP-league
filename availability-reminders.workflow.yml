@@ -7,28 +7,39 @@
 #  changes are made here and pasted into GitHub's web editor by hand.
 #
 #  ── Why the cron looks like this ───────────────────────────────────
-#  GitHub's scheduler is best-effort. It drops most scheduled runs under
-#  load and delivers the survivors late — observed up to 3h36m late, and
-#  in practice only 2-3 of 15 hourly entries actually run. So the script
-#  does not trust the cron time: it accepts ANY run landing inside a
-#  window (Wed 8:00am-7:59pm ET, Fri 6:00am-1:59pm ET) and the first one in
-#  claims the slot in `reminder_log` so the rest stand down.
+#  GitHub's scheduler is best-effort: it drops scheduled runs under load
+#  and delivers the survivors late. So the script does not trust the cron
+#  time. It accepts ANY run landing inside a window (Wed 8:00am-7:59pm ET,
+#  Fri 6:00am-1:59pm ET) and the first one in claims the slot in
+#  `reminder_log` so the rest stand down.
 #
-#  Two deliberate choices here:
+#  The obvious response to a dropped run is to try more often. That was
+#  the 17 Nov 2026 change, and it backfired. Measured over the two
+#  Wednesdays that followed:
 #
-#  1. NOT on the hour. ':00' is the most contended minute on GitHub's
-#     scheduler by a wide margin, and every entry below used to sit on
-#     it. Odd minutes are dropped far less often.
+#    '9,29,49 12-16 * * 3'  3 attempts/hour, 15 total  ->  0 runs, twice
+#    '23 17-23 * * 3'       1 attempt/hour,  7 total   ->  1 run, both weeks
 #
-#  2. Attempts every half hour, not every hour. Friday used to be three
-#     hours wide with one try an hour, and was landing by minutes —
-#     11:56am on 13 Nov against a noon close, and a clean miss on 16 Oct.
+#  Zero out of thirty for the dense block while the sparse block beside
+#  it landed every week. Friday told the same story: '9,39 10-18 * * 5'
+#  is 18 attempts and delivered exactly one run on 20 Nov, at 1:33pm.
 #
-#  Wednesday's attempts are packed into the morning so the nudge lands
-#  around 8am, but its window stays open until 7:59pm: if GitHub drops
-#  every morning try, an evening nudge still beats no nudge, and nothing
-#  in the Wednesday copy names a time. Friday cannot do the same — see
-#  below — so it gets the density instead.
+#  The read is that GitHub throttles per-repo schedule density rather
+#  than per-entry, so packing attempts together makes the whole block
+#  likelier to be dropped, not likelier to land. Hence: ONE attempt an
+#  hour, everywhere. It is a hypothesis drawn from two weeks of data, not
+#  a documented rule -- if the morning still comes up empty after a few
+#  Wednesdays, the density was not the cause and the next thing to try is
+#  a different trigger entirely (an external pinger hitting
+#  workflow_dispatch, which is not best-effort).
+#
+#  Still NOT on the hour: ':00' is the most contended minute on GitHub's
+#  scheduler by a wide margin. Minute 23 is the one that has actually
+#  been delivering here, so everything now sits on it.
+#
+#  Wednesday's window stays open until 7:59pm. If GitHub drops the
+#  morning, an evening nudge still beats no nudge, and nothing in the
+#  Wednesday copy names a time.
 #
 #  Friday opens at 6am so the last call is sitting there when people wake
 #  up, and closes at 2pm, comfortably before pairings go out. It used to
@@ -57,16 +68,15 @@ name: Availability reminders
 
 on:
   schedule:
-    # Wednesday nudge, dense across the morning — 12:00-16:59 UTC covers
-    # 8-11:59am ET on both clocks, so one lands at ~8am
-    - cron: '9,29,49 12-16 * * 3'
-    # ...then hourly through the day as a fallback, in case GitHub drops
-    # every morning attempt. Still Wednesday in New York.
-    - cron: '23 17-23 * * 3'
-    # ...and the EST tail: Thu 00:xx UTC is Wed 7:xx pm in New York
+    # Wednesday nudge, one attempt an hour. 12:00-23:59 UTC Wed is
+    # 8:23am-7:23pm ET on EDT and 7:23am-6:23pm ET on EST; the early EST
+    # ones fall outside the window and exit without sending.
+    - cron: '23 12-23 * * 3'
+    # ...and the EST tail: Thu 00:23 UTC is Wed 7:23pm in New York
     - cron: '23 0 * * 4'
-    # Friday last call — 10:00-18:59 UTC covers 6am-1:59pm ET on both clocks
-    - cron: '9,39 10-18 * * 5'
+    # Friday last call, one attempt an hour. 10:00-18:59 UTC covers
+    # 6am-1:59pm ET on both clocks.
+    - cron: '23 10-18 * * 5'
 
   workflow_dispatch:
     inputs:
