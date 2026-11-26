@@ -23,7 +23,7 @@
 //  log below has to agree with it line by line.
 
 import { supabase, escapeHtml, connectionErrorHtml } from './supabase-client.js?v=2d21059e'
-import { CURRENT_SEASON } from './config.js?v=7e3224f9'
+import { CURRENT_SEASON } from './config.js?v=41537f1f'
 
 let _container = null
 let _member    = null

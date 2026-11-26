@@ -13,7 +13,7 @@
   <meta property="og:url" content="https://wbpleague.com/">
   <meta property="og:image" content="https://wbpleague.com/icons/icon-512.png">
   <meta name="twitter:card" content="summary">
-  <link rel="stylesheet" href="css/style.css?v=15c5855b">
+  <link rel="stylesheet" href="css/style.css?v=360a9e11">
   <link rel="icon" type="image/png" href="wbp-logo.png">
   <link rel="preconnect" href="https://esm.sh" crossorigin>
   <link rel="preconnect" href="https://htmrvfkaudpevmzgteyh.supabase.co" crossorigin>
@@ -96,6 +96,10 @@
     </div>
   </section>
 
+  <!-- Seasonal. Driven by HOLIDAY_BANNER in js/config.js; set that to
+       null and this fills with nothing. -->
+  <div id="holiday-container"></div>
+
   <!-- Temporary. Driven by BREAKING_NEWS in js/config.js; set that to
        null and this fills with nothing. -->
   <div id="breaking-container"></div>
@@ -156,9 +160,9 @@
 <script type="module">
   import { initNav } from './js/auth.js?v=81b26575'
   import { supabase, escapeHtml as esc } from './js/supabase-client.js?v=2d21059e'
-  import { CURRENT_SEASON, NEXT_SEASON_LABEL, NEXT_SEASON_START, BREAKING_NEWS } from './js/config.js?v=7e3224f9'
-  import { computeCurrentSeasonStats, isWinner, fmt, winnerFirst } from './js/scoring.js?v=9132728a'
-  import { fetchVinnys, leaderboard, attendeesOn, nightsHeld, NOT_A_PERSON } from './js/vinnys.js?v=5e590ad8'
+  import { CURRENT_SEASON, NEXT_SEASON_LABEL, NEXT_SEASON_START, BREAKING_NEWS, HOLIDAY_BANNER } from './js/config.js?v=41537f1f'
+  import { computeCurrentSeasonStats, isWinner, fmt, winnerFirst } from './js/scoring.js?v=8c38cd2d'
+  import { fetchVinnys, leaderboard, attendeesOn, nightsHeld, NOT_A_PERSON } from './js/vinnys.js?v=2432bcb3'
   import { startHero } from './js/hero.js?v=5f4eef9b'
   initNav('home')
 
@@ -247,6 +251,24 @@
    * the copy in config.js is that it can be edited quickly, and quick
    * edits are exactly when markup gets pasted in by accident.
    */
+  /**
+   * The seasonal picture under the season panel. Width and height are set
+   * on the <img> so the browser reserves the right space before the file
+   * arrives and the rest of the page does not jump down when it does.
+   */
+  function renderHoliday() {
+    const el = document.getElementById('holiday-container')
+    if (!el || !HOLIDAY_BANNER) return
+    const b = HOLIDAY_BANNER
+
+    el.innerHTML = `
+      <section class="holiday">
+        <img class="holiday-img" src="${esc(b.src)}" alt="${esc(b.alt || '')}"
+             width="1200" height="673" decoding="async">
+        ${b.caption ? `<p class="holiday-caption">${esc(b.caption)}</p>` : ''}
+      </section>`
+  }
+
   function renderBreaking() {
     const el = document.getElementById('breaking-container')
     if (!el || !BREAKING_NEWS) return
@@ -653,6 +675,7 @@
     requestAnimationFrame(step)
   }
 
+  renderHoliday()
   renderBreaking()
   loadUpcoming()
   loadSeasonState()

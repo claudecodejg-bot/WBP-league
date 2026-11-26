@@ -4345,3 +4345,40 @@ footer {
   .breaking { animation: none; }
   .breaking-siren { animation: none; opacity: 1; }
 }
+
+/* =============================================
+   Holiday banner — SEASONAL
+   Driven by HOLIDAY_BANNER in js/config.js. Setting that to null removes
+   the panel; these rules can then be deleted at leisure.
+   ============================================= */
+.holiday {
+  margin: 0 0 1.4rem;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  background: #f3ece2;   /* warm, so a slow load does not flash white */
+}
+
+/* Block, not inline: an inline image leaves a few pixels of descender
+   gap under it, which shows as a pale stripe above the caption. */
+.holiday-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.holiday-caption {
+  margin: 0;
+  padding: 0.55rem 0.9rem 0.65rem;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #6b3410;
+  background: #f3ece2;
+  border-top: 1px solid rgba(107,52,16,0.14);
+}
+
+@media (max-width: 600px) {
+  .holiday-caption { font-size: 0.84rem; padding: 0.5rem 0.7rem 0.55rem; }
+}

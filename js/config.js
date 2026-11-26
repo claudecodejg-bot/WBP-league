@@ -70,3 +70,16 @@ export const MIN_SEED_MATCHES = 4
 // `body` is an array of paragraphs. `footer` is the small italic
 // sign-off. Everything is escaped before it is written, so no HTML.
 export const BREAKING_NEWS = null
+
+// ── Holiday banner ──────────────────────────────────────────────────────
+// A seasonal image across the top of the home page, directly under the
+// season panel. Same deal as BREAKING_NEWS above: it goes up and comes
+// down by editing this object, and setting it to null removes it from
+// the page entirely. `alt` is read aloud by screen readers and shown if
+// the image fails to load, so it describes the picture rather than
+// repeating the greeting.
+export const HOLIDAY_BANNER = {
+  src: 'banners/thanksgiving-2026.jpg',
+  alt: 'Cartoon turkeys playing paddle tennis in the snow under a Happy Thanksgiving banner, with a scoreboard reading Turkeys versus Pilgrims',
+  caption: 'Happy Thanksgiving from the WBP League'
+}
